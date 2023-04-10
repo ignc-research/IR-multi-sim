@@ -24,21 +24,36 @@ class Task(ABC):
         self.sensors = []  # todo: implement sensors
 
     @abstractmethod
-    def get_observations(self):
+    def get_observations(self) -> List[List]:
+        """
+        Retrieves the observations from all environments.
+        """
         pass
 
     @abstractmethod
-    def apply_actions(self, actions):
+    def apply_actions(self, actions: List[List]):
+        """
+        Applies actions to all environments.
+        """
         pass
 
     @abstractmethod
     def get_rewards(self) -> List[float]:
+        """
+        Calculates rewards for all revironments.
+        """
         pass
 
     @abstractmethod
     def is_done(self) -> List[bool]:
+        """
+        Checks for all enviroments if they are done.
+        """
         pass
 
     @abstractmethod
-    def reset(self, env_indices=List[bool]):
+    def reset(self, env_indices=List[int]):
+        """
+        Resets environments with given ids.
+        """
         pass
