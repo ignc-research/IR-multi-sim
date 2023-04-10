@@ -23,6 +23,9 @@ class Task(ABC):
         self.boundaries = boundaries
         self.sensors = []  # todo: implement sensors
 
+        # set up the simulated environments
+        engine.set_up(self)
+
     @abstractmethod
     def get_observations(self) -> List[List]:
         """
