@@ -24,7 +24,7 @@ class Task(ABC):
         self.sensors = []  # todo: implement sensors
 
         # set up the simulated environments
-        engine.set_up(self)
+        self.robot_ids, self.obstacle_ids, self.sensor_ids = engine.set_up(self)
 
     @abstractmethod
     def get_observations(self) -> List[List]:
