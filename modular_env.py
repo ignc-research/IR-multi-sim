@@ -31,14 +31,6 @@ class ModularEnv(VecEnv):
         self.engine = engine
         self.offset = offset
 
-        # save default robot and obstacle positions
-        self.default_robot_pos = [r.position for r in robots]
-        self.default_robot_rot = [r.orientation for r in robots]
-        self.default_obstacle_pos = [o.position for o in obstacles]
-        self.default_obstacle_rot = [o.orientation for o in obstacles]
-        self.default_pos = torch.cat((self.default_robot_pos, self.default_obstacle_pos))
-        self.default_rot = torch.cat((self.default_robot_rot, self.default_obstacle_rot))
-
         # create buffers for observations, rewards, done, info
         self._obs_buffer = None
         self._rew_buffer = None
@@ -75,8 +67,7 @@ class ModularEnv(VecEnv):
         return self._obs_buffer, self._rew_buffer, self._done_buffer, self._info_buffer
 
     def reset(self) -> VecEnvObs:
-        # resets obstacle position to start position of scenario
-        self.engine.set_local_poses(self.default_pos, self.default_rot)
+        self.engine.reset()
 
         # get observations from default poses
         self._obs_buffer = self.engine.get_observations()

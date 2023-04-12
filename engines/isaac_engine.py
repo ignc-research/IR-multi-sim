@@ -244,6 +244,9 @@ class IsaacEngine(Engine):
         """
         self._simulation.update()
 
+    def reset(self):
+        self._world.reset()
+
     def get_observations(self) -> List[List]:
         # todo: format observations
         self._observations.get_local_poses()

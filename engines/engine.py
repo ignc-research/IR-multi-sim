@@ -141,6 +141,13 @@ class Engine(ABC):
         pass
 
     @abstractmethod
+    def reset(self):
+        """
+        Resets all simulated objects to their default configurations
+        """
+        pass
+
+    @abstractmethod
     def get_observations(self) -> VecEnvObs:
         """
         Returns the obersavtions of all environments
