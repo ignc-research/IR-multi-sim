@@ -4,7 +4,8 @@ import torch
 import numpy as np
 from pathlib import Path
 
-from tasks.task import Task
+from modular_env import ModularEnv
+from stable_baselines3.common.vec_env.base_vec_env import *
 
 
 class Engine(ABC):
@@ -17,7 +18,7 @@ class Engine(ABC):
     @abstractmethod
     def set_up(
         self, 
-        task: Task
+        env: ModularEnv
     ) -> Tuple[List[int], List[int], List [int]]:
         """
         The robot, obstacle and sensor class contains all pramameters about the objects which need to be spawned:
@@ -140,9 +141,20 @@ class Engine(ABC):
         pass
 
     @abstractmethod
-    def get_joint_info(self, robot_index: int) -> List[Tuple[str, int]]:
+    def get_observations(self) -> VecEnvObs:
         """
-        Returns the joint names and corresponding joint indices of a robot.
+        Returns the obersavtions of all environments
+        """
+        pass
+
+    @abstractmethod
+    def get_robot_dof_limits(self) -> Union[np.ndarray, torch.Tensor]:
+        """
+        Returns:
+            Union[np.ndarray, torch.Tensor]: degrees of freedom position limits. 
+            shape is (N, num_dof, 2) where index 0 corresponds to the lower limit and index 1 corresponds to the upper limit.
+            Only returns dof limits from the first environments, assuming all other environments contain duplicate robot configurations.
+
         """
         pass
 

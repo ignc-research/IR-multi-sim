@@ -1,7 +1,7 @@
 from typing import List, Tuple, Union, Optional
 from engine import Engine
 from spawnables.obstacle import *
-from tasks.task import Task
+from modular_env import ModularEnv
 import numpy as np
 import torch
 
@@ -87,55 +87,77 @@ class IsaacEngine(Engine):
         self._add_collision_material(ground_prim_path, self._floor_material_path)
 
         # track spawned robots/obstacles/sensors
-        self._robots_world_path = "/World/Robots/"
-        self._obstacles_world_path = "/World/Obstacles/"
         from omni.isaac.core.articulations import ArticulationView
-        self._robots = ArticulationView(self._robots_world_path + "*", "Robots")
-        self._objects = ArticulationView(f"({self._robots_world_path}|{self._obstacles_world_path})*", "Objects")
+        self._robots = ArticulationView("World/Env*/Robots/*", "Robots")
+        self._objects = ArticulationView("World/Env*/*", "Objects")
         self._sensors = []  # todo: implement sensors
+        self._robots.get_dof_limits
     
-    def set_up(self, task: Task) -> Tuple[List[int], List[int], List[int]]:
-        # spawn robots
-        for i, robot in enumerate(task.robots):
-            # import robot from urdf, creating prim path
-            prim_path = self._import_urdf(robot.urdf_path)
+    def set_up(self, env: ModularEnv) -> Tuple[List[int], List[int], List[int]]:
+        # setup each environment
+        for env_id in env.num_envs:
+            # calculate position offset for environment, creating grid pattern
+            pos_offset = (env_id % env.num_envs) * env.offset[0], (env_id / env.num_envs) * env.offset[1]
 
-            # move imported robot to location of all robots
-            prim_path = self._move_prim(prim_path, self._robots_world_path + str(i))
+            # spawn robots
+            for i, robot in enumerate(env.robots):
+                # import robot from urdf, creating prim path
+                prim_path = self._import_urdf(robot.urdf_path)
 
-            # configure collision
-            if robot.collision:
-                self._add_collision_material(prim_path, self._collision_material_path)
+                # modify prim path to match formating
+                prim_path = self._move_prim(prim_path, f"World/Env{env_id}/Robots/Robot{i}")
+
+                # configure collision
+                if robot.collision:
+                    self._add_collision_material(prim_path, self._collision_material_path)
+
+                # move robot to desired location
+                from omni.isaac.core.articulations import Articulation
+                obj = Articulation(prim_path)
+                obj.set_world_pose(robot.position + pos_offset, robot.orientation)
+
+            # spawn obstacles
+            for i, obstacle in enumerate(env.obstacles):
+                prim_path = f"World/Env{env_id}/Obstacles/Obstacle{i}"
+                if isinstance(obstacle, Cube):
+                    self._create_cube(prim_path, pos_offset, **dir(obstacle))
+                elif isinstance(obstacle, Sphere):
+                    self._create_sphere(prim_path, pos_offset, **dir(obstacle))
+                elif isinstance(obstacle, Cylinder):
+                    self._create_cylinder(prim_path, pos_offset, **dir(obstacle))
+                else:
+                    raise f"Obstacle {type(obstacle)} implemented"
+                
+            # spawn sensors
+            for i, sensor in enumerate(env.sensors):
+                raise "Sensors are not implemented"
         
-        # spawn obstacles
-        for i, obstacle in enumerate(task.obstacles):
-            prim_path = self._obstacles_world_path + str(i)
+        # setup articulations for robot observations
+        from omni.isaac.core.articulations import ArticulationView
+        # for each environment, for each robot, allow retrieving their local pose
+        observable_robots = "|".join([f"Robots/Robot{i}" for (i, robot) in enumerate(env.robots) if robot.observable])
 
-            if isinstance(obstacle, Cube):
-                self._create_cube(prim_path, **dir(obstacle))
-            elif isinstance(obstacle, Sphere):
-                self._create_sphere(prim_path, **dir(obstacle))
-            elif isinstance(obstacle, Cylinder):
-                self._create_cylinder(prim_path, **dir(obstacle))
-            else:
-                raise f"Obstacle {type(obstacle)} implemented"
-        
-        # spawn sensors
-        for i, sensor in enumerate(task.sensors):
-            raise "Sensors are not implemented"
+        # for each environment, for each robot, select their observable joints and allow querying their values
+        observable_joints = "|".join([f"Robots/Robot{i}/{robot.observable_joints}" for (i, robot) in enumerate(env.robots)])
+
+        # for each environment, for each obstacle, allow retrieving their local pose
+        observable_obstacles = "|".join([f"Obstacles/Obstacle{i}" for (i, obstacle) in enumerate(env.obstacles) if obstacle.observable])
+
+        # create main regex: join observable objects
+        regex = "|".join([observable_robots, observable_joints, observable_obstacles])
+        regex = f"World/Env*/({regex})"
+        self._observations = ArticulationView(regex, "Observations")
 
         # reset world to allow physics object to interact
         self._world.reset()
 
         # return indices allowing to quickly access robots/obstacles/sensors
-        num_robots = len(task.robots) * task.num_envs
-        num_obstacles = len(task.obstacles) * task.num_envs
-        num_objects = num_obstacles + num_robots
-
-        assert task.num_envs == 1, "Multiple environments not implemented!"
+        self.num_robots = len(env.robots) * env.num_envs
+        self.num_obstacles = len(env.obstacles) * env.num_envs
+        self.num_objects = self.num_obstacles + self.num_robots
 
         # The regex function will find obstacles before robots -> Obstacles have lower indices than robots 
-        return [i for i in range(num_obstacles, num_objects)], [i for i in range(num_obstacles)], [i for i in range(len(task.sensors))]
+        return [i for i in range(self.num_obstacles, self.num_objects)], [i for i in range(self.num_obstacles)], [i for i in range(len(env.sensors))]
 
     def set_joint_positions(
         self,
@@ -222,6 +244,16 @@ class IsaacEngine(Engine):
         """
         self._simulation.update()
 
+    def get_observations(self) -> List[List]:
+        # todo: format observations
+        self._observations.get_local_poses()
+        raise "Not implemented!"
+
+    def get_robot_dof_limits(self) -> Union[np.ndarray, torch.Tensor]:
+        # todo: ony get dof limits from robots of first environment
+        self._robots.get_dof_limits()
+        raise "Not implemented!"
+
     def _on_contact_report_event(self, contact_headers, contact_data):
         """
         After each simulation step, ISAAC calles this function. 
@@ -286,6 +318,7 @@ class IsaacEngine(Engine):
     def _create_cube(
         self, 
         prim_path: str,
+        offset: np.ndarray,
         position: np.ndarray,
         orientation: np.ndarray,
         mass: float,
@@ -299,7 +332,7 @@ class IsaacEngine(Engine):
         add_rigid_box(
             self.stage, prim_path,
             size=to_isaac_vector(scale),
-            position=to_isaac_vector(position),
+            position=to_isaac_vector(position + offset),
             orientation=to_issac_quat(orientation),
             color=to_isaac_color(color),
             density=mass
@@ -312,6 +345,7 @@ class IsaacEngine(Engine):
         self,
         prim_path: str,
         position: np.ndarray,
+        offset: np.ndarray,
         mass: float,
         radius: float,
         color: List[float],
@@ -323,7 +357,7 @@ class IsaacEngine(Engine):
         add_rigid_sphere(
             self.stage, prim_path,
             radius=radius,
-            position=to_isaac_vector(position),
+            position=to_isaac_vector(position + offset),
             color=to_isaac_color(color),
             density=mass                
         )
@@ -335,6 +369,7 @@ class IsaacEngine(Engine):
         self,
         prim_path: str,
         position: np.ndarray,
+        offset: np.ndarray,
         orientation: np.ndarray,
         mass: float,
         radius: float,
@@ -349,7 +384,7 @@ class IsaacEngine(Engine):
             self.stage, prim_path,
             radius=radius,
             height=height,
-            position=to_isaac_vector(position),
+            position=to_isaac_vector(position + offset),
             orientation=to_isaac_vector(orientation),
             color=to_isaac_color(color),
             density=mass
