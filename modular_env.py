@@ -57,7 +57,7 @@ class ModularEnv(VecEnv):
         action_limits = engine.get_robot_dof_limits()
 
         # super().__init__(num_envs, None, None)
-        raise "Not implemented"
+        raise "Not implemented!"
 
     def step(self, actions) -> VecEnvStepReturn:
         # apply actions to actors
@@ -66,11 +66,23 @@ class ModularEnv(VecEnv):
         # step world
         self.engine.step()
 
+        self._obs_buffer = self.engine.get_observations()
+        self._rew_buffer = None
+        self._done_buffer = None
+        self._info_buffer = None
+
+        raise "Not implemented!"
+        return self._obs_buffer, self._rew_buffer, self._done_buffer, self._info_buffer
+
     def reset(self) -> VecEnvObs:
         # resets obstacle position to start position of scenario
         self.engine.set_local_poses(self.default_pos, self.default_rot)
 
-        return self.engine.get_observations()
+        # get observations from default poses
+        self._obs_buffer = self.engine.get_observations()
+
+        # return updated observation buffer
+        return self._obs_buffer
 
     def pre_physics_step(self, actions):
         raise "Not implemented"
