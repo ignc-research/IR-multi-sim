@@ -2,18 +2,28 @@ from abc import ABC
 from torch import Tensor, zeros
 from typing import List
 
+_spawnable_objects = 0
+
 class Spawnable(ABC):
-    def __init__(self, position: Tensor, mass: float, color: List[float], collision: bool, observable:bool) -> None:
+    def __init__(self, position: Tensor, mass: float, color: List[float], collision: bool, observable:bool, name:str) -> None:
         """
         position: Beginning position of object
         mass: Mass of object
         color: Color of object
         collision: True if object is able to collide with others, otherwise false
-        observable: True if the object position and orientation is included in the observation for RL
+        observable: True if the object position and orientation is included in the observation for RL. Must be true if the object is part of the reward function
+        name: Name of the object. Allows referencing it in reward and reset condition classes
         """
+        # set default name
+        if name is None:
+            global _spawnable_objects
+            name = str(_spawnable_objects)
+            _spawnable_objects += 1
+
         self.position = position
         self.mass = mass
         self.color = color
         self.collision = collision
         self.orientation = zeros(4)  # default orientation of any spawnable object
         self.observable = observable
+        self.name = name

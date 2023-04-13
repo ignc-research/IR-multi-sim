@@ -1,9 +1,11 @@
 from typing import List, Tuple, Union, Optional
 from engine import Engine
+from rewards.distance import Distance, distance
 from spawnables.obstacle import *
 from modular_env import ModularEnv
 import numpy as np
 import torch
+from stable_baselines3.common.vec_env.base_vec_env import *
 
 class IsaacEngine(Engine):
     def __init__(self, asset_path: str, step_size: float, headless: bool = True) -> None:
@@ -91,21 +93,39 @@ class IsaacEngine(Engine):
         self._robots = ArticulationView("World/Env*/Robots/*", "Robots")
         self._objects = ArticulationView("World/Env*/*", "Objects")
         self._sensors = []  # todo: implement sensors
-        self._robots.get_dof_limits
+        
+        # create buffers for observations, rewards, done, info
+        self._obs: VecEnvObs = None
+        self._rewards: np.ndarray = None
+        self._done: np.ndarray = None
+        self._info: List[Dict] = None
+        
     
     def set_up(self, env: ModularEnv) -> Tuple[List[int], List[int], List[int]]:
         # setup each environment
+        self._setup_environments(env)
+        
+        # setup efficent method to track observable objects
+        self._setup_observations(env)
+
+        # setup efficient method to get rewards
+        self._setup_rewards(env)
+
+        # reset world to allow physics object to interact
+        self._world.reset()
+
+    def _setup_environments(self, env: ModularEnv) -> None:
         for env_id in env.num_envs:
             # calculate position offset for environment, creating grid pattern
             pos_offset = (env_id % env.num_envs) * env.offset[0], (env_id / env.num_envs) * env.offset[1]
 
             # spawn robots
-            for i, robot in enumerate(env.robots):
+            for robot in env.robots:
                 # import robot from urdf, creating prim path
                 prim_path = self._import_urdf(robot.urdf_path)
 
                 # modify prim path to match formating
-                prim_path = self._move_prim(prim_path, f"World/Env{env_id}/Robots/Robot{i}")
+                prim_path = self._move_prim(prim_path, f"World/Env{env_id}/Robots/{robot.name}")
 
                 # configure collision
                 if robot.collision:
@@ -117,8 +137,8 @@ class IsaacEngine(Engine):
                 obj.set_world_pose(robot.position + pos_offset, robot.orientation)
 
             # spawn obstacles
-            for i, obstacle in enumerate(env.obstacles):
-                prim_path = f"World/Env{env_id}/Obstacles/Obstacle{i}"
+            for obstacle in env.obstacles:
+                prim_path = f"World/Env{env_id}/Obstacles/{obstacle.name}"
                 if isinstance(obstacle, Cube):
                     self._create_cube(prim_path, pos_offset, **dir(obstacle))
                 elif isinstance(obstacle, Sphere):
@@ -131,33 +151,56 @@ class IsaacEngine(Engine):
             # spawn sensors
             for i, sensor in enumerate(env.sensors):
                 raise "Sensors are not implemented"
-        
+
+    def _setup_observations(self, env: ModularEnv) -> None:
         # setup articulations for robot observations
         from omni.isaac.core.articulations import ArticulationView
         # for each environment, for each robot, allow retrieving their local pose
-        observable_robots = "|".join([f"Robots/Robot{i}" for (i, robot) in enumerate(env.robots) if robot.observable])
+        observable_robots = "|".join([f"Robots/{robot.name}" for robot in env.robots if robot.observable])
 
         # for each environment, for each robot, select their observable joints and allow querying their values
-        observable_joints = "|".join([f"Robots/Robot{i}/{robot.observable_joints}" for (i, robot) in enumerate(env.robots)])
+        observable_joints = "|".join([f"Robots/{robot.name}/{robot.observable_joints}" for robot in env.robots])
 
         # for each environment, for each obstacle, allow retrieving their local pose
-        observable_obstacles = "|".join([f"Obstacles/Obstacle{i}" for (i, obstacle) in enumerate(env.obstacles) if obstacle.observable])
+        observable_obstacles = "|".join([f"Obstacles/{obstacle.name}" for obstacle in env.obstacles if obstacle.observable])
 
         # create main regex: join observable objects
         regex = "|".join([observable_robots, observable_joints, observable_obstacles])
         regex = f"World/Env*/({regex})"
         self._observations = ArticulationView(regex, "Observations")
 
-        # reset world to allow physics object to interact
-        self._world.reset()
+    def _setup_rewards(self, env: ModularEnv) -> None:
+        self.reward_fns = []
 
-        # return indices allowing to quickly access robots/obstacles/sensors
-        self.num_robots = len(env.robots) * env.num_envs
-        self.num_obstacles = len(env.obstacles) * env.num_envs
-        self.num_objects = self.num_obstacles + self.num_robots
+        for reward in env.rewards:
+            if isinstance(reward, Distance):
+                self.reward_fns.append(self._parse_distance_reward(reward))
+            else:
+                raise f"Reward {type(reward)} not implemented!"
 
-        # The regex function will find obstacles before robots -> Obstacles have lower indices than robots 
-        return [i for i in range(self.num_obstacles, self.num_objects)], [i for i in range(self.num_obstacles)], [i for i in range(len(env.sensors))]
+
+    def _parse_distance_reward(self, distance: Distance):
+        # get indices of observable objects
+        index_0 = self._get_obs_obj_index(distance.obj1)
+        index_1 = self._get_obs_obj_index(distance.obj2)
+
+        def reward() -> float:
+            obs = self._obs
+
+            # todo: get observations, calculate distance between objects in all environments            
+            raise "Not implemented!"
+
+        return reward
+
+    def _get_obs_obj_index(self, name: str) -> int:
+        """
+        Tries to retrieve an object with given name from the list of observed objects.
+        """
+        for i, prim_path in self._observations.body_names:
+            if prim_path.endswith(name):
+                return i
+        
+        raise f"Object with name {name} isn't an observed object!"
 
     def set_joint_positions(
         self,
@@ -238,19 +281,29 @@ class IsaacEngine(Engine):
         """
         return self._collisions
 
-    def step(self):
+    def step(self, actions) -> VecEnvStepReturn:
         """
         Steps the environment for one timestep
         """
+        # apply actions
+
         self._simulation.update()
 
-    def reset(self):
+        # get rewards
+
+        # get dones
+
+        # get info
+
+        raise "Not implemented"
+
+    def reset(self) -> VecEnvObs:
         self._world.reset()
 
-    def get_observations(self) -> List[List]:
-        # todo: format observations
+        # todo: format
         self._observations.get_local_poses()
-        raise "Not implemented!"
+
+        raise "Not implemented"
 
     def get_robot_dof_limits(self) -> Union[np.ndarray, torch.Tensor]:
         # todo: ony get dof limits from robots of first environment

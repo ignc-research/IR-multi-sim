@@ -19,29 +19,9 @@ class Engine(ABC):
     def set_up(
         self, 
         env: ModularEnv
-    ) -> Tuple[List[int], List[int], List [int]]:
+    ) -> None:
         """
-        The robot, obstacle and sensor class contains all pramameters about the objects which need to be spawned:
-            - Position
-            - Rotation
-            - Mass
-            - Collisions
-        Depending on class:
-            - (Robot:) Urdf containing load data, mass
-            - (Obstacle:)
-                - Mass, Colour
-                - (Shape:) Cube/Sphere/Cylinder/Mesh and additional parameters
-
-        Sensors are always free floating and not attatched to a robot/obstacle. If a sensor needs to be attatched,
-        it is specified in the Robot/Obstacle class.
-
-        Will create a default gound plane
-
-        num_envs: Number of environments which will be simulated in paralles
-        boundaries: Maximum amount of space required per environment
-        set_size: Amount of time simulated per sim step
-
-        Returns the generated robot, obstacles and sensor ids. All of them are integers, and no robot id equals any obstacle id
+        env: Modular environment containing all data required to setup the simulation
         """
         pass
 
@@ -134,23 +114,16 @@ class Engine(ABC):
         pass
 
     @abstractmethod
-    def step(self):
+    def step(self, actions) -> VecEnvStepReturn:
         """
         Steps the environment for one timestep
         """
         pass
 
     @abstractmethod
-    def reset(self):
+    def reset(self) -> VecEnvObs:
         """
         Resets all simulated objects to their default configurations
-        """
-        pass
-
-    @abstractmethod
-    def get_observations(self) -> VecEnvObs:
-        """
-        Returns the obersavtions of all environments
         """
         pass
 
