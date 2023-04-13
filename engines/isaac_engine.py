@@ -194,7 +194,7 @@ class IsaacEngine(Engine):
 
     def _get_obs_obj_index(self, name: str) -> int:
         """
-        Tries to retrieve an object with given name from the list of observed objects.
+        Tries to retrieve an objects index in the observation array with given name from the list of observed objects.
         """
         for i, prim_path in self._observations.body_names:
             if prim_path.endswith(name):
