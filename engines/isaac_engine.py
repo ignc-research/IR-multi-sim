@@ -2,15 +2,33 @@ from typing import List, Tuple, Union, Optional
 from engines.engine import Engine
 from rewards.distance import Distance, distance
 from spawnables.obstacle import *
-from modular_env import ModularEnv
+from spawnables.robot import Robot
+from rewards.reward import Reward
 import numpy as np
-import torch
 from stable_baselines3.common.vec_env.base_vec_env import *
 
 class IsaacEngine(Engine):
-    def __init__(self, asset_path: str, step_size: float, headless: bool = True) -> None:
-        super().__init__(asset_path, step_size, headless)
+    def __init__(self, asset_path:str, step_size: float, headless:bool, robots: List[Robot], obstacles: List[Obstacle], rewards: List[Reward], num_envs:int, offset: Tuple[float, float]) -> None:
+        # setup ISAAC simulation environment and interfaces
+        self._setup_simulation(headless)
+        self._setup_urdf_import()
+        self._setup_physics()
 
+        # track spawned robots/obstacles/sensors
+        from omni.isaac.core.articulations import ArticulationView
+        self._robots = ArticulationView("World/Env*/Robots/*", "Robots")
+        self._objects = ArticulationView("World/Env*/*", "Objects")
+        self._sensors = []  # todo: implement sensors
+
+        # setup rl environment
+        self._setup_environments(num_envs, robots, obstacles, [], offset)
+        self._setup_observations(robots, obstacles)
+        self._setup_rewards(rewards)
+        
+        # init bace class last, allowing it to automatically determine action and observation space
+        super().__init__(asset_path, step_size, headless, num_envs)
+    
+    def _setup_simulation(self, headless: bool):
         # isaac imports may only be used after SimulationApp is started (ISAAC uses runtime plugin system)
         from omni.isaac.kit import SimulationApp
         self._simulation = SimulationApp({"headless": headless})
@@ -37,6 +55,7 @@ class IsaacEngine(Engine):
         assert self._scene != None, "Isaac scene failed to load!"
         assert self._stage != None, "Isaac stage failed to load!"
 
+    def _setup_urdf_import(self):
         # configure urdf importer
         from omni.kit.commands import execute
         result, self._config = execute("URDFCreateImportConfig")
@@ -50,6 +69,7 @@ class IsaacEngine(Engine):
         self._config.fix_base = True
         self._config.create_physics_scene = True
 
+    def _setup_physics(self):
         # setup physics
         # subscribe to physics contact report event, this callback issued after each simulation step
         from omni.physx import get_physx_simulation_interface
@@ -60,22 +80,22 @@ class IsaacEngine(Engine):
 
         # configure physics simulation
         from omni.physx.scripts.physicsUtils import UsdPhysics, UsdShade, Gf
-        scene = UsdPhysics.Scene.Define(self.stage, "/physicsScene")
+        scene = UsdPhysics.Scene.Define(self._stage, "/physicsScene")
         scene.CreateGravityDirectionAttr().Set(Gf.Vec3f(0.0, 0.0, -1.0))
         scene.CreateGravityMagnitudeAttr().Set(981.0)
 
         # Configure default floor material
         self._floor_material_path = "/floorMaterial"
-        UsdShade.Material.Define(self.stage, self._floor_material_path)
-        floor_material = UsdPhysics.MaterialAPI.Apply(self.stage.GetPrimAtPath(self._floor_material_path))
+        UsdShade.Material.Define(self._stage, self._floor_material_path)
+        floor_material = UsdPhysics.MaterialAPI.Apply(self._stage.GetPrimAtPath(self._floor_material_path))
         floor_material.CreateStaticFrictionAttr().Set(0.0)
         floor_material.CreateDynamicFrictionAttr().Set(0.0)
         floor_material.CreateRestitutionAttr().Set(1.0)
 
         # Configure default collision material
         self._collision_material_path = "/collisionMaterial"
-        UsdShade.Material.Define(self.stage, self._collision_material_path)
-        material = UsdPhysics.MaterialAPI.Apply(self.stage.GetPrimAtPath(self._collision_material_path))
+        UsdShade.Material.Define(self._stage, self._collision_material_path)
+        material = UsdPhysics.MaterialAPI.Apply(self._stage.GetPrimAtPath(self._collision_material_path))
         material.CreateStaticFrictionAttr().Set(0.5)
         material.CreateDynamicFrictionAttr().Set(0.5)
         material.CreateRestitutionAttr().Set(0.9)
@@ -88,39 +108,13 @@ class IsaacEngine(Engine):
         # add collision to ground plane
         self._add_collision_material(ground_prim_path, self._floor_material_path)
 
-        # track spawned robots/obstacles/sensors
-        from omni.isaac.core.articulations import ArticulationView
-        self._robots = ArticulationView("World/Env*/Robots/*", "Robots")
-        self._objects = ArticulationView("World/Env*/*", "Objects")
-        self._sensors = []  # todo: implement sensors
-        
-        # create buffers for observations, rewards, done, info
-        self._obs: VecEnvObs = None
-        self._rewards: np.ndarray = None
-        self._done: np.ndarray = None
-        self._info: List[Dict] = None
-        
-    
-    def set_up(self, env: ModularEnv) -> Tuple[List[int], List[int], List[int]]:
-        # setup each environment
-        self._setup_environments(env)
-        
-        # setup efficent method to track observable objects
-        self._setup_observations(env)
-
-        # setup efficient method to get rewards
-        self._setup_rewards(env)
-
-        # reset world to allow physics object to interact
-        self._world.reset()
-
-    def _setup_environments(self, env: ModularEnv) -> None:
-        for env_id in env.num_envs:
+    def _setup_environments(self, num_envs: int, robots: List[Robot], obstacles: List[Obstacle], sensors: List, offset: Tuple[float, float]) -> None:
+        for env_id in num_envs:
             # calculate position offset for environment, creating grid pattern
-            pos_offset = (env_id % env.num_envs) * env.offset[0], (env_id / env.num_envs) * env.offset[1]
+            pos_offset = (env_id % num_envs) * offset[0], (env_id / num_envs) * offset[1]
 
             # spawn robots
-            for robot in env.robots:
+            for robot in robots:
                 # import robot from urdf, creating prim path
                 prim_path = self._import_urdf(robot.urdf_path)
 
@@ -137,7 +131,7 @@ class IsaacEngine(Engine):
                 obj.set_world_pose(robot.position + pos_offset, robot.orientation)
 
             # spawn obstacles
-            for obstacle in env.obstacles:
+            for obstacle in obstacles:
                 prim_path = f"World/Env{env_id}/Obstacles/{obstacle.name}"
                 if isinstance(obstacle, Cube):
                     self._create_cube(prim_path, pos_offset, **dir(obstacle))
@@ -149,30 +143,30 @@ class IsaacEngine(Engine):
                     raise f"Obstacle {type(obstacle)} implemented"
                 
             # spawn sensors
-            for i, sensor in enumerate(env.sensors):
+            for i, sensor in enumerate(sensors):
                 raise "Sensors are not implemented"
 
-    def _setup_observations(self, env: ModularEnv) -> None:
+    def _setup_observations(self, robots: List[Robot], obstacles: List[Obstacle]) -> None:
         # setup articulations for robot observations
         from omni.isaac.core.articulations import ArticulationView
         # for each environment, for each robot, allow retrieving their local pose
-        observable_robots = "|".join([f"Robots/{robot.name}" for robot in env.robots if robot.observable])
+        observable_robots = "|".join([f"Robots/{robot.name}" for robot in robots if robot.observable])
 
         # for each environment, for each robot, select their observable joints and allow querying their values
-        observable_joints = "|".join([f"Robots/{robot.name}/{robot.observable_joints}" for robot in env.robots])
+        observable_joints = "|".join([f"Robots/{robot.name}/{robot.observable_joints}" for robot in robots])
 
         # for each environment, for each obstacle, allow retrieving their local pose
-        observable_obstacles = "|".join([f"Obstacles/{obstacle.name}" for obstacle in env.obstacles if obstacle.observable])
+        observable_obstacles = "|".join([f"Obstacles/{obstacle.name}" for obstacle in obstacles if obstacle.observable])
 
         # create main regex: join observable objects
         regex = "|".join([observable_robots, observable_joints, observable_obstacles])
         regex = f"World/Env*/({regex})"
         self._observations = ArticulationView(regex, "Observations")
 
-    def _setup_rewards(self, env: ModularEnv) -> None:
+    def _setup_rewards(self, rewards: List[Reward]) -> None:
         self.reward_fns = []
 
-        for reward in env.rewards:
+        for reward in rewards:
             if isinstance(reward, Distance):
                 self.reward_fns.append(self._parse_distance_reward(reward))
             else:
@@ -204,9 +198,9 @@ class IsaacEngine(Engine):
 
     def set_joint_positions(
         self,
-        positions: Optional[Union[np.ndarray, torch.Tensor]],
-        robot_indices: Optional[Union[np.ndarray, List, torch.Tensor]] = None,
-        joint_indices: Optional[Union[np.ndarray, List, torch.Tensor]] = None,
+        positions: Optional[np.ndarray],
+        robot_indices: Optional[Union[np.ndarray, List]] = None,
+        joint_indices: Optional[Union[np.ndarray, List]] = None,
     ) -> None:
         """
         Sets the joint positions of all robots specified in robot_indices to their respective values specified in positions.
@@ -215,9 +209,9 @@ class IsaacEngine(Engine):
     
     def set_joint_position_targets(
         self,
-        positions: Optional[Union[np.ndarray, torch.Tensor]],
-        robot_indices: Optional[Union[np.ndarray, List, torch.Tensor]] = None,
-        joint_indices: Optional[Union[np.ndarray, List, torch.Tensor]] = None,
+        positions: Optional[np.ndarray],
+        robot_indices: Optional[Union[np.ndarray, List]] = None,
+        joint_indices: Optional[Union[np.ndarray, List]] = None,
     ) -> None:
         """
         Sets the joint position targets of all robots specified in robot_indices to their respective values specified in positions.
@@ -226,9 +220,9 @@ class IsaacEngine(Engine):
 
     def set_joint_velocities(
         self,
-        velocities: Optional[Union[np.ndarray, torch.Tensor]],
-        robot_indices: Optional[Union[np.ndarray, List, torch.Tensor]] = None,
-        joint_indices: Optional[Union[np.ndarray, List, torch.Tensor]] = None,
+        velocities: Optional[np.ndarray],
+        robot_indices: Optional[Union[np.ndarray, List]] = None,
+        joint_indices: Optional[Union[np.ndarray, List]] = None,
     ) -> None:
         """
         Sets the joint velocities of all robots specified in robot_indices to their respective values specified in velocities.
@@ -237,9 +231,9 @@ class IsaacEngine(Engine):
     
     def set_joint_velocity_targets(
         self,
-        velocities: Optional[Union[np.ndarray, torch.Tensor]],
-        robot_indices: Optional[Union[np.ndarray, List, torch.Tensor]] = None,
-        joint_indices: Optional[Union[np.ndarray, List, torch.Tensor]] = None,
+        velocities: Optional[np.ndarray],
+        robot_indices: Optional[Union[np.ndarray, List]] = None,
+        joint_indices: Optional[Union[np.ndarray, List]] = None,
     ) -> None:
         """
         Sets the joint velocities targets of all robots specified in robot_indices to their respective values specified in velocities.
@@ -248,9 +242,9 @@ class IsaacEngine(Engine):
 
     def set_local_poses(
         self,
-        translations: Optional[Union[np.ndarray, torch.Tensor]] = None,
-        orientations: Optional[Union[np.ndarray, torch.Tensor]] = None,
-        indices: Optional[Union[np.ndarray, list, torch.Tensor]] = None,
+        translations: Optional[np.ndarray] = None,
+        orientations: Optional[np.ndarray] = None,
+        indices: Optional[Union[np.ndarray, List]] = None,
     ) -> None:
         """
         Sets the local pose, meaning translation and orientation, of all objects (robots and obstacles)
@@ -258,8 +252,8 @@ class IsaacEngine(Engine):
         self._objects.set_local_poses(translations, orientations, indices)
 
     def get_local_poses(
-        self, indices: Optional[Union[np.ndarray, list, torch.Tensor]] = None
-    ) -> Union[Tuple[np.ndarray, np.ndarray], Tuple[torch.Tensor, torch.Tensor]]:
+        self, indices: Optional[Union[np.ndarray, List]] = None
+    ) -> Tuple[np.ndarray, np.ndarray]:
         """
         Gets the local pose, meaning translation and orientation, of all objects (robots and obstacles)
         """
@@ -267,7 +261,7 @@ class IsaacEngine(Engine):
 
     def get_sensor_data(
         self, 
-        indices: Optional[Union[np.ndarray, list, torch.Tensor]] = None,
+        indices: Optional[Union[np.ndarray, List]] = None,
     ) -> List[List]:
         """
         Gets the sensor data generated by all sensors.
@@ -306,7 +300,7 @@ class IsaacEngine(Engine):
 
         raise "Not implemented"
 
-    def get_robot_dof_limits(self) -> Union[np.ndarray, torch.Tensor]:
+    def get_robot_dof_limits(self) -> np.ndarray:
         # todo: ony get dof limits from robots of first environment
         self._robots.get_dof_limits()
         raise "Not implemented!"

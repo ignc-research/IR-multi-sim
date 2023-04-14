@@ -1,36 +1,29 @@
 from abc import ABC, abstractmethod
 from typing import List, Tuple, Union, Optional
-import torch
 import numpy as np
 from pathlib import Path
-
-from modular_env import ModularEnv
 from stable_baselines3.common.vec_env.base_vec_env import *
 
 
-class Engine(ABC):
-    def __init__(self, asset_path:str, step_size: float, headless:bool=True) -> None:
-        super().__init__()
+class Engine(VecEnv):
+    def __init__(self, asset_path:str, step_size: float, headless:bool, num_envs: int) -> None:
         self.asset_path = asset_path  # Path to assets used in simulation
         self.headless = headless  # True if the simulation will not be rendered, otherwise false 
         self.step_size = step_size  # Amount of time passing each time .step() is called
 
-    @abstractmethod
-    def set_up(
-        self, 
-        env: ModularEnv
-    ) -> None:
-        """
-        env: Modular environment containing all data required to setup the simulation
-        """
-        pass
+        obs = self.reset()
+        actions = self.get_robot_dof_limits()
+        print(obs, actions)
+
+        raise "Engine constructor not implemented"
+        super().__init__(num_envs, None, None)
 
     @abstractmethod
     def set_joint_positions(
         self,
-        positions: Optional[Union[np.ndarray, torch.Tensor]],
-        robot_indices: Optional[Union[np.ndarray, List, torch.Tensor]] = None,
-        joint_indices: Optional[Union[np.ndarray, List, torch.Tensor]] = None,
+        positions: Optional[np.ndarray],
+        robot_indices: Optional[Union[np.ndarray, List]] = None,
+        joint_indices: Optional[Union[np.ndarray, List]] = None,
     ) -> None:
         """
         Sets the joint positions of all robots specified in robot_indices to their respective values specified in positions.
@@ -40,9 +33,9 @@ class Engine(ABC):
     @abstractmethod
     def set_joint_position_targets(
         self,
-        positions: Optional[Union[np.ndarray, torch.Tensor]],
-        robot_indices: Optional[Union[np.ndarray, List, torch.Tensor]] = None,
-        joint_indices: Optional[Union[np.ndarray, List, torch.Tensor]] = None,
+        positions: Optional[np.ndarray],
+        robot_indices: Optional[Union[np.ndarray, List]] = None,
+        joint_indices: Optional[Union[np.ndarray, List]] = None,
     ) -> None:
         """
         Sets the joint position targets of all robots specified in robot_indices to their respective values specified in positions.
@@ -52,9 +45,9 @@ class Engine(ABC):
     @abstractmethod
     def set_joint_velocities(
         self,
-        velocities: Optional[Union[np.ndarray, torch.Tensor]],
-        robot_indices: Optional[Union[np.ndarray, List, torch.Tensor]] = None,
-        joint_indices: Optional[Union[np.ndarray, List, torch.Tensor]] = None,
+        velocities: Optional[np.ndarray],
+        robot_indices: Optional[Union[np.ndarray, List]] = None,
+        joint_indices: Optional[Union[np.ndarray, List]] = None,
     ) -> None:
         """
         Sets the joint velocities of all robots specified in robot_indices to their respective values specified in velocities.
@@ -64,9 +57,9 @@ class Engine(ABC):
     @abstractmethod   
     def set_joint_velocity_targets(
         self,
-        velocities: Optional[Union[np.ndarray, torch.Tensor]],
-        robot_indices: Optional[Union[np.ndarray, List, torch.Tensor]] = None,
-        joint_indices: Optional[Union[np.ndarray, List, torch.Tensor]] = None,
+        velocities: Optional[np.ndarray],
+        robot_indices: Optional[Union[np.ndarray, List]] = None,
+        joint_indices: Optional[Union[np.ndarray, List]] = None,
     ) -> None:
         """
         Sets the joint velocities targets of all robots specified in robot_indices to their respective values specified in velocities.
@@ -76,9 +69,9 @@ class Engine(ABC):
     @abstractmethod
     def set_local_poses(
         self,
-        translations: Optional[Union[np.ndarray, torch.Tensor]] = None,
-        orientations: Optional[Union[np.ndarray, torch.Tensor]] = None,
-        indices: Optional[Union[np.ndarray, list, torch.Tensor]] = None,
+        translations: Optional[np.ndarray] = None,
+        orientations: Optional[np.ndarray] = None,
+        indices: Optional[Union[np.ndarray, List]] = None,
     ) -> None:
         """
         Sets the local pose, meaning translation and orientation, of all objects (robots and obstacles)
@@ -88,20 +81,10 @@ class Engine(ABC):
     @abstractmethod
     def get_local_poses(
         self,
-        indices: Optional[Union[np.ndarray, list, torch.Tensor]] = None,
-    ) -> Union[Tuple[np.ndarray, np.ndarray], Tuple[torch.Tensor, torch.Tensor]]:
+        indices: Optional[Union[np.ndarray, List]] = None,
+    ) -> Tuple[np.ndarray, np.ndarray]:
         """
         Gets the local pose, meaning translation and orientation, of all objects (robots and obstacles)
-        """
-        pass
-
-    @abstractmethod
-    def get_sensor_data(
-        self, 
-        indices: Optional[Union[np.ndarray, list, torch.Tensor]] = None,
-    ) -> List[List]:
-        """
-        Gets the sensor data generated by all sensors.
         """
         pass
 
@@ -114,24 +97,10 @@ class Engine(ABC):
         pass
 
     @abstractmethod
-    def step(self, actions) -> VecEnvStepReturn:
-        """
-        Steps the environment for one timestep
-        """
-        pass
-
-    @abstractmethod
-    def reset(self) -> VecEnvObs:
-        """
-        Resets all simulated objects to their default configurations
-        """
-        pass
-
-    @abstractmethod
-    def get_robot_dof_limits(self) -> Union[np.ndarray, torch.Tensor]:
+    def get_robot_dof_limits(self) -> np.ndarray:
         """
         Returns:
-            Union[np.ndarray, torch.Tensor]: degrees of freedom position limits. 
+            np.ndarray: degrees of freedom position limits. 
             shape is (N, num_dof, 2) where index 0 corresponds to the lower limit and index 1 corresponds to the upper limit.
             Only returns dof limits from the first environments, assuming all other environments contain duplicate robot configurations.
 

@@ -6,7 +6,7 @@ from typing import Union
 
 
 class Distance(Reward):
-    def __init__(self, obj1: Union[Spawnable, str], obj2: Union[Spawnable, str], minimize: bool) -> None:
+    def __init__(self, obj1: Union[Spawnable, str], obj2: Union[Spawnable, str], minimize: bool=True) -> None:
         """
         obj1, ob2: References to the objects whose distance shall be measured. 
         The reference may either be a spwanabe object (name will be extracted automatically), or a str referencing an objects name.
