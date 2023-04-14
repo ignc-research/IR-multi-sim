@@ -1,4 +1,4 @@
-from engines.isaac_engine import IsaacEnv
+from envs.isaac_env import IsaacEnv
 from spawnables.obstacle import *
 from rewards.distance import Distance
 import numpy as np

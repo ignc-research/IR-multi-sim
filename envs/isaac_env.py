@@ -1,5 +1,5 @@
 from typing import List, Tuple, Union, Optional
-from engines.engine import ModularEnv
+from envs.modular_env import ModularEnv
 from rewards.distance import Distance, distance
 from spawnables.obstacle import *
 from spawnables.robot import Robot
