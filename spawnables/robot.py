@@ -1,11 +1,10 @@
 from typing import List
-from torch import Tensor, empty
-from engines.engine import Engine
-from spawnable import Spawnable
+from numpy import ndarray
+from spawnables.spawnable import Spawnable
 
 
 class Robot(Spawnable):
-    def __init__(self, position: Tensor, orientation: Tensor, urdf_path:str, mass: float, color: List[float], collision: bool, observable: bool,
+    def __init__(self, position: ndarray, orientation: ndarray, urdf_path:str, mass: float, color: List[float], collision: bool, observable: bool,
                   observable_joints: str="", controlable_joints: str="*") -> None:
         """
         position: Beginning position of robot

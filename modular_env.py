@@ -1,23 +1,24 @@
 from abc import ABC, abstractmethod
-from typing import List, Tuple
+from typing import List, Tuple, TYPE_CHECKING
 from rewards.reward import Reward
 from spawnables.robot import Robot
 from spawnables.obstacle import Obstacle
-from engines.engine import Engine
 from stable_baselines3.common.vec_env.base_vec_env import *
 from gym.spaces import *
-import torch
-import numpy as np
 
 from omni.isaac.core.tasks import BaseTask
 from omni.isaac.gym.vec_env import VecEnvBase
 
+if TYPE_CHECKING:
+    from engines.engine import Engine
+
 class ModularEnv(VecEnv):
     """
     Environment containing blueprints of robots, obstacles, sensors and goals.
+    TODO: Let engine base class implement VecEnv
     """
 
-    def __init__(self, robots: List[Robot], obstacles: List[Obstacle], rewards: List[Reward], engine: Engine, num_envs:int, offset: Tuple[float, float]) -> None:
+    def __init__(self, robots: List[Robot], obstacles: List[Obstacle], rewards: List[Reward], engine: "Engine", num_envs:int, offset: Tuple[float, float]) -> None:
         """
         robots: List of robots spawned in each environment.
         obstacles: List of obstacles spawned in each environment.

@@ -1,11 +1,11 @@
 from abc import ABC
-from torch import Tensor, zeros
+import numpy as np
 from typing import List
 
 _spawnable_objects = 0
 
 class Spawnable(ABC):
-    def __init__(self, position: Tensor, mass: float, color: List[float], collision: bool, observable:bool, name:str) -> None:
+    def __init__(self, position: np.ndarray, mass: float, color: List[float], collision: bool, observable:bool, name:str) -> None:
         """
         position: Beginning position of object
         mass: Mass of object
@@ -24,6 +24,6 @@ class Spawnable(ABC):
         self.mass = mass
         self.color = color
         self.collision = collision
-        self.orientation = zeros(4)  # default orientation of any spawnable object
+        self.orientation = np.zeros(4)  # default orientation of any spawnable object
         self.observable = observable
         self.name = name

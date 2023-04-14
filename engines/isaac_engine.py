@@ -1,5 +1,5 @@
 from typing import List, Tuple, Union, Optional
-from engine import Engine
+from engines.engine import Engine
 from rewards.distance import Distance, distance
 from spawnables.obstacle import *
 from modular_env import ModularEnv
@@ -285,7 +285,8 @@ class IsaacEngine(Engine):
         """
         Steps the environment for one timestep
         """
-        # apply actions
+        # apply actions # todo: set control mode for all robots with enum
+        self._robots.set_joint_position_targets(actions)
 
         self._simulation.update()
 
