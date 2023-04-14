@@ -1,5 +1,5 @@
 from typing import List, Tuple, Union, Optional
-from engines.engine import Engine
+from engines.engine import ModularEnv
 from rewards.distance import Distance, distance
 from spawnables.obstacle import *
 from spawnables.robot import Robot
@@ -7,7 +7,7 @@ from rewards.reward import Reward
 import numpy as np
 from stable_baselines3.common.vec_env.base_vec_env import *
 
-class IsaacEngine(Engine):
+class IsaacEnv(ModularEnv):
     def __init__(self, asset_path:str, step_size: float, headless:bool, robots: List[Robot], obstacles: List[Obstacle], rewards: List[Reward], num_envs:int, offset: Tuple[float, float]) -> None:
         # setup ISAAC simulation environment and interfaces
         self._setup_simulation(headless)
@@ -172,14 +172,13 @@ class IsaacEngine(Engine):
             else:
                 raise f"Reward {type(reward)} not implemented!"
 
-
     def _parse_distance_reward(self, distance: Distance):
         # get indices of observable objects
         index_0 = self._get_obs_obj_index(distance.obj1)
         index_1 = self._get_obs_obj_index(distance.obj2)
 
         def reward() -> float:
-            obs = self._obs
+            obs = self._obs # todo: this will return constant value. Use function to get obs buffer instead
 
             # todo: get observations, calculate distance between objects in all environments            
             raise "Not implemented!"
@@ -304,6 +303,9 @@ class IsaacEngine(Engine):
         # todo: ony get dof limits from robots of first environment
         self._robots.get_dof_limits()
         raise "Not implemented!"
+    
+    def close(self) -> None:
+        self._simulation.close()
 
     def _on_contact_report_event(self, contact_headers, contact_data):
         """

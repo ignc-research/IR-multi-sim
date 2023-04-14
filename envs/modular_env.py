@@ -5,7 +5,7 @@ from pathlib import Path
 from stable_baselines3.common.vec_env.base_vec_env import *
 
 
-class Engine(VecEnv):
+class ModularEnv(VecEnv):
     def __init__(self, asset_path:str, step_size: float, headless:bool, num_envs: int) -> None:
         self.asset_path = asset_path  # Path to assets used in simulation
         self.headless = headless  # True if the simulation will not be rendered, otherwise false 

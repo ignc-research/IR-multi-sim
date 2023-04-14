@@ -1,4 +1,4 @@
-from engines.isaac_engine import IsaacEngine
+from engines.isaac_engine import IsaacEnv
 from spawnables.obstacle import *
 from rewards.distance import Distance
 import numpy as np
@@ -13,7 +13,7 @@ obstacles = [
     ]
 rewards = [Distance("TargetCube", "Cube"), Distance(obstacles[2], obstacles[0])]
 
-env = IsaacEngine("./", 1, True, robots, obstacles, rewards, 1, (10, 10))
+env = IsaacEnv("./", 1, True, robots, obstacles, rewards, 1, (10, 10))
 
 # setup model
 model = TD3("MlpPolicy", env)
