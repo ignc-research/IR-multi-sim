@@ -441,27 +441,30 @@ class IsaacEngine(Engine):
             self.stage, prim_path,
             radius=radius,
             height=height,
-            position=to_isaac_vector(position + offset),
-            orientation=to_isaac_vector(orientation),
-            color=to_isaac_color(color),
+            position=self.to_isaac_vector(position + offset),
+            orientation=self.to_isaac_vector(orientation),
+            color=self.to_isaac_color(color),
             density=mass
         )
 
         if collision:
             self._add_collision_material(prim_path, self._collision_material_path)
 
-    
-# static utillity functions
-from pxr import Gf
-def to_isaac_vector(vec3: np.ndarray) -> Gf.Vec3f:
-    return Gf.Vec3f(list(vec3))
+    # static utillity functions
+    @staticmethod
+    def to_isaac_vector(vec3: np.ndarray):
+        from pxr import Gf
+        return Gf.Vec3f(list(vec3))
 
-def to_issac_quat(vec3: np.ndarray) -> Gf.Quatf:
-    a, b, c, d = list(vec3)
-    return Gf.Quatf(float(a), float(b), float(c), float(d))
+    @staticmethod
+    def to_issac_quat(vec3: np.ndarray):
+        from pxr import Gf
+        a, b, c, d = list(vec3)
+        return Gf.Quatf(float(a), float(b), float(c), float(d))
 
-def to_isaac_color(color: List[float]) -> np.ndarray:
-    """
-    Transform colour format into format Isaac accepts, ignoring opacity
-    """
-    return np.array(color[:-1])
+    @staticmethod
+    def to_isaac_color(color: List[float]) -> np.ndarray:
+        """
+        Transform colour format into format Isaac accepts, ignoring opacity
+        """
+        return np.array(color[:-1])
