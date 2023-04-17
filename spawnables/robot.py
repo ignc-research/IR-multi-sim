@@ -23,3 +23,6 @@ class Robot(Spawnable):
 
         self.observable_joints = observable_joints
         self.controlable_joints = controlable_joints
+
+        # todo: parse indices of controlable joints during setup
+        assert controlable_joints == "*", "Only controling some joints isn't implemented yet!"
