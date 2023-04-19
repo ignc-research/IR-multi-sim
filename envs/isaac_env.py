@@ -7,6 +7,7 @@ from rewards.reward import Reward
 import numpy as np
 from stable_baselines3.common.vec_env.base_vec_env import *
 
+
 class IsaacEnv(ModularEnv):
     def __init__(self, asset_path: str, step_size: float, headless: bool, robots: List[Robot], obstacles: List[Obstacle], rewards: List[Reward], num_envs: int, offset: Tuple[float, float]) -> None:
         # setup ISAAC simulation environment and interfaces
