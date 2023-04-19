@@ -1,14 +1,14 @@
-from typing import List, Tuple, Union, Optional
+from typing import List, Tuple
 from envs.modular_env import ModularEnv
-from rewards.distance import Distance, distance
-from spawnables.obstacle import *
+from rewards.distance import Distance
+from spawnables.obstacle import Obstacle, Cube, Sphere, Cylinder
 from spawnables.robot import Robot
 from rewards.reward import Reward
 import numpy as np
 from stable_baselines3.common.vec_env.base_vec_env import *
 
 class IsaacEnv(ModularEnv):
-    def __init__(self, asset_path:str, step_size: float, headless:bool, robots: List[Robot], obstacles: List[Obstacle], rewards: List[Reward], num_envs:int, offset: Tuple[float, float]) -> None:
+    def __init__(self, asset_path: str, step_size: float, headless: bool, robots: List[Robot], obstacles: List[Obstacle], rewards: List[Reward], num_envs: int, offset: Tuple[float, float]) -> None:
         # setup ISAAC simulation environment and interfaces
         self._setup_simulation(headless, step_size)
         self._setup_urdf_import()
@@ -34,7 +34,7 @@ class IsaacEnv(ModularEnv):
         self._simulation = SimulationApp({"headless": headless})
 
         # make sure simulation was started
-        assert self._simulation != None, "Isaac Sim failed to start!"
+        assert self._simulation is not None, "Isaac Sim failed to start!"
 
         # terminate simulation once program exits
         import atexit
