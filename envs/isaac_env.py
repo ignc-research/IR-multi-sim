@@ -112,7 +112,7 @@ class IsaacEnv(ModularEnv):
     def _setup_environments(self, num_envs: int, robots: List[Robot], obstacles: List[Obstacle], sensors: List, offset: Tuple[float, float]) -> None:
         for env_id in range(num_envs):
             # calculate position offset for environment, creating grid pattern
-            pos_offset = (env_id % num_envs) * offset[0], (env_id / num_envs) * offset[1]
+            pos_offset = (env_id % num_envs) * offset[0], (env_id / num_envs) * offset[1], 0
 
             # spawn robots
             for robot in robots:
@@ -133,13 +133,13 @@ class IsaacEnv(ModularEnv):
 
             # spawn obstacles
             for obstacle in obstacles:
-                prim_path = f"World/Env{env_id}/Obstacles/{obstacle.name}"
+                prim_path = f"/World/Env{env_id}/Obstacles/{obstacle.name}"
                 if isinstance(obstacle, Cube):
-                    self._create_cube(prim_path, pos_offset, **dir(obstacle))
+                    self._create_cube(prim_path, pos_offset, **obstacle.get_world_params())
                 elif isinstance(obstacle, Sphere):
-                    self._create_sphere(prim_path, pos_offset, **dir(obstacle))
+                    self._create_sphere(prim_path, pos_offset, **obstacle.get_world_params())
                 elif isinstance(obstacle, Cylinder):
-                    self._create_cylinder(prim_path, pos_offset, **dir(obstacle))
+                    self._create_cylinder(prim_path, pos_offset, **obstacle.get_world_params())
                 else:
                     raise f"Obstacle {type(obstacle)} implemented"
                 
@@ -309,7 +309,7 @@ class IsaacEnv(ModularEnv):
 
         # create cube
         add_rigid_box(
-            self.stage, prim_path,
+            self._stage, prim_path,
             size=self.to_isaac_vector(scale),
             position=self.to_isaac_vector(position + offset),
             orientation=self.to_issac_quat(orientation),
@@ -334,7 +334,7 @@ class IsaacEnv(ModularEnv):
 
         # create sphere
         add_rigid_sphere(
-            self.stage, prim_path,
+            self._stage, prim_path,
             radius=radius,
             position=self.to_isaac_vector(position + offset),
             color=self.to_isaac_color(color),
@@ -360,7 +360,7 @@ class IsaacEnv(ModularEnv):
 
         # create cylinder
         add_rigid_cylinder(
-            self.stage, prim_path,
+            self._stage, prim_path,
             radius=radius,
             height=height,
             position=self.to_isaac_vector(position + offset),
