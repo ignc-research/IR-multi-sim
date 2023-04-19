@@ -15,16 +15,16 @@ class IsaacEnv(ModularEnv):
         self._setup_urdf_import()
         self._setup_physics()
 
+        # setup rl environment
+        self._setup_environments(num_envs, robots, obstacles, [], offset)
+        self._setup_observations(robots, obstacles)
+        self._setup_rewards(rewards)
+
         # track spawned robots/obstacles/sensors
         from omni.isaac.core.articulations import ArticulationView
         self._robots = ArticulationView("World/Env*/Robots/*", "Robots")
         self._objects = ArticulationView("World/Env*/*", "Objects")
         self._sensors = []  # todo: implement sensors
-
-        # setup rl environment
-        self._setup_environments(num_envs, robots, obstacles, [], offset)
-        self._setup_observations(robots, obstacles)
-        self._setup_rewards(rewards)
         
         # init bace class last, allowing it to automatically determine action and observation space
         super().__init__(asset_path, step_size, headless, num_envs)
@@ -110,7 +110,7 @@ class IsaacEnv(ModularEnv):
         self._add_collision_material(ground_prim_path, self._floor_material_path)
 
     def _setup_environments(self, num_envs: int, robots: List[Robot], obstacles: List[Obstacle], sensors: List, offset: Tuple[float, float]) -> None:
-        for env_id in num_envs:
+        for env_id in range(num_envs):
             # calculate position offset for environment, creating grid pattern
             pos_offset = (env_id % num_envs) * offset[0], (env_id / num_envs) * offset[1]
 
