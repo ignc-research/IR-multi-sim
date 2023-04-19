@@ -271,12 +271,15 @@ class IsaacEnv(ModularEnv):
         return prim_path
 
     def _add_collision_material(self, prim_path: str, material_path:str):
+        # get prim path object
+        prim = self._stage.GetPrimAtPath(prim_path)
+
         # add material
         from omni.physx.scripts.physicsUtils import add_physics_material_to_prim, PhysxSchema
-        add_physics_material_to_prim(self._stage, prim_path, material_path)
+        add_physics_material_to_prim(self._stage, prim, material_path)
 
         # register contact report api to forward collisions to _on_contact_report_event
-        contactReportAPI = PhysxSchema.PhysxContactReportAPI.Apply(self.stage.GetPrimAtPath(prim_path))
+        contactReportAPI = PhysxSchema.PhysxContactReportAPI.Apply(prim)
         contactReportAPI.CreateThresholdAttr().Set(200000)
 
     def _move_prim(self, path_from: str, path_to: str):

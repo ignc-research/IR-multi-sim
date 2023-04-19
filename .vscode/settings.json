@@ -579,7 +579,8 @@
     // Python & Pylance Setup
     "python.languageServer": "Pylance",
     "python.pythonPath": "${workspaceFolder}/app/kit/python/bin/python3",
-    "python.defaultInterpreterPath": "${workspaceFolder}/app/kit/python/bin/python3",
+    //"python.defaultInterpreterPath": "${workspaceFolder}/app/kit/python/bin/python3",
+    "python.defaultInterpreterPath": "$~/.local/share/ov/pkg/isaac_sim-2022.2.1/python.sh",
     
     // We use "black" as a formatter:
     "python.formatting.provider": "black",
