@@ -307,10 +307,10 @@ class IsaacEnv(ModularEnv):
         # create cube
         add_rigid_box(
             self.stage, prim_path,
-            size=to_isaac_vector(scale),
-            position=to_isaac_vector(position + offset),
-            orientation=to_issac_quat(orientation),
-            color=to_isaac_color(color),
+            size=self.to_isaac_vector(scale),
+            position=self.to_isaac_vector(position + offset),
+            orientation=self.to_issac_quat(orientation),
+            color=self.to_isaac_color(color),
             density=mass
         )
 
@@ -333,8 +333,8 @@ class IsaacEnv(ModularEnv):
         add_rigid_sphere(
             self.stage, prim_path,
             radius=radius,
-            position=to_isaac_vector(position + offset),
-            color=to_isaac_color(color),
+            position=self.to_isaac_vector(position + offset),
+            color=self.to_isaac_color(color),
             density=mass                
         )
 
