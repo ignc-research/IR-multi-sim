@@ -112,7 +112,7 @@ class IsaacEnv(ModularEnv):
     def _setup_environments(self, num_envs: int, robots: List[Robot], obstacles: List[Obstacle], sensors: List, offset: Tuple[float, float]) -> None:
         for env_id in range(num_envs):
             # calculate position offset for environment, creating grid pattern
-            pos_offset = (env_id % num_envs) * offset[0], (env_id / num_envs) * offset[1], 0
+            env_offset = np.array([(env_id % num_envs) * offset[0], (env_id / num_envs) * offset[1], 0])
 
             # spawn robots
             for robot in robots:
@@ -129,17 +129,18 @@ class IsaacEnv(ModularEnv):
                 # move robot to desired location
                 from omni.isaac.core.articulations import Articulation
                 obj = Articulation(prim_path)
-                obj.set_world_pose(robot.position + pos_offset, robot.orientation)
+                obj.set_world_pose(robot.position + env_offset, robot.orientation)
 
             # spawn obstacles
             for obstacle in obstacles:
                 prim_path = f"/World/Env{env_id}/Obstacles/{obstacle.name}"
+                print("Spawned", prim_path)
                 if isinstance(obstacle, Cube):
-                    self._create_cube(prim_path, pos_offset, **obstacle.get_world_params())
+                    self._create_cube(prim_path, obstacle.position + env_offset, obstacle.orientation, obstacle.mass, obstacle.scale, obstacle.color, obstacle.collision)
                 elif isinstance(obstacle, Sphere):
-                    self._create_sphere(prim_path, pos_offset, **obstacle.get_world_params())
+                    self._create_sphere(prim_path, obstacle.position + env_offset, obstacle.mass, obstacle.radius, obstacle.color, obstacle.collision)
                 elif isinstance(obstacle, Cylinder):
-                    self._create_cylinder(prim_path, pos_offset, **obstacle.get_world_params())
+                    self._create_cylinder(prim_path, obstacle.position + env_offset, obstacle.orientation, obstacle.mass, obstacle.radius, obstacle.height, obstacle.color, obstacle.collision)
                 else:
                     raise f"Obstacle {type(obstacle)} implemented"
                 
@@ -160,8 +161,8 @@ class IsaacEnv(ModularEnv):
         observable_obstacles = "|".join([f"Obstacles/{obstacle.name}" for obstacle in obstacles if obstacle.observable])
 
         # create main regex: join observable objects
-        regex = "|".join([observable_robots, observable_joints, observable_obstacles])
-        regex = f"World/Env*/({regex})"
+        regex = "|".join([r for r in [observable_robots, observable_joints, observable_obstacles] if len(r) > 0])
+        regex = f"/World/Env\d*/({regex})"
         self._observations = ArticulationView(regex, "Observations")
 
     def _setup_rewards(self, rewards: List[Reward]) -> None:
@@ -297,7 +298,6 @@ class IsaacEnv(ModularEnv):
     def _create_cube(
         self, 
         prim_path: str,
-        offset: np.ndarray,
         position: np.ndarray,
         orientation: np.ndarray,
         mass: float,
@@ -311,7 +311,7 @@ class IsaacEnv(ModularEnv):
         add_rigid_box(
             self._stage, prim_path,
             size=self.to_isaac_vector(scale),
-            position=self.to_isaac_vector(position + offset),
+            position=self.to_isaac_vector(position),
             orientation=self.to_issac_quat(orientation),
             color=self.to_isaac_color(color),
             density=mass
@@ -324,7 +324,6 @@ class IsaacEnv(ModularEnv):
         self,
         prim_path: str,
         position: np.ndarray,
-        offset: np.ndarray,
         mass: float,
         radius: float,
         color: List[float],
@@ -336,7 +335,7 @@ class IsaacEnv(ModularEnv):
         add_rigid_sphere(
             self._stage, prim_path,
             radius=radius,
-            position=self.to_isaac_vector(position + offset),
+            position=self.to_isaac_vector(position),
             color=self.to_isaac_color(color),
             density=mass                
         )
@@ -348,7 +347,6 @@ class IsaacEnv(ModularEnv):
         self,
         prim_path: str,
         position: np.ndarray,
-        offset: np.ndarray,
         orientation: np.ndarray,
         mass: float,
         radius: float,
@@ -363,7 +361,7 @@ class IsaacEnv(ModularEnv):
             self._stage, prim_path,
             radius=radius,
             height=height,
-            position=self.to_isaac_vector(position + offset),
+            position=self.to_isaac_vector(position),
             orientation=self.to_isaac_vector(orientation),
             color=self.to_isaac_color(color),
             density=mass

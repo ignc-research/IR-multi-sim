@@ -6,15 +6,6 @@ class Obstacle(Spawnable):
     def __init__(self, position: ndarray, mass: float, color: List[float], collision: bool, observable:bool, name: str=None) -> None:
         super().__init__(position, mass, color, collision, observable, name)
 
-    def get_world_params(self):
-        # transform params into dict
-        dict = self.__dict__
-
-        # remove observable parameter
-        dict.pop("observable")
-        dict.pop("name")
-        return dict
-
 
 class Cube(Obstacle):
     def __init__(

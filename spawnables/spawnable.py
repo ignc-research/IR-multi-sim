@@ -17,7 +17,7 @@ class Spawnable(ABC):
         # set default name
         if name is None:
             global _spawnable_objects
-            name = str(_spawnable_objects)
+            name = f"obj{_spawnable_objects}"
             _spawnable_objects += 1
 
         self.position = position
