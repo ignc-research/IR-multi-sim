@@ -7,7 +7,6 @@ from rewards.reward import Reward
 import numpy as np
 from stable_baselines3.common.vec_env.base_vec_env import *
 
-
 class IsaacEnv(ModularEnv):
     def __init__(self, asset_path: str, step_size: float, headless: bool, robots: List[Robot], obstacles: List[Obstacle], rewards: List[Reward], num_envs: int, offset: Tuple[float, float]) -> None:
         # setup ISAAC simulation environment and interfaces
@@ -119,8 +118,11 @@ class IsaacEnv(ModularEnv):
                 # import robot from urdf, creating prim path
                 prim_path = self._import_urdf(robot.urdf_path)
 
+                # mark robot as observable, if necessary
+                prim_path = f"World/Env{env_id}/Robots/{robot.name}"
+
                 # modify prim path to match formating
-                prim_path = self._move_prim(prim_path, f"World/Env{env_id}/Robots/{robot.name}")
+                prim_path = self._move_prim(prim_path, prim_path)
 
                 # configure collision
                 if robot.collision:
@@ -134,7 +136,7 @@ class IsaacEnv(ModularEnv):
             # spawn obstacles
             for obstacle in obstacles:
                 prim_path = f"/World/Env{env_id}/Obstacles/{obstacle.name}"
-                print("Spawned", prim_path)
+
                 if isinstance(obstacle, Cube):
                     self._create_cube(prim_path, obstacle.position + env_offset, obstacle.orientation, obstacle.mass, obstacle.scale, obstacle.color, obstacle.collision)
                 elif isinstance(obstacle, Sphere):
@@ -149,6 +151,7 @@ class IsaacEnv(ModularEnv):
                 raise "Sensors are not implemented"
 
     def _setup_observations(self, robots: List[Robot], obstacles: List[Obstacle]) -> None:
+        # todo: rework with list instead
         # setup articulations for robot observations
         from omni.isaac.core.articulations import ArticulationView
         # for each environment, for each robot, allow retrieving their local pose
