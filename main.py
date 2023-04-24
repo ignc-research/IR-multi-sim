@@ -1,6 +1,6 @@
-from envs.isaac_env import IsaacEnv
-from spawnables.obstacle import *
-from rewards.distance import Distance
+from scripts.envs.isaac_env import IsaacEnv
+from scripts.spawnables.obstacle import *
+from scripts.rewards.distance import Distance
 import numpy as np
 from stable_baselines3 import TD3
 

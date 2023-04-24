@@ -1,6 +1,6 @@
 from typing import List
 from numpy import ndarray
-from spawnables.spawnable import Spawnable
+from scripts.spawnables.spawnable import Spawnable
 
 
 class Robot(Spawnable):

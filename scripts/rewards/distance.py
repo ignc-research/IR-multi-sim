@@ -1,6 +1,6 @@
 import numpy as np
-from rewards.reward import Reward
-from spawnables.spawnable import Spawnable
+from scripts.rewards.reward import Reward
+from scripts.spawnables.spawnable import Spawnable
 
 from typing import Union
 

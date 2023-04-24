@@ -1,6 +1,6 @@
 from typing import List, Dict
 from numpy import ndarray, array
-from spawnables.spawnable import Spawnable
+from scripts.spawnables.spawnable import Spawnable
 
 class Obstacle(Spawnable):
     def __init__(self, position: ndarray, mass: float, color: List[float], collision: bool, observable:bool, name: str=None) -> None:

@@ -1,10 +1,10 @@
 import math
 from typing import List, Tuple
-from envs.modular_env import ModularEnv
-from rewards.distance import Distance
-from spawnables.obstacle import Obstacle, Cube, Sphere, Cylinder
-from spawnables.robot import Robot
-from rewards.reward import Reward
+from scripts.envs.modular_env import ModularEnv
+from scripts.rewards.distance import Distance
+from scripts.spawnables.obstacle import Obstacle, Cube, Sphere, Cylinder
+from scripts.spawnables.robot import Robot
+from scripts.rewards.reward import Reward
 import numpy as np
 from stable_baselines3.common.vec_env.base_vec_env import *
 
