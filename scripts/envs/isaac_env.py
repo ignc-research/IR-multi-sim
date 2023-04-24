@@ -120,7 +120,7 @@ class IsaacEnv(ModularEnv):
             # calculate position offset for environment, creating grid pattern
             env_offset = np.array([(env_idx % break_index) * offset[0], math.floor(env_idx / break_index) * offset[1], 0])
             
-            # create env root prim
+            # create env root prim. Base objects automatically have their global position adjusted
             from omni.isaac.core.utils.prims import create_prim
             create_prim(f"/World/Env{env_idx}", position=env_offset)
 
