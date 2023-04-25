@@ -7,8 +7,7 @@ from gym.utils import seeding
 
 
 class ModularEnv(VecEnv):
-    def __init__(self, asset_path:str, step_size: float, headless:bool, num_envs: int) -> None:
-        self.asset_path = asset_path  # Path to assets used in simulation
+    def __init__(self, step_size: float, headless:bool, num_envs: int) -> None:
         self.headless = headless  # True if the simulation will not be rendered, otherwise false 
         self.step_size = step_size  # Amount of time passing each time .step() is called
         self.env_data: Dict[int, Dict[str, Any]] = {}  # Env data saved in a dict
@@ -67,4 +66,8 @@ class ModularEnv(VecEnv):
         return [seed]
 
     def _get_absolute_asset_path(self, urdf_path: str):
+        """
+        Returns the absolute path to the specified urdf file.
+        Note: self.asset_path needs to be set in super class before calling this function.
+        """
         return Path(self.asset_path).joinpath(urdf_path)

@@ -7,11 +7,15 @@ from scripts.spawnables.robot import Robot
 from scripts.rewards.reward import Reward
 import numpy as np
 from stable_baselines3.common.vec_env.base_vec_env import *
+from pathlib import Path
 
 # from omni.isaac.core.tasks import BaseTask
 
 class IsaacEnv(ModularEnv):
     def __init__(self, asset_path: str, step_size: float, headless: bool, robots: List[Robot], obstacles: List[Obstacle], rewards: List[Reward], num_envs: int, offset: Tuple[float, float]) -> None:
+        # setup asset path to allow importing robots
+        self.asset_path = Path().absolute().joinpath(asset_path)
+
         # setup ISAAC simulation environment and interfaces
         self._setup_simulation(headless, step_size)
         self._setup_urdf_import()
