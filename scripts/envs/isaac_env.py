@@ -148,7 +148,8 @@ class IsaacEnv(ModularEnv):
                 # move robot to desired location
                 from omni.isaac.core.articulations import Articulation
                 obj = Articulation(prim_path)
-                obj.set_world_pose(self.to_isaac_vector(robot.position), self.to_issac_quat(robot.orientation))
+                pos, rot = self.to_isaac_vector(robot.position), self.to_issac_quat(robot.orientation)
+                obj.set_world_pose(pos, rot)
 
             # spawn obstacles
             for obstacle in obstacles:

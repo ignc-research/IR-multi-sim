@@ -17,7 +17,7 @@ class Robot(Spawnable):
         name: str = None) -> None:
         """
         position: Beginning position of robot.
-        orientation: Beginning orientation of robot.
+        orientation: Beginning orientation of robot, as a quaternion.
         urdf_path: Relative urdf file path from project root.
         mass: Mass of robot.
         color: Color of robot.
