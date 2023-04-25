@@ -13,6 +13,16 @@ from pathlib import Path
 
 class IsaacEnv(ModularEnv):
     def __init__(self, asset_path: str, step_size: float, headless: bool, robots: List[Robot], obstacles: List[Obstacle], rewards: List[Reward], num_envs: int, offset: Tuple[float, float]) -> None:
+        """
+        asset_path: relative path to root asset folder.
+        step_size: amount of steps simulated before RL model is queried for new actions.
+        headless: False if the simulation is not supposed to be rendered, otherwise True.
+        robots: List of robots to spawn in each environment.
+        obstacles: List of obstacles to spawn in each environment.
+        rewards: List of rewards used to calculate total reward for each environment
+        num_envs: Number of concurrently simulated environments.
+        offset: Space between environments to prevent interference.
+        """
         # setup asset path to allow importing robots
         self.asset_path = Path().absolute().joinpath(asset_path)
 
@@ -37,7 +47,7 @@ class IsaacEnv(ModularEnv):
         self._setup_rewards(num_envs, objs_per_env, rewards)
 
         # init bace class last, allowing it to automatically determine action and observation space
-        super().__init__(asset_path, step_size, headless, num_envs)
+        super().__init__(step_size, headless, num_envs)
     
     def _setup_simulation(self, headless: bool, step_size: float):
         # isaac imports may only be used after SimulationApp is started (ISAAC uses runtime plugin system)
@@ -135,7 +145,6 @@ class IsaacEnv(ModularEnv):
             # spawn robots
             for robot in robots:
                 # import robot from urdf, creating prim path
-                print(self._get_absolute_asset_path(robot.urdf_path))
                 prim_path = self._import_urdf(self._get_absolute_asset_path(robot.urdf_path))
 
                 # modify prim path to match formating
@@ -148,8 +157,7 @@ class IsaacEnv(ModularEnv):
                 # move robot to desired location
                 from omni.isaac.core.articulations import Articulation
                 obj = Articulation(prim_path)
-                pos, rot = self.to_isaac_vector(robot.position), self.to_issac_quat(robot.orientation)
-                obj.set_world_pose(pos, rot)
+                obj.set_world_pose(robot.position, robot.orientation)
 
             # spawn obstacles
             for obstacle in obstacles:
