@@ -41,7 +41,7 @@ class IsaacEnv(ModularEnv):
 
         # track spawned robots/obstacles/sensors
         from omni.isaac.core.articulations import ArticulationView
-        self._robots = ArticulationView("World/Env*/Robots/*", "Robots")
+        self._robots = ArticulationView("/World/Env*/Robots/*", "Robots")
         # self._objects = ArticulationView("World/Env*/*", "Objects")
         # self._sensors = []  # todo: implement sensors
 
@@ -161,6 +161,8 @@ class IsaacEnv(ModularEnv):
                 obj = Articulation(prim_path)
                 obj.set_world_pose(robot.position, robot.orientation)
 
+                print("Spawned", robot, prim_path)
+
             # spawn obstacles
             for obstacle in obstacles:
                 prim_path = f"/World/Env{env_idx}/Obstacles/{obstacle.name}"
@@ -173,6 +175,8 @@ class IsaacEnv(ModularEnv):
                     self._create_cylinder(prim_path, obstacle.position, obstacle.orientation, obstacle.mass, obstacle.radius, obstacle.height, obstacle.color, obstacle.collision)
                 else:
                     raise f"Obstacle {type(obstacle)} implemented"
+                
+                print("Spawned", obstacle, prim_path)
                 
             # spawn sensors
             for i, sensor in enumerate(sensors):
