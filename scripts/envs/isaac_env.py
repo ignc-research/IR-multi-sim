@@ -26,25 +26,27 @@ class IsaacEnv(ModularEnv):
         # setup asset path to allow importing robots
         self.asset_path = Path().absolute().joinpath(asset_path)
 
+        # setup basic information about simulation
+        self.num_envs = num_envs
+        self.robots_per_env = len(robots)
+        self.objs_per_env = self.robots_per_env + len(obstacles)
+
         # setup ISAAC simulation environment and interfaces
         self._setup_simulation(headless, step_size)
         self._setup_urdf_import()
         self._setup_physics()
 
         # setup rl environment
-        self._setup_environments(num_envs, robots, obstacles, [], offset)
+        self._setup_environments(robots, obstacles, [], offset)
 
         # track spawned robots/obstacles/sensors
-        # from omni.isaac.core.articulations import ArticulationView
-        # self._robots = ArticulationView("World/Env*/Robots/*", "Robots")
+        from omni.isaac.core.articulations import ArticulationView
+        self._robots = ArticulationView("World/Env*/Robots/*", "Robots")
         # self._objects = ArticulationView("World/Env*/*", "Objects")
         # self._sensors = []  # todo: implement sensors
 
-        # calculate how many objects are spawned in each environment
-        objs_per_env = len(robots) + len(obstacles)
-        
-        self._setup_observations(num_envs, robots, obstacles)
-        self._setup_rewards(num_envs, objs_per_env, rewards)
+        self._setup_observations(robots, obstacles)
+        self._setup_rewards(rewards)
 
         # init bace class last, allowing it to automatically determine action and observation space
         super().__init__(step_size, headless, num_envs)
@@ -129,12 +131,12 @@ class IsaacEnv(ModularEnv):
         # add collision to ground plane
         self._add_collision_material(ground_prim_path, self._floor_material_path)
 
-    def _setup_environments(self, num_envs: int, robots: List[Robot], obstacles: List[Obstacle], sensors: List, offset: Tuple[float, float]) -> None:
+    def _setup_environments(self, robots: List[Robot], obstacles: List[Obstacle], sensors: List, offset: Tuple[float, float]) -> None:
         # when to break to a new line in grid pattern
-        break_index = math.ceil(math.sqrt(num_envs))
+        break_index = math.ceil(math.sqrt(self.num_envs))
 
         # spawn objects for each environment
-        for env_idx in range(num_envs):
+        for env_idx in range(self.num_envs):
             # calculate position offset for environment, creating grid pattern
             env_offset = np.array([(env_idx % break_index) * offset[0], math.floor(env_idx / break_index) * offset[1], 0])
             
@@ -177,11 +179,11 @@ class IsaacEnv(ModularEnv):
                 raise "Sensors are not implemented"
             
 
-    def _setup_observations(self, num_envs: int, robots: List[Robot], obstacles: List[Obstacle]) -> None:
+    def _setup_observations(self, robots: List[Robot], obstacles: List[Obstacle]) -> None:
         observable_paths = []
 
         # get observable objects for each environment
-        for env_idx in range(num_envs):
+        for env_idx in range(self.num_envs):
             for robot in robots:
                 # add robot position and rotation to list of observable objects
                 if robot.observable:
@@ -199,19 +201,17 @@ class IsaacEnv(ModularEnv):
         # wrap observable objects in articulations, allowing to access their values
         from omni.isaac.core.articulations import Articulation
         self._observable_objects = [Articulation(prim_path, prim_path.split("/")[-1]) for prim_path in observable_paths]
-
-        print("Obs:", self._get_observations())
         
-    def _setup_rewards(self, num_envs: int, objs_per_env: int, rewards: List[Reward]) -> None:
+    def _setup_rewards(self, rewards: List[Reward]) -> None:
         self.reward_fns = []
 
         for reward in rewards:
             if isinstance(reward, Distance):
-                self.reward_fns.append(self._parse_distance_reward(num_envs, objs_per_env, reward))
+                self.reward_fns.append(self._parse_distance_reward(reward))
             else:
                 raise f"Reward {type(reward)} not implemented!"
         
-    def _parse_distance_reward(self, num_envs: int, objs_per_env: int, distance: Distance):
+    def _parse_distance_reward(self, distance: Distance):
         # parse indices in observations
         index_0 = self._find_observable_object(distance.obj1)
         index_1 = self._find_observable_object(distance.obj2)
@@ -220,7 +220,7 @@ class IsaacEnv(ModularEnv):
         def sum_distance() -> float:
             distance = 0
             # calculate the distance of all instances of the two objects in each env
-            for i in range(0, (num_envs * objs_per_env), objs_per_env):
+            for i in range(0, self.num_envs * self.objs_per_env, self.objs_per_env):
                 distance += calc_distance(self._obs[index_0 + i], self._obs[index_1 + i])
             return distance
                 
