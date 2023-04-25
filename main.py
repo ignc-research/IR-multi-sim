@@ -6,7 +6,7 @@ import numpy as np
 from stable_baselines3 import TD3
 
 # setup environment
-robots = [Robot("robot_urdf/ur5_with_gripper.urdf")]
+robots = [Robot("ur5/urdf/ur5_with_gripper.urdf")]
 obstacles = [
     Cube(np.array([0, 0, 0]), name="TargetCube"),
     Cube(np.array([0, 1, 0]), name="Cube"),
@@ -14,7 +14,7 @@ obstacles = [
     ]
 rewards = [Distance("TargetCube", "Cube"), Distance(obstacles[2], obstacles[0])]
 
-env = IsaacEnv("./data/", 1, False, robots, obstacles, rewards, 1, (10, 10))
+env = IsaacEnv("./data/robots", 1, False, robots, obstacles, rewards, 1, (10, 10))
 
 # setup model
 model = TD3("MlpPolicy", env)
