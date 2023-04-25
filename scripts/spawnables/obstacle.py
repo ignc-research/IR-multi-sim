@@ -11,7 +11,7 @@ class Cube(Obstacle):
     def __init__(
         self,
         position: ndarray = array([0, 0, 0]), 
-        orientation: ndarray = array([0, 0, 0, 0]),
+        orientation: ndarray = array([1, 0, 0, 0]),
         scale: List[float] = [1., 1., 1.],
         mass: float = 1.,
         color: List[float] = [1., 1., 1., 1.],

@@ -8,7 +8,7 @@ class Robot(Spawnable):
         self,
         urdf_path:str,
         position: ndarray = array([0, 0, 0]), 
-        orientation: ndarray = array([0, 0, 0, 0]), 
+        orientation: ndarray = array([1, 0, 0, 0]), 
         mass: float = 1.,
         color: List[float] = [1., 1., 1., 1.],
         collision: bool = True,
