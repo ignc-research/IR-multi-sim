@@ -277,7 +277,8 @@ class IsaacEnv(ModularEnv):
 
     def get_robot_dof_limits(self) -> np.ndarray:
         # todo: ony get dof limits from robots of first environment
-        self._robots.get_dof_limits()
+        print(self._robots.prim_paths)
+        print("Limits:", self._robots.get_dof_limits())
         raise "Not implemented!"
     
     def close(self) -> None:
