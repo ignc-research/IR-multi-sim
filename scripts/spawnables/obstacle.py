@@ -16,7 +16,7 @@ class Cube(Obstacle):
         mass: float = 1.,
         color: List[float] = [1., 1., 1., 1.],
         collision: bool = True,
-        observable:bool = True,
+        observable: bool = True,
         name: str=None
     )-> None:
         super().__init__(position, mass, color, collision, observable, name)

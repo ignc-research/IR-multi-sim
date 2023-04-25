@@ -1,7 +1,7 @@
 import math
 from typing import List, Tuple
 from scripts.envs.modular_env import ModularEnv
-from scripts.rewards.distance import Distance
+from scripts.rewards.distance import Distance, calc_distance
 from scripts.spawnables.obstacle import Obstacle, Cube, Sphere, Cylinder
 from scripts.spawnables.robot import Robot
 from scripts.rewards.reward import Reward
@@ -19,15 +19,19 @@ class IsaacEnv(ModularEnv):
 
         # setup rl environment
         self._setup_environments(num_envs, robots, obstacles, [], offset)
-        self._setup_observations(num_envs, robots, obstacles)
-        self._setup_rewards(rewards)
 
         # track spawned robots/obstacles/sensors
-        from omni.isaac.core.articulations import ArticulationView
-        self._robots = ArticulationView("World/Env*/Robots/*", "Robots")
-        self._objects = ArticulationView("World/Env*/*", "Objects")
-        self._sensors = []  # todo: implement sensors
+        # from omni.isaac.core.articulations import ArticulationView
+        # self._robots = ArticulationView("World/Env*/Robots/*", "Robots")
+        # self._objects = ArticulationView("World/Env*/*", "Objects")
+        # self._sensors = []  # todo: implement sensors
+
+        # calculate how many objects are spawned in each environment
+        objs_per_env = len(robots) + len(obstacles)
         
+        self._setup_observations(num_envs, robots, obstacles)
+        self._setup_rewards(num_envs, objs_per_env, rewards)
+
         # init bace class last, allowing it to automatically determine action and observation space
         super().__init__(asset_path, step_size, headless, num_envs)
     
@@ -127,7 +131,8 @@ class IsaacEnv(ModularEnv):
             # spawn robots
             for robot in robots:
                 # import robot from urdf, creating prim path
-                prim_path = self._import_urdf(robot.urdf_path)
+                print(self._get_absolute_asset_path(robot.urdf_path))
+                prim_path = self._import_urdf(self._get_absolute_asset_path(robot.urdf_path))
 
                 # modify prim path to match formating
                 prim_path = self._move_prim(prim_path, f"/World/Env{env_idx}/Robots/{robot.name}")
@@ -181,18 +186,51 @@ class IsaacEnv(ModularEnv):
         # wrap observable objects in articulations, allowing to access their values
         from omni.isaac.core.articulations import Articulation
         self._observable_objects = [Articulation(prim_path, prim_path.split("/")[-1]) for prim_path in observable_paths]
+
+        print("Obs:", self._get_observations())
         
-    def _setup_rewards(self, rewards: List[Reward]) -> None:
+    def _setup_rewards(self, num_envs: int, objs_per_env: int, rewards: List[Reward]) -> None:
         self.reward_fns = []
 
         for reward in rewards:
             if isinstance(reward, Distance):
-                self.reward_fns.append(self._parse_distance_reward(reward))
+                self.reward_fns.append(self._parse_distance_reward(num_envs, objs_per_env, reward))
             else:
                 raise f"Reward {type(reward)} not implemented!"
         
-    def _parse_distance_reward(self, distance: Distance):
-        raise "Not implemented"
+    def _parse_distance_reward(self, num_envs: int, objs_per_env: int, distance: Distance):
+        # parse indices in observations
+        index_0 = self._find_observable_object(distance.obj1)
+        index_1 = self._find_observable_object(distance.obj2)
+
+        # parse reward functions
+        if distance.minimize:
+            def distance_reward():
+                distance = 0
+                # calculate the distance of all instances of the two objects in each env
+                for i in range(0, (num_envs * objs_per_env), objs_per_env):
+                    distance -= calc_distance(self._obs[index_0 + i], self._obs[index_1 + i])
+                return distance
+        else:
+            def distance_reward():
+                distance = 0
+                # calculate the distance of all instances of the two objects in each env
+                for i in range(0, (num_envs * objs_per_env), objs_per_env):
+                    distance += calc_distance(self._obs[index_0 + i], self._obs[index_1 + i])
+                return distance
+
+        return distance_reward
+        
+    
+    def _find_observable_object(self, name: str) -> int:
+        """
+        Given the name of an observable object, tries to retrieve its position and rotation index in the observations.
+        """
+        for index, obj in enumerate(self._observable_objects):
+            # todo: this only works for robot joints, not robots themselves
+            if obj.prim_path.endswith(name):
+                return index
+        raise f"Object {name} must be observable if used for reward"
 
     def step_async(self, actions: np.ndarray) -> None:
         # apply actions to robots
@@ -203,7 +241,7 @@ class IsaacEnv(ModularEnv):
     
     def step_wait(self) -> VecEnvStepReturn:
         # get observations
-        self._obs = [obj.get_local_pose() for obj in self._observable_objects]
+        self._obs = self._get_observations()
 
         # get rewards
 
@@ -216,10 +254,10 @@ class IsaacEnv(ModularEnv):
     def reset(self) -> VecEnvObs:
         self._world.reset()
 
-        # todo: format
-        self._observations.get_local_poses()
+        # get observations from world
+        self._obs = self._get_observations()
 
-        raise "Not implemented"
+        return self._obs
 
     def get_robot_dof_limits(self) -> np.ndarray:
         # todo: ony get dof limits from robots of first environment
@@ -228,6 +266,9 @@ class IsaacEnv(ModularEnv):
     
     def close(self) -> None:
         self._simulation.close()
+
+    def _get_observations(self):
+        return [obj.get_local_pose() for obj in self._observable_objects]
 
     def _on_contact_report_event(self, contact_headers, contact_data):
         """

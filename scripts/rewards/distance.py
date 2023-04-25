@@ -32,5 +32,5 @@ class Distance(Reward):
             self.obj2 = obj2
 
 
-def distance(p1: np.ndarray, p2: np.ndarray):
+def calc_distance(p1: np.ndarray, p2: np.ndarray):
     return np.linalg.norm(p1 - p2)
