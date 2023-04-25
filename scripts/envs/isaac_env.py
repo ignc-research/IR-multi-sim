@@ -208,23 +208,21 @@ class IsaacEnv(ModularEnv):
         index_0 = self._find_observable_object(distance.obj1)
         index_1 = self._find_observable_object(distance.obj2)
 
-        # parse reward functions
+        # parse function calculating distance to all targets
+        def disance() -> float:
+            distance = 0
+            # calculate the distance of all instances of the two objects in each env
+            for i in range(0, (num_envs * objs_per_env), objs_per_env):
+                distance += calc_distance(self._obs[index_0 + i], self._obs[index_1 + i])
+            return distance
+                
+        # minimize/maximize output
         if distance.minimize:
             def distance_reward():
-                distance = 0
-                # calculate the distance of all instances of the two objects in each env
-                for i in range(0, (num_envs * objs_per_env), objs_per_env):
-                    distance -= calc_distance(self._obs[index_0 + i], self._obs[index_1 + i])
-                return distance
+                return distance() * -1
+            return distance_reward
         else:
-            def distance_reward():
-                distance = 0
-                # calculate the distance of all instances of the two objects in each env
-                for i in range(0, (num_envs * objs_per_env), objs_per_env):
-                    distance += calc_distance(self._obs[index_0 + i], self._obs[index_1 + i])
-                return distance
-
-        return distance_reward
+            return distance
         
     
     def _find_observable_object(self, name: str) -> int:
