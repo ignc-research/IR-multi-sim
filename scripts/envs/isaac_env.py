@@ -38,15 +38,15 @@ class IsaacEnv(ModularEnv):
 
         # setup rl environment
         self._setup_environments(robots, obstacles, [], offset)
-
-        # track spawned robots/obstacles/sensors
-        from omni.isaac.core.articulations import ArticulationView
-        self._robots = ArticulationView("/World/Env*/Robots/*", "Robots")
-        # self._objects = ArticulationView("World/Env*/*", "Objects")
-        # self._sensors = []  # todo: implement sensors
-
         self._setup_observations(robots, obstacles)
         self._setup_rewards(rewards)
+        
+        # track robots and spawned objects
+        self._setup_object_tracking()        
+
+        # todo: fix robots not being imported correctly
+        while True:
+            self._simulation.update()
 
         # init bace class last, allowing it to automatically determine action and observation space
         super().__init__(step_size, headless, num_envs)
@@ -58,6 +58,7 @@ class IsaacEnv(ModularEnv):
 
         # make sure simulation was started
         assert self._simulation is not None, "Isaac Sim failed to start!"
+        assert self._simulation.is_running, "Isaac Sim failed to start!"
 
         # terminate simulation once program exits
         import atexit
@@ -158,8 +159,10 @@ class IsaacEnv(ModularEnv):
 
                 # move robot to desired location
                 from omni.isaac.core.articulations import Articulation
-                obj = Articulation(prim_path)
+                obj = Articulation(prim_path, f"env{env_idx}-{robot.name}")
                 obj.set_world_pose(robot.position, robot.orientation)
+
+                self._scene.add(obj)
 
                 print("Spawned", robot, prim_path)
 
@@ -182,6 +185,13 @@ class IsaacEnv(ModularEnv):
             for i, sensor in enumerate(sensors):
                 raise "Sensors are not implemented"
             
+    def _setup_object_tracking(self):
+        # track spawned robots/obstacles/sensors
+        from omni.isaac.core.articulations import ArticulationView
+        self._robots = ArticulationView("/World/Env*/Robots/*", "Robots")
+        self._scene.add(self._robots)
+        # self._objects = ArticulationView("World/Env*/*", "Objects")
+        # self._sensors = []  # todo: implement sensors
 
     def _setup_observations(self, robots: List[Robot], obstacles: List[Obstacle]) -> None:
         observable_paths = []
@@ -237,7 +247,6 @@ class IsaacEnv(ModularEnv):
         else:
             return sum_distance
         
-    
     def _find_observable_object(self, name: str) -> int:
         """
         Given the name of an observable object, tries to retrieve its position and rotation index in the observations.
@@ -277,7 +286,7 @@ class IsaacEnv(ModularEnv):
 
     def get_robot_dof_limits(self) -> np.ndarray:
         # todo: ony get dof limits from robots of first environment
-        print(self._robots.prim_paths)
+        print(self._robots.prims)
         print("Limits:", self._robots.get_dof_limits())
         raise "Not implemented!"
     
