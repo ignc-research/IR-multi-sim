@@ -148,21 +148,24 @@ class IsaacEnv(ModularEnv):
             # spawn robots
             for robot in robots:
                 # import robot from urdf, creating prim path
-                prim_path = self._import_urdf(self._get_absolute_asset_path(robot.urdf_path))
+                prim_path = self._import_urdf(robot, f"/World/Env{env_idx}/Robots/{robot.name}")
 
                 # modify prim path to match formating
-                prim_path = self._move_prim(prim_path, f"/World/Env{env_idx}/Robots/{robot.name}")
+                # prim_path = self._move_prim(prim_path, f"/World/Env{env_idx}/Robots/{robot.name}")
 
-                # configure collision
-                if robot.collision:
-                    self._add_collision_material(prim_path, self._collision_material_path)
+                while True:
+                    self._simulation.update()
 
                 # move robot to desired location
                 from omni.isaac.core.articulations import Articulation
                 obj = Articulation(prim_path, f"env{env_idx}-{robot.name}")
+                self._scene.add(obj)
+                
                 obj.set_world_pose(robot.position, robot.orientation)
 
-                self._scene.add(obj)
+                # configure collision
+                if robot.collision:
+                    self._add_collision_material(prim_path, self._collision_material_path)
 
                 print("Spawned", robot, prim_path)
 
@@ -319,22 +322,32 @@ class IsaacEnv(ModularEnv):
             if 'CONTACT_FOUND' in contact_type or 'CONTACT_PERSIST' in contact_type:
                 self._collisions.append((actor0, actor1)) 
 
-    def _import_urdf(self, urdf_path: str) -> str:
+    def _import_urdf(self, robot: Robot, target_path: str) -> str:
         """
         Loads in a URDF file into the world at position and orientation.
         Must return a unique str identifying the newly spawned object within the engine.
         The is_robot flag determines whether the engine handles this object as a robot (something with movable links/joints) or a simple geometry object (a singular mesh).
         """
-        abs_path = self._get_absolute_asset_path(urdf_path)
+        abs_path = str(self._get_absolute_asset_path(robot.urdf_path))
+        dest_path = f"./data/scenes/{robot.name}.usd"
 
-        # import URDF
+        # import URDF to temporary scene
         from omni.kit.commands import execute
-        success, prim_path = execute("URDFParseAndImportFile", urdf_path=abs_path, import_config=self._config)
+        success, prim_path = execute(
+            "URDFParseAndImportFile", 
+            urdf_path=abs_path, 
+            import_config=self._config,
+            dest_path=dest_path
+        )
 
         # make sure import succeeded
         assert success, "Failed urdf import of: " + abs_path
 
-        return prim_path
+        # add reference to robot scene to current stage
+        robot_prim = self._stage.OverridePrim(target_path)
+        robot_prim.GetReferences().AddReference(dest_path, prim_path)
+
+        return target_path
 
     def _add_collision_material(self, prim_path: str, material_path:str):
         # get prim path object
