@@ -29,7 +29,8 @@ class IsaacEnv(ModularEnv):
         # setup basic information about simulation
         self.num_envs = num_envs
         self.robots_per_env = len(robots)
-        self.objs_per_env = self.robots_per_env + len(obstacles)
+        self.obstacles_per_env = len(obstacles)
+        self.objs_per_env = self.robots_per_env + self.obstacles_per_env
 
         # calculate env offsets
         break_index = math.ceil(math.sqrt(self.num_envs))
@@ -38,8 +39,6 @@ class IsaacEnv(ModularEnv):
             [np.array([(i % break_index) * offset[0], math.floor(i / break_index) * offset[1], 0]) for i in range(num_envs)]
         ))
 
-        print(self._env_offsets)
-
         # setup ISAAC simulation environment and interfaces
         self._setup_simulation(headless, step_size)
         self._setup_urdf_import()
@@ -47,15 +46,13 @@ class IsaacEnv(ModularEnv):
 
         # setup rl environment
         self._setup_environments(robots, obstacles, [])
+        # self._setup_rewards(rewards) # todo: implement
 
-        # todo: fix robots not being imported correctly
+        self._world.reset()
+        print("Obs:", self._get_observations())
+
         while True:
             self._simulation.update()
-
-        self._setup_observations(robots, obstacles)
-        self._setup_rewards(rewards)
-
-        print("Obs:", self._get_observations())
         
         # track robots and spawned objects
         self._setup_object_tracking()        
@@ -145,80 +142,51 @@ class IsaacEnv(ModularEnv):
         self._add_collision_material(ground_prim_path, self._floor_material_path)
 
     def _setup_environments(self, robots: List[Robot], obstacles: List[Obstacle], sensors: List) -> None:
+        from omni.isaac.core.articulations import Articulation
+        self._robots: List[Articulation] = []
+        self._obstacles: List[Articulation] = []
+
         # spawn objects for each environment
         for env_idx in range(self.num_envs):    
-            # create env root prim. Base objects automatically have their global position adjusted
-            from omni.isaac.core.utils.prims import create_prim
-            create_prim(f"/World/Env{env_idx}", position=self._env_offsets[env_idx])
-
             # spawn robots
             for robot in robots:
+                # calculate default pos
+                default_pos = robot.position + self._env_offsets[env_idx]
+
                 # import robot from urdf, creating prim path
                 prim_path = self._import_urdf(robot)
 
                 # move robot to desired location
-                from omni.isaac.core.articulations import Articulation
-                obj = Articulation(prim_path, f"env{env_idx}-{robot.name}")
+                obj = Articulation(prim_path, f"env{env_idx}-{robot.name}", default_pos, orientation=robot.orientation)
                 self._scene.add(obj)
-                
-                # imported robots can't be moved without losing textures and collision
-                # -> they can't be placed as children in the hierarchy
-                # -> env offset needs to be applied manually
-                obj.set_world_pose(robot.position + self._env_offsets[env_idx], robot.orientation)
 
                 # configure collision
                 if robot.collision:
                     self._add_collision_material(prim_path, self._collision_material_path)
 
-                # save prim path of robot to allow easier access later
-                robot.prim_path = prim_path
+                # track spawned robot
+                self._robots.append(obj)
+                print("Spawned", prim_path)
 
             # spawn obstacles
             for obstacle in obstacles:
-                prim_path = f"/{obstacle.name}"
+                prim_path = f"/World/Env{env_idx}/{obstacle.name}"
                 if isinstance(obstacle, Cube):
-                    self._create_cube(prim_path, obstacle.position, obstacle.orientation, obstacle.mass, obstacle.scale, obstacle.color, obstacle.collision)
+                    prim_path = self._create_cube(prim_path, obstacle.position, obstacle.orientation, obstacle.mass, obstacle.scale, obstacle.color, obstacle.collision)
                 elif isinstance(obstacle, Sphere):
-                    self._create_sphere(prim_path, obstacle.position, obstacle.mass, obstacle.radius, obstacle.color, obstacle.collision)
+                    prim_path = self._create_sphere(prim_path, obstacle.position, obstacle.mass, obstacle.radius, obstacle.color, obstacle.collision)
                 elif isinstance(obstacle, Cylinder):
-                    self._create_cylinder(prim_path, obstacle.position, obstacle.orientation, obstacle.mass, obstacle.radius, obstacle.height, obstacle.color, obstacle.collision)
+                    prim_path = self._create_cylinder(prim_path, obstacle.position, obstacle.orientation, obstacle.mass, obstacle.radius, obstacle.height, obstacle.color, obstacle.collision)
                 else:
-                    raise f"Obstacle {type(obstacle)} implemented"
+                    raise f"Obstacle {type(obstacle)} not implemented"
+                
+                # track spawned obstacle
+                self._obstacles.append(Articulation(prim_path, f"env{env_idx}-{obstacle.name}", obstacle.position, orientation=obstacle.orientation))
+                print("Spawned", prim_path)
                 
             # spawn sensors
             for i, sensor in enumerate(sensors):
-                raise "Sensors are not implemented"          
-            
-    def _setup_object_tracking(self):
-        # track spawned robots/obstacles/sensors
-        from omni.isaac.core.articulations import ArticulationView
-        self._robots = ArticulationView("/World/Env*/Robots/*", "Robots")
-        self._scene.add(self._robots)
-        # self._objects = ArticulationView("World/Env*/*", "Objects")
-        # self._sensors = []  # todo: implement sensors
-
-    def _setup_observations(self, robots: List[Robot], obstacles: List[Obstacle]) -> None:
-        observable_paths = []
-
-        # get observable objects for each environment
-        for env_idx in range(self.num_envs):
-            for robot in robots:
-                # add robot position and rotation to list of observable objects
-                if robot.observable:
-                    observable_paths.append(f"/World/Env{env_idx}/Robots/{robot.name}")
-
-                # add observable joints to list of observable objects
-                for joint_name in robot.observable_joints:
-                    observable_paths.append(f"/World/Env{env_idx}/Robots/{robot.name}/{joint_name}")
-            
-            # add observable obstacles to list
-            for obstacle in obstacles:
-                if obstacle.observable:
-                    observable_paths.append(f"/World/Env{env_idx}/Obstacles/{obstacle.name}")
-
-        # wrap observable objects in articulations, allowing to access their values
-        from omni.isaac.core.articulations import Articulation
-        self._observable_objects = [Articulation(prim_path, prim_path.split("/")[-1]) for prim_path in observable_paths]
+                raise "Sensors are not implemented"
         
     def _setup_rewards(self, rewards: List[Reward]) -> None:
         self.reward_fns = []
@@ -297,8 +265,15 @@ class IsaacEnv(ModularEnv):
     def close(self) -> None:
         self._simulation.close()
 
-    def _get_observations(self):
-        return [obj.get_local_pose() for obj in self._observable_objects]
+    def _get_observations(self) -> VecEnvObs:
+        print("Robots:")
+        for r in self._robots:
+            print(r.get_local_pose())
+        print("Obstacles:")
+        for o in self._obstacles:
+            print(o.get_local_pose())
+
+        return []
 
     def _on_contact_report_event(self, contact_headers, contact_data):
         """
@@ -344,7 +319,6 @@ class IsaacEnv(ModularEnv):
         return prim_path
 
     def _add_collision_material(self, prim_path, material_path:str):
-        print(prim_path, type(prim_path))
         # get prim path object
         prim = self._stage.GetPrimAtPath(prim_path)
 
