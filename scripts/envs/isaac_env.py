@@ -171,17 +171,19 @@ class IsaacEnv(ModularEnv):
             # spawn obstacles
             for obstacle in obstacles:
                 prim_path = f"/World/Env{env_idx}/{obstacle.name}"
+                default_pos = obstacle.position + self._env_offsets[env_idx]
+
                 if isinstance(obstacle, Cube):
-                    prim_path = self._create_cube(prim_path, obstacle.position, obstacle.orientation, obstacle.mass, obstacle.scale, obstacle.color, obstacle.collision)
+                    prim_path = self._create_cube(prim_path, default_pos, obstacle.orientation, obstacle.mass, obstacle.scale, obstacle.color, obstacle.collision)
                 elif isinstance(obstacle, Sphere):
-                    prim_path = self._create_sphere(prim_path, obstacle.position, obstacle.mass, obstacle.radius, obstacle.color, obstacle.collision)
+                    prim_path = self._create_sphere(prim_path, default_pos, obstacle.mass, obstacle.radius, obstacle.color, obstacle.collision)
                 elif isinstance(obstacle, Cylinder):
-                    prim_path = self._create_cylinder(prim_path, obstacle.position, obstacle.orientation, obstacle.mass, obstacle.radius, obstacle.height, obstacle.color, obstacle.collision)
+                    prim_path = self._create_cylinder(prim_path, default_pos, obstacle.orientation, obstacle.mass, obstacle.radius, obstacle.height, obstacle.color, obstacle.collision)
                 else:
                     raise f"Obstacle {type(obstacle)} not implemented"
                 
-                # track spawned obstacle
-                self._obstacles.append(Articulation(prim_path, f"env{env_idx}-{obstacle.name}", obstacle.position, orientation=obstacle.orientation))
+                # track spawned obstacles
+                self._obstacles.append(Articulation(prim_path, f"env{env_idx}-{obstacle.name}", default_pos, orientation=obstacle.orientation))
                 print("Spawned", prim_path)
                 
             # spawn sensors
