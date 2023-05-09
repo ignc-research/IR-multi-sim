@@ -44,6 +44,11 @@ class IsaacEnv(ModularEnv):
         self._setup_urdf_import()
         self._setup_physics()
 
+        # allow tracking spawned objects
+        from omni.isaac.core.articulations import Articulation
+        self._robots: List[Articulation] = []
+        self._obstacles: List[Articulation] = []
+
         # setup rl environment
         self._setup_environments(robots, obstacles, [])
         # self._setup_rewards(rewards) # todo: implement
@@ -142,49 +147,23 @@ class IsaacEnv(ModularEnv):
         self._add_collision_material(ground_prim_path, self._floor_material_path)
 
     def _setup_environments(self, robots: List[Robot], obstacles: List[Obstacle], sensors: List) -> None:
-        from omni.isaac.core.articulations import Articulation
-        self._robots: List[Articulation] = []
-        self._obstacles: List[Articulation] = []
-
         # spawn objects for each environment
         for env_idx in range(self.num_envs):    
             # spawn robots
             for robot in robots:
-                # calculate default pos
-                default_pos = robot.position + self._env_offsets[env_idx]
-
                 # import robot from urdf, creating prim path
-                prim_path = self._import_urdf(robot)
-
-                # move robot to desired location
-                obj = Articulation(prim_path, f"env{env_idx}-{robot.name}", default_pos, orientation=robot.orientation)
-                self._scene.add(obj)
-
-                # configure collision
-                if robot.collision:
-                    self._add_collision_material(prim_path, self._collision_material_path)
-
-                # track spawned robot
-                self._robots.append(obj)
-                print("Spawned", prim_path)
+                self._spawn_robot(robot, env_idx)
 
             # spawn obstacles
             for obstacle in obstacles:
-                prim_path = f"/World/Env{env_idx}/{obstacle.name}"
-                default_pos = obstacle.position + self._env_offsets[env_idx]
-
                 if isinstance(obstacle, Cube):
-                    prim_path = self._create_cube(prim_path, default_pos, obstacle.orientation, obstacle.mass, obstacle.scale, obstacle.color, obstacle.collision)
+                    self._spawn_cube(obstacle, env_idx)
                 elif isinstance(obstacle, Sphere):
-                    prim_path = self._create_sphere(prim_path, default_pos, obstacle.mass, obstacle.radius, obstacle.color, obstacle.collision)
+                    self._spawn_sphere(obstacle, env_idx)
                 elif isinstance(obstacle, Cylinder):
-                    prim_path = self._create_cylinder(prim_path, default_pos, obstacle.orientation, obstacle.mass, obstacle.radius, obstacle.height, obstacle.color, obstacle.collision)
+                    self._spawn_cylinder(obstacle, env_idx)
                 else:
                     raise f"Obstacle {type(obstacle)} not implemented"
-                
-                # track spawned obstacles
-                self._obstacles.append(Articulation(prim_path, f"env{env_idx}-{obstacle.name}", default_pos, orientation=obstacle.orientation))
-                print("Spawned", prim_path)
                 
             # spawn sensors
             for i, sensor in enumerate(sensors):
@@ -300,7 +279,7 @@ class IsaacEnv(ModularEnv):
             if 'CONTACT_FOUND' in contact_type or 'CONTACT_PERSIST' in contact_type:
                 self._collisions.append((actor0, actor1)) 
 
-    def _import_urdf(self, robot: Robot) -> str:
+    def _spawn_robot(self, robot: Robot, env_idx: int) -> str:
         """
         Loads in a URDF file into the world at position and orientation.
         """
@@ -316,6 +295,18 @@ class IsaacEnv(ModularEnv):
 
         # make sure import succeeded
         assert success, "Failed urdf import of: " + abs_path
+
+        # move robot to desired location
+        from omni.isaac.core.articulations import Articulation
+        obj = Articulation(prim_path, f"env{env_idx}-{robot.name}", self._env_offsets[env_idx] + robot.position, orientation=robot.orientation)
+        self._scene.add(obj)
+
+        # track spawned robot
+        self._robots.append(obj)
+
+        # configure collision
+        if robot.collision:
+            self._add_collision_material(prim_path, self._collision_material_path)
 
         # add reference to robot scene to current stage
         return prim_path
@@ -344,38 +335,47 @@ class IsaacEnv(ModularEnv):
 
         return path_to
 
-    def _create_cube(
-        self, 
-        prim_path: str,
-        position: np.ndarray,
-        orientation: np.ndarray,
-        mass: float,
-        scale: List[float],
-        color: List[float],
-        collision: bool
-        ) -> str:
-        from omni.physx.scripts.physicsUtils import add_rigid_box
+    def _spawn_cube(self, cube: Cube, env_idx: int) -> str:
+        prim_path = f"/World/env{env_idx}/{cube.name}"
 
         # create cube
-        from pxr import Usd
-        prim: Usd.Prim = add_rigid_box(
-            self._stage, prim_path,
-            size=self.to_isaac_vector(scale),
-            position=self.to_isaac_vector(position),
-            orientation=self.to_issac_quat(orientation),
-            color=self.to_isaac_color(color),
-            density=mass
-        )
+        from omni.isaac.core.objects import DynamicCuboid
+        self._scene.add(DynamicCuboid(
+            prim_path,
+            f"env{env_idx}-{cube.name}",
+            cube.position,
+            None,
+            cube.orientation,
+            cube.scale,
+            color=cube.color,
+            mass=cube.mass
+        ))
+    
+        # track spawned cube
+        from omni.isaac.core.articulations import Articulation
+        self._obstacles.append(Articulation(prim_path, cube.name, cube.position + self._env_offsets[env_idx]))
 
-        # extract prim path
-        prim_path = prim.GetPath()
-
-        if collision:
+        # configure collision
+        if cube.collision:
             self._add_collision_material(prim_path, self._collision_material_path)
+            
+        # from omni.physx.scripts.physicsUtils import add_rigid_box
+        # from pxr import Usd
+        # prim: Usd.Prim = add_rigid_box(
+        #     self._stage, prim_path,
+        #     size=self.to_isaac_vector(scale),
+        #     position=self.to_isaac_vector(position),
+        #     orientation=self.to_issac_quat(orientation),
+        #     color=self.to_isaac_color(color),
+        #     density=mass
+        # )
+
+        # # extract prim path
+        # prim_path = prim.GetPath()
 
         return prim_path
 
-    def _create_sphere(
+    def _spawn_sphere(
         self,
         prim_path: str,
         position: np.ndarray,
@@ -404,7 +404,7 @@ class IsaacEnv(ModularEnv):
 
         return prim_path
     
-    def _create_cylinder(
+    def _spawn_cylinder(
         self,
         prim_path: str,
         position: np.ndarray,

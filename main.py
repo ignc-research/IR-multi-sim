@@ -6,11 +6,11 @@ import numpy as np
 from stable_baselines3 import TD3
 
 # setup environment
-robots = [Robot("robots/ur5/urdf/ur5_with_gripper.urdf", np.array([0, 0, 0.5]))]
+robots = [Robot("robots/ur5/urdf/ur5_with_gripper.urdf", np.array([0, 0, 1]))]
 obstacles = [
-    Cube(np.array([0, 0, 0]), name="TargetCube"),
-    Cube(np.array([0, 1, 0]), name="Cube"),
-    Cube(np.array([2, 2, 0]))
+    Cube(np.array([0, 0, 0.5]), name="TargetCube"),
+    Cube(np.array([2, 2, 0.5]), name="Cube"),
+    Cube(np.array([2, 4, 0.5]))
     ]
 rewards = [Distance("TargetCube", "Cube"), Distance(obstacles[2], obstacles[0])]
 

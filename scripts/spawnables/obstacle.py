@@ -13,8 +13,8 @@ class Cube(Obstacle):
         position: ndarray = array([0, 0, 0]), 
         orientation: ndarray = array([1, 0, 0, 0]),
         scale: List[float] = [1., 1., 1.],
-        mass: float = 1.,
-        color: List[float] = [1., 1., 1., 1.],
+        mass: float = 0.,
+        color: ndarray = array([1., 1., 1.]),
         collision: bool = True,
         observable: bool = True,
         name: str=None
@@ -28,8 +28,8 @@ class Sphere(Obstacle):
         self,
         position: ndarray = array([0, 0, 0]),
         radius: float = 1.,
-        mass: float = 1.,
-        color: List[float] = [1., 1., 1., 1.],
+        mass: float = 0.,
+        color: ndarray = array([1., 1., 1.]),
         collision: bool = True,
         observable: bool = True,
         name: str=None
@@ -43,8 +43,8 @@ class Cylinder(Obstacle):
         position: ndarray = array([0, 0, 0]),
         radius: float = 1.,
         height: float = 2.,
-        mass: float = 1.,
-        color: List[float] = [1., 1., 1., 1.],
+        mass: float = 0.,
+        color: ndarray = array([1., 1., 1.]),
         collision: bool = True,
         observable: bool = True,
         name: str=None
