@@ -243,38 +243,46 @@ class IsaacEnv(ModularEnv):
         self._simulation.close()
 
     def _get_observations(self) -> VecEnvObs:
-        obs = dict.fromkeys([str(i) for i in range(self.num_envs)], [])
+        obs = {}
 
-        print("Robots:")
-        for index, robot in enumerate(self._robots):
-            # get pose
-            pos, rot = robot.get_local_pose()
+        # iterate through each env
+        for env_idx in range(self.num_envs):
+            env_obs = np.array([])
 
-            # calculate position relative to env origin
-            env_idx = int(index / self.observable_robots_count)
-            pos -= self._env_offsets[env_idx]
+            # get observations from all robots in environment
+            robot_idx_offset = env_idx * self.observable_robots_count
+            for robot_idx in range(self.observable_robots_count):
+                # get robot of environment
+                robot = self._robots[robot_idx_offset + robot_idx]
+                
+                # get its pose
+                pos, rot = robot.get_local_pose()
 
-            # add robot pos and rotation to observation of environment
-            dict_key = str(env_idx)
-            obs[dict_key].append(pos)
-            obs[dict_key].append(rot)
-            print(pos, rot)
+                # calculate position relative to environment origin
+                pos -= self._env_offsets[env_idx]
 
-        print("Obstacles:")
-        for index, obstacle in enumerate(self._obstacles):
-            # get pose
-            pos, rot = obstacle.get_local_pose()
+                # add robot pos and rotation to list of observations
+                env_obs = np.append(env_obs, pos)
+                env_obs = np.append(env_obs, rot)
 
-            # calculate position relative to env origin
-            env_idx = int(index / self.observable_obstacles_count)
-            pos -= self._env_offsets[env_idx]
+            # get observations from all obstacles in environment
+            obstacle_idx_offset = env_idx * self.observable_obstacles_count
+            for obstacle_idx in range(self.observable_obstacles_count):
+                # get obstacle of environment
+                obstacle = self._obstacles[obstacle_idx_offset + obstacle_idx]
 
-            # add obstacle position and rotation to observation of environment
-            dict_key = str(env_idx)
-            obs[dict_key].append(pos)
-            obs[dict_key].append(rot)
-            print(pos, rot)
+                # get its pose
+                pos, rot = obstacle.get_local_pose()
 
+                # calculate position relative to environment origin
+                pos -= self._env_offsets[env_idx]
+
+                # add obstacle pos and rotation to list of observations
+                env_obs = np.append(env_obs, pos)
+                env_obs = np.append(env_obs, rot)
+
+            # add observations gathered in environment to dictionary
+            obs[str(env_idx)] = env_obs                
         return obs
 
     def _on_contact_report_event(self, contact_headers, contact_data):
