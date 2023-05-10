@@ -28,9 +28,8 @@ class IsaacEnv(ModularEnv):
 
         # setup basic information about simulation
         self.num_envs = num_envs
-        self.robots_per_env = len(robots)
-        self.obstacles_per_env = len(obstacles)
-        self.objs_per_env = self.robots_per_env + self.obstacles_per_env
+        self.observable_robots_count = len([r for r in robots if r.observable])
+        self.observable_obstacles_count = len([o for o in obstacles if o.observable])
 
         # calculate env offsets
         break_index = math.ceil(math.sqrt(self.num_envs))
@@ -57,10 +56,7 @@ class IsaacEnv(ModularEnv):
         print("Obs:", self._get_observations())
 
         while True:
-            self._simulation.update()
-        
-        # track robots and spawned objects
-        self._setup_object_tracking()        
+            self._simulation.update()   
 
         # init bace class last, allowing it to automatically determine action and observation space
         super().__init__(step_size, headless, num_envs)
@@ -151,7 +147,7 @@ class IsaacEnv(ModularEnv):
         for env_idx in range(self.num_envs):    
             # spawn robots
             for robot in robots:
-                # import robot from urdf, creating prim path
+                # import robot from urdf
                 self._spawn_robot(robot, env_idx)
 
             # spawn obstacles
@@ -247,14 +243,39 @@ class IsaacEnv(ModularEnv):
         self._simulation.close()
 
     def _get_observations(self) -> VecEnvObs:
-        print("Robots:")
-        for r in self._robots:
-            print(r.get_local_pose())
-        print("Obstacles:")
-        for o in self._obstacles:
-            print(o.get_local_pose())
+        obs = dict.fromkeys([str(i) for i in range(self.num_envs)], [])
 
-        return []
+        print("Robots:")
+        for index, robot in enumerate(self._robots):
+            # get pose
+            pos, rot = robot.get_local_pose()
+
+            # calculate position relative to env origin
+            env_idx = int(index / self.observable_robots_count)
+            pos -= self._env_offsets[env_idx]
+
+            # add robot pos and rotation to observation of environment
+            dict_key = str(env_idx)
+            obs[dict_key].append(pos)
+            obs[dict_key].append(rot)
+            print(pos, rot)
+
+        print("Obstacles:")
+        for index, obstacle in enumerate(self._obstacles):
+            # get pose
+            pos, rot = obstacle.get_local_pose()
+
+            # calculate position relative to env origin
+            env_idx = int(index / self.observable_obstacles_count)
+            pos -= self._env_offsets[env_idx]
+
+            # add obstacle position and rotation to observation of environment
+            dict_key = str(env_idx)
+            obs[dict_key].append(pos)
+            obs[dict_key].append(rot)
+            print(pos, rot)
+
+        return obs
 
     def _on_contact_report_event(self, contact_headers, contact_data):
         """
@@ -312,6 +333,8 @@ class IsaacEnv(ModularEnv):
         return prim_path
 
     def _add_collision_material(self, prim_path, material_path:str):
+        print("Warning: Collision temporairly disabled!")
+        return
         # get prim path object
         prim = self._stage.GetPrimAtPath(prim_path)
 
