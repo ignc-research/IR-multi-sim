@@ -22,6 +22,6 @@ class Spawnable(ABC):
         self.position = position
         self.color = color
         self.collision = collision
-        self.orientation = np.zeros(4)  # default orientation of any spawnable object
+        self.orientation = np.array([1, 0, 0, 0])  # default orientation of any spawnable object
         self.observable = observable
         self.name = name

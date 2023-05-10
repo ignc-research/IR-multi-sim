@@ -367,79 +367,95 @@ class IsaacEnv(ModularEnv):
 
     def _spawn_cube(self, cube: Cube, env_idx: int) -> str:
         prim_path = f"/World/env{env_idx}/{cube.name}"
+        name = f"env{env_idx}-{cube.name}"
 
         # create cube
         from omni.isaac.core.objects import FixedCuboid
-        self._scene.add(FixedCuboid(
+        cube_obj = FixedCuboid(
             prim_path,
-            f"env{env_idx}-{cube.name}",
+            name,
             cube.position,
             None,
             cube.orientation,
             cube.scale,
             color=cube.color
-        ))
+        )
+        self._scene.add(cube_obj)
     
         # track spawned cube
         from omni.isaac.core.articulations import Articulation
-        self._obstacles.append(Articulation(prim_path, cube.name, cube.position + self._env_offsets[env_idx]))
+        tracker = Articulation(prim_path, f"{name}Articulation", cube.position + self._env_offsets[env_idx])
+        self._obstacles.append(tracker)
 
         # configure collision
         if cube.collision:
+            # add collision material, allowing callbacks to register collisions in simulation
             self._add_collision_material(prim_path, self._collision_material_path)
+        else:
+            cube_obj.set_collision_enabled(False)
 
         return prim_path
 
     def _spawn_sphere(self, sphere: Sphere, env_idx: int) -> str:
         prim_path = f"/World/env{env_idx}/{sphere.name}"
+        name = f"env{env_idx}-{sphere.name}"
 
-        # create cube
+        # create sphere
         from omni.isaac.core.objects import FixedSphere
-        self._scene.add(FixedSphere(
+        sphere_obj = FixedSphere(
             prim_path,
-            f"env{env_idx}-{sphere.name}"
-        ))
+            name,
+            sphere.position,
+            None,
+            sphere.orientation,
+            radius=sphere.radius,
+            color=sphere.color
+        )
+        self._scene.add(sphere_obj)
     
-        # track spawned cube
+        # track spawned sphere
         from omni.isaac.core.articulations import Articulation
-        self._obstacles.append(Articulation(prim_path, cube.name, cube.position + self._env_offsets[env_idx]))
+        tracker = Articulation(prim_path, f"{name}Articulation", sphere.position + self._env_offsets[env_idx])
+        self._obstacles.append(tracker)
 
         # configure collision
-        if cube.collision:
+        if sphere.collision:
+            # add collision material, allowing callbacks to register collisions in simulation
             self._add_collision_material(prim_path, self._collision_material_path)
+        else:
+            sphere_obj.set_collision_enabled(False)
 
         return prim_path
     
-    def _spawn_cylinder(
-        self,
-        prim_path: str,
-        position: np.ndarray,
-        orientation: np.ndarray,
-        mass: float,
-        radius: float,
-        height:float,
-        color: List[float],
-        collision: bool
-        ) -> str:
-        from omni.physx.scripts.physicsUtils import add_rigid_cylinder
+    def _spawn_cylinder(self, cylinder: Cylinder, env_idx:int) -> str:
+        prim_path = f"/World/env{env_idx}/{cylinder.name}"
+        name = f"env{env_idx}-{cylinder.name}"
 
         # create cylinder
-        from pxr import Usd
-        prim: Usd.Prim = add_rigid_cylinder(
-            self._stage, prim_path,
-            radius=radius,
-            height=height,
-            position=self.to_isaac_vector(position),
-            orientation=self.to_isaac_vector(orientation),
-            color=self.to_isaac_color(color),
-            density=mass
+        from omni.isaac.core.objects import FixedCylinder
+        cylinder_obj = FixedCylinder(
+            prim_path,
+            name,
+            cylinder.position,
+            None,
+            cylinder.orientation,
+            radius=cylinder.radius,
+            height=cylinder.height,
+            color=cylinder.color
         )
+        self._scene.add(cylinder_obj)
+    
+        # track spawned cylinder
+        from omni.isaac.core.articulations import Articulation
+        tracker = Articulation(prim_path, f"{name}Articulation", cylinder.position + self._env_offsets[env_idx])
+        self._obstacles.append(tracker)
 
-        # extract prim path
-        prim_path = prim.GetPath()
-
-        if collision:
+        # configure collision
+        if cylinder.collision:
+            # add collision material, allowing callbacks to register collisions in simulation
             self._add_collision_material(prim_path, self._collision_material_path)
+        else:
+            cylinder_obj.set_collision_enabled(False)
 
         return prim_path
 
