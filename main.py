@@ -14,7 +14,7 @@ obstacles = [
     ]
 rewards = [Distance("TargetCube", "Cube"), Distance(obstacles[2], obstacles[0])]
 
-env = IsaacEnv("./data", 1, False, robots, obstacles, rewards, 6, (10, 10))
+env = IsaacEnv("./data", 1, False, robots, obstacles, rewards, 1, (10, 10))
 
 # setup model
 model = TD3("MlpPolicy", env)

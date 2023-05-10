@@ -304,7 +304,10 @@ class IsaacEnv(ModularEnv):
 
             # contact was found
             if 'CONTACT_FOUND' in contact_type or 'CONTACT_PERSIST' in contact_type:
-                self._collisions.append((actor0, actor1)) 
+                self._collisions.append((actor0, actor1))
+
+        if(len(self._collisions) > 0):
+            print(self._collisions)
 
     def _spawn_robot(self, robot: Robot, env_idx: int) -> str:
         """
@@ -339,8 +342,6 @@ class IsaacEnv(ModularEnv):
         return prim_path
 
     def _add_collision_material(self, prim_path, material_path:str):
-        print("Warning: Collision temporairly disabled!")
-        return
         # get prim path object
         prim = self._stage.GetPrimAtPath(prim_path)
 
@@ -368,16 +369,15 @@ class IsaacEnv(ModularEnv):
         prim_path = f"/World/env{env_idx}/{cube.name}"
 
         # create cube
-        from omni.isaac.core.objects import DynamicCuboid
-        self._scene.add(DynamicCuboid(
+        from omni.isaac.core.objects import FixedCuboid
+        self._scene.add(FixedCuboid(
             prim_path,
             f"env{env_idx}-{cube.name}",
             cube.position,
             None,
             cube.orientation,
             cube.scale,
-            color=cube.color,
-            mass=cube.mass
+            color=cube.color
         ))
     
         # track spawned cube
@@ -387,48 +387,25 @@ class IsaacEnv(ModularEnv):
         # configure collision
         if cube.collision:
             self._add_collision_material(prim_path, self._collision_material_path)
-            
-        # from omni.physx.scripts.physicsUtils import add_rigid_box
-        # from pxr import Usd
-        # prim: Usd.Prim = add_rigid_box(
-        #     self._stage, prim_path,
-        #     size=self.to_isaac_vector(scale),
-        #     position=self.to_isaac_vector(position),
-        #     orientation=self.to_issac_quat(orientation),
-        #     color=self.to_isaac_color(color),
-        #     density=mass
-        # )
-
-        # # extract prim path
-        # prim_path = prim.GetPath()
 
         return prim_path
 
-    def _spawn_sphere(
-        self,
-        prim_path: str,
-        position: np.ndarray,
-        mass: float,
-        radius: float,
-        color: List[float],
-        collision: bool
-        ) -> str:
-        from omni.physx.scripts.physicsUtils import add_rigid_sphere
+    def _spawn_sphere(self, sphere: Sphere, env_idx: int) -> str:
+        prim_path = f"/World/env{env_idx}/{sphere.name}"
 
-        # create sphere
-        from pxr import Usd
-        prim: Usd.Prim = add_rigid_sphere(
-            self._stage, prim_path,
-            radius=radius,
-            position=self.to_isaac_vector(position),
-            color=self.to_isaac_color(color),
-            density=mass                
-        )
+        # create cube
+        from omni.isaac.core.objects import FixedSphere
+        self._scene.add(FixedSphere(
+            prim_path,
+            f"env{env_idx}-{sphere.name}"
+        ))
+    
+        # track spawned cube
+        from omni.isaac.core.articulations import Articulation
+        self._obstacles.append(Articulation(prim_path, cube.name, cube.position + self._env_offsets[env_idx]))
 
-        # extract prim path
-        prim_path = prim.GetPath()
-
-        if collision:
+        # configure collision
+        if cube.collision:
             self._add_collision_material(prim_path, self._collision_material_path)
 
         return prim_path
