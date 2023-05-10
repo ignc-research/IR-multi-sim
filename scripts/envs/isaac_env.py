@@ -262,8 +262,7 @@ class IsaacEnv(ModularEnv):
                 pos -= self._env_offsets[env_idx]
 
                 # add robot pos and rotation to list of observations
-                env_obs = np.append(env_obs, pos)
-                env_obs = np.append(env_obs, rot)
+                env_obs = np.concatenate((env_obs, pos, rot))
 
             # get observations from all obstacles in environment
             obstacle_idx_offset = env_idx * self.observable_obstacles_count
@@ -278,8 +277,7 @@ class IsaacEnv(ModularEnv):
                 pos -= self._env_offsets[env_idx]
 
                 # add obstacle pos and rotation to list of observations
-                env_obs = np.append(env_obs, pos)
-                env_obs = np.append(env_obs, rot)
+                env_obs = np.concatenate((env_obs, pos, rot))
 
             # add observations gathered in environment to dictionary
             obs[str(env_idx)] = env_obs                
