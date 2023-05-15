@@ -178,26 +178,23 @@ class IsaacEnv(ModularEnv):
         obj2_start, _ = self._parse_observable_object_range(distance.obj2)
 
         # parse function calculating distance to all targets
-        def sum_distance() -> float:
-            d = 0
-            # calculate the distance of all instances of the two objects in each env
+        def distance_per_env() -> List[float]:
+            result = []
             for i in range(self.num_envs):
-                # calculate spaitial distance
-                d += calc_distance(
+                result.append(calc_distance(
                     self._obs[str(i)][obj1_start:obj1_start+3],
                     self._obs[str(i)][obj2_start:obj2_start+3]
-                )
-                # todo: include rotation distance?
-            return d
-                
+                ))
+            return np.array(result)
+    
         # minimize reward output
         if distance.minimize:
             def distance_reward():
-                return sum_distance() * -1
+                return distance_per_env() * [-1 for _ in range(self.num_envs)]
             return distance_reward
         # maximize reward output
         else:
-            return sum_distance
+            return distance_per_env
     
     def _parse_observable_object_range(self, name: str) -> Tuple[int, int]:
         """
@@ -230,7 +227,8 @@ class IsaacEnv(ModularEnv):
 
     def step_async(self, actions: np.ndarray) -> None:
         # apply actions to robots
-        self._robots.set_joint_velocities(actions)
+        for i, robot in enumerate(self._robots):
+            robot.set_joint_velocities(actions[i])
 
         # step once with simulations
         self._simulation.update()
@@ -240,6 +238,8 @@ class IsaacEnv(ModularEnv):
         self._obs = self._get_observations()
 
         # get rewards
+        self._rewards = self._get_rewards()
+        print(self._rewards)
 
         # get dones
 
@@ -310,8 +310,13 @@ class IsaacEnv(ModularEnv):
             obs[str(env_idx)] = env_obs                
         return obs
 
-    def _get_rewards(self) -> float:
-        return sum([fn() for fn in self._reward_fns])
+    def _get_rewards(self) -> List[float]:
+        rewards = np.zeros(self.num_envs)
+
+        for fn in self._reward_fns:
+            rewards += fn()
+
+        return rewards
 
     def _on_contact_report_event(self, contact_headers, contact_data):
         """
