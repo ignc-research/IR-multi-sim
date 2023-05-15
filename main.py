@@ -17,7 +17,7 @@ rewards = [Distance("TargetCube", "Sphere"), Distance(obstacles[2], obstacles[0]
 env = IsaacEnv("./data", 1, False, robots, obstacles, rewards, 2, (10, 10))
 
 # setup model
-model = TD3("MlpPolicy", env)
+model = TD3("MlpPolicy", env, train_freq=1)
 
 # start learning
 model.learn(1000)
