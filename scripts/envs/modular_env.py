@@ -4,6 +4,7 @@ import numpy as np
 from pathlib import Path
 from stable_baselines3.common.vec_env.base_vec_env import *
 from gym.utils import seeding
+from gym.spaces import Box
 
 
 class ModularEnv(VecEnv):
@@ -14,11 +15,11 @@ class ModularEnv(VecEnv):
 
         # parse observation and action space
         obs = self.reset()[str(0)]
-        actions = self.get_robot_dof_limits()
-        print(obs, actions)
+        limits = self.get_robot_dof_limits()
+        print("Obs:", obs)
+        print("Actions:", limits)
 
-        raise "Engine constructor not implemented"
-        super().__init__(num_envs, None, None)
+        super().__init__(num_envs, None, Box([a[0] for a in limits], [a[1] for a in limits]))
 
     @abstractmethod
     def get_robot_dof_limits(self) -> List[Tuple[float, float]]:
@@ -27,7 +28,6 @@ class ModularEnv(VecEnv):
             np.ndarray: degrees of freedom position limits. 
             shape is (N, num_dof, 2) where index 0 corresponds to the lower limit and index 1 corresponds to the upper limit.
             Only returns dof limits from the first environments, assuming all other environments contain duplicate robot configurations.
-
         """
         pass
 
