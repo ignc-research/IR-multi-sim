@@ -28,7 +28,9 @@ class IsaacEnv(ModularEnv):
 
         # setup basic information about simulation
         self.num_envs = num_envs
+        self.robot_count = len(robots)
         self.observable_robots_count = len([r for r in robots if r.observable])
+        self.obstacle_count = len(obstacles)
         self.observable_obstacles_count = len([o for o in obstacles if o.observable])
 
         # calculate env offsets
@@ -253,12 +255,16 @@ class IsaacEnv(ModularEnv):
 
         return self._obs
 
-    def get_robot_dof_limits(self) -> np.ndarray:
-        # todo: ony get dof limits from robots of first environment
-        print("Robot dof limits")
-        for robot in self._robots:
-            print(robot.dof_properties)
-        raise "Not implemented!"
+    def get_robot_dof_limits(self) -> List[Tuple[float, float]]:
+        # init array
+        limits = []
+
+        # ony get dof limits from robots of first environment
+        for i in range(self.robot_count):
+            for limit in self._robots[i].get_articulation_controller().get_joint_limits():
+                limits.append(list(limit))
+        
+        return limits
     
     def close(self) -> None:
         self._simulation.close()

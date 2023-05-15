@@ -21,7 +21,7 @@ class ModularEnv(VecEnv):
         super().__init__(num_envs, None, None)
 
     @abstractmethod
-    def get_robot_dof_limits(self) -> np.ndarray:
+    def get_robot_dof_limits(self) -> List[Tuple[float, float]]:
         """
         Returns:
             np.ndarray: degrees of freedom position limits. 
