@@ -54,13 +54,6 @@ class IsaacEnv(ModularEnv):
         self._setup_environments(robots, obstacles, [])
         self._setup_rewards(rewards) # todo: implement
 
-        self._obs = self._get_observations()
-        print(self._obs)
-        print(self._get_rewards())
-
-        while True:
-            self._simulation.update()
-
         # init bace class last, allowing it to automatically determine action and observation space
         super().__init__(step_size, headless, num_envs)
     
@@ -184,16 +177,16 @@ class IsaacEnv(ModularEnv):
 
         # parse function calculating distance to all targets
         def sum_distance() -> float:
-            distance = 0
+            d = 0
             # calculate the distance of all instances of the two objects in each env
             for i in range(self.num_envs):
                 # calculate spaitial distance
-                distance += calc_distance(
+                d += calc_distance(
                     self._obs[str(i)][obj1_start:obj1_start+3],
                     self._obs[str(i)][obj2_start:obj2_start+3]
                 )
                 # todo: include rotation distance?
-            return distance
+            return d
                 
         # minimize reward output
         if distance.minimize:
@@ -214,7 +207,7 @@ class IsaacEnv(ModularEnv):
         start = index * 7
 
         # return start and end index
-        return index, start + 6
+        return start, start + 6
 
     def _find_observable_object(self, name: str) -> int:
         """
@@ -223,13 +216,11 @@ class IsaacEnv(ModularEnv):
         """
         # robots are input first into observations
         for index, robot in enumerate(self._observable_robots):
-            print(robot.name)
             if robot.name.endswith(name):
                 return index
         
         # obstacles second
         for index, obstacle in enumerate(self._observable_obstacles):
-            print(obstacle.name)
             if obstacle.name.endswith(name):
                 return index + self.observable_robots_count
 
@@ -292,7 +283,7 @@ class IsaacEnv(ModularEnv):
 
                 # add robot pos and rotation to list of observations
                 env_obs = np.concatenate((env_obs, pos, rot))
-                print("Robot", robot.name, env_obs)
+                print("Robot", robot.name, pos, rot)
 
             # get observations from all obstacles in environment
             obstacle_idx_offset = self.observable_obstacles_count * env_idx
@@ -308,7 +299,7 @@ class IsaacEnv(ModularEnv):
 
                 # add obstacle pos and rotation to list of observations
                 env_obs = np.concatenate((env_obs, pos, rot))
-                print("Obstacle", obstacle.name, env_obs)
+                print("Obstacle", obstacle.name, pos, rot)
 
             # add observations gathered in environment to dictionary
             obs[str(env_idx)] = env_obs                
