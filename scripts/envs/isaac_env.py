@@ -47,16 +47,17 @@ class IsaacEnv(ModularEnv):
         from omni.isaac.core.articulations import Articulation
         self._robots: List[Articulation] = []
         self._obstacles: List[Articulation] = []
+        self._observable_robots: List[Articulation] = []
+        self._observable_obstacles: List[Articulation] = []
 
         # setup rl environment
         self._setup_environments(robots, obstacles, [])
         # self._setup_rewards(rewards) # todo: implement
 
-        self._world.reset()
-        print("Obs:", self._get_observations())
+        print(self._get_observations())
 
         while True:
-            self._simulation.update()   
+            self._simulation.update()
 
         # init bace class last, allowing it to automatically determine action and observation space
         super().__init__(step_size, headless, num_envs)
@@ -250,10 +251,10 @@ class IsaacEnv(ModularEnv):
             env_obs = np.array([])
 
             # get observations from all robots in environment
-            robot_idx_offset = env_idx * self.observable_robots_count
-            for robot_idx in range(self.observable_robots_count):
+            robot_idx_offset = self.observable_robots_count * env_idx
+            for robot_idx in range(robot_idx_offset, self.observable_robots_count + robot_idx_offset):
                 # get robot of environment
-                robot = self._robots[robot_idx_offset + robot_idx]
+                robot = self._observable_robots[robot_idx]
                 
                 # get its pose
                 pos, rot = robot.get_local_pose()
@@ -265,10 +266,10 @@ class IsaacEnv(ModularEnv):
                 env_obs = np.concatenate((env_obs, pos, rot))
 
             # get observations from all obstacles in environment
-            obstacle_idx_offset = env_idx * self.observable_obstacles_count
-            for obstacle_idx in range(self.observable_obstacles_count):
+            obstacle_idx_offset = self.observable_obstacles_count * env_idx
+            for obstacle_idx in range(obstacle_idx_offset, self.observable_obstacles_count + obstacle_idx_offset):
                 # get obstacle of environment
-                obstacle = self._obstacles[obstacle_idx_offset + obstacle_idx]
+                obstacle = self._obstacles[obstacle_idx]
 
                 # get its pose
                 pos, rot = obstacle.get_local_pose()
@@ -334,6 +335,10 @@ class IsaacEnv(ModularEnv):
         # track spawned robot
         self._robots.append(obj)
 
+        # add it to list of observable objects, if necessary
+        if robot.observable:
+            self._observable_robots.append(obj)
+
         # configure collision
         if robot.collision:
             self._add_collision_material(prim_path, self._collision_material_path)
@@ -387,6 +392,10 @@ class IsaacEnv(ModularEnv):
         tracker = Articulation(prim_path, f"{name}Articulation", cube.position + self._env_offsets[env_idx])
         self._obstacles.append(tracker)
 
+        # add it to list of observable objects, if necessary
+        if cube.observable:
+            self._observable_obstacles.append(tracker)
+
         # configure collision
         if cube.collision:
             # add collision material, allowing callbacks to register collisions in simulation
@@ -417,6 +426,10 @@ class IsaacEnv(ModularEnv):
         from omni.isaac.core.articulations import Articulation
         tracker = Articulation(prim_path, f"{name}Articulation", sphere.position + self._env_offsets[env_idx])
         self._obstacles.append(tracker)
+
+        # add it to list of observable objects, if necessary
+        if sphere.observable:
+            self._observable_obstacles.append(tracker)
 
         # configure collision
         if sphere.collision:
@@ -449,6 +462,10 @@ class IsaacEnv(ModularEnv):
         from omni.isaac.core.articulations import Articulation
         tracker = Articulation(prim_path, f"{name}Articulation", cylinder.position + self._env_offsets[env_idx])
         self._obstacles.append(tracker)
+
+        # add it to list of observable objects, if necessary
+        if cylinder.observable:
+            self._observable_obstacles.append(tracker)
 
         # configure collision
         if cylinder.collision:
