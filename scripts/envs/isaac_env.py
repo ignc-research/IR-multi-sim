@@ -52,9 +52,11 @@ class IsaacEnv(ModularEnv):
 
         # setup rl environment
         self._setup_environments(robots, obstacles, [])
-        # self._setup_rewards(rewards) # todo: implement
+        self._setup_rewards(rewards) # todo: implement
 
-        print(self._get_observations())
+        self._obs = self._get_observations()
+        print(self._obs)
+        print(self._get_rewards())
 
         while True:
             self._simulation.update()
@@ -167,25 +169,30 @@ class IsaacEnv(ModularEnv):
                 raise "Sensors are not implemented"
         
     def _setup_rewards(self, rewards: List[Reward]) -> None:
-        self.reward_fns = []
+        self._reward_fns = []
 
         for reward in rewards:
             if isinstance(reward, Distance):
-                self.reward_fns.append(self._parse_distance_reward(reward))
+                self._reward_fns.append(self._parse_distance_reward(reward))
             else:
                 raise f"Reward {type(reward)} not implemented!"
         
     def _parse_distance_reward(self, distance: Distance):
         # parse indices in observations
-        index_0 = self._find_observable_object(distance.obj1)
-        index_1 = self._find_observable_object(distance.obj2)
+        obj1_start, _ = self._parse_observable_object_range(distance.obj1)
+        obj2_start, _ = self._parse_observable_object_range(distance.obj2)
 
         # parse function calculating distance to all targets
         def sum_distance() -> float:
             distance = 0
             # calculate the distance of all instances of the two objects in each env
-            for i in range(0, self.num_envs * self.objs_per_env, self.objs_per_env):
-                distance += calc_distance(self._obs[index_0 + i], self._obs[index_1 + i])
+            for i in range(self.num_envs):
+                # calculate spaitial distance
+                distance += calc_distance(
+                    self._obs[str(i)][obj1_start:obj1_start+3],
+                    self._obs[str(i)][obj2_start:obj2_start+3]
+                )
+                # todo: include rotation distance?
             return distance
                 
         # minimize reward output
@@ -196,15 +203,36 @@ class IsaacEnv(ModularEnv):
         # maximize reward output
         else:
             return sum_distance
-        
+    
+    def _parse_observable_object_range(self, name: str) -> Tuple[int, int]:
+        """
+        Given the name of an observable object, tries to retrieve its beginning and end position index in the observation buffer
+        """
+        index = self._find_observable_object(name)
+
+        # calculate start index (multiply by 7: xyz for position, quaternion for rotation)
+        start = index * 7
+
+        # return start and end index
+        return index, start + 6
+
     def _find_observable_object(self, name: str) -> int:
         """
-        Given the name of an observable object, tries to retrieve its position and rotation index in the observations.
+        Given the name of an observable object, tries to retrieve its index in the observations list.
+        Example: When two robots are observable and the position of the second robots is being queried, returns index 1.
         """
-        for index, obj in enumerate(self._observable_objects):
-            # todo: this only works for robot joints, not robots themselves
-            if obj.prim_path.endswith(name):
+        # robots are input first into observations
+        for index, robot in enumerate(self._observable_robots):
+            print(robot.name)
+            if robot.name.endswith(name):
                 return index
+        
+        # obstacles second
+        for index, obstacle in enumerate(self._observable_obstacles):
+            print(obstacle.name)
+            if obstacle.name.endswith(name):
+                return index + self.observable_robots_count
+
         raise f"Object {name} must be observable if used for reward"
 
     def step_async(self, actions: np.ndarray) -> None:
@@ -264,6 +292,7 @@ class IsaacEnv(ModularEnv):
 
                 # add robot pos and rotation to list of observations
                 env_obs = np.concatenate((env_obs, pos, rot))
+                print("Robot", robot.name, env_obs)
 
             # get observations from all obstacles in environment
             obstacle_idx_offset = self.observable_obstacles_count * env_idx
@@ -279,10 +308,14 @@ class IsaacEnv(ModularEnv):
 
                 # add obstacle pos and rotation to list of observations
                 env_obs = np.concatenate((env_obs, pos, rot))
+                print("Obstacle", obstacle.name, env_obs)
 
             # add observations gathered in environment to dictionary
             obs[str(env_idx)] = env_obs                
         return obs
+
+    def _get_rewards(self) -> float:
+        return sum([fn() for fn in self._reward_fns])
 
     def _on_contact_report_event(self, contact_headers, contact_data):
         """
@@ -389,7 +422,7 @@ class IsaacEnv(ModularEnv):
     
         # track spawned cube
         from omni.isaac.core.articulations import Articulation
-        tracker = Articulation(prim_path, f"{name}Articulation", cube.position + self._env_offsets[env_idx])
+        tracker = Articulation(prim_path, name, cube.position + self._env_offsets[env_idx])
         self._obstacles.append(tracker)
 
         # add it to list of observable objects, if necessary
@@ -424,7 +457,7 @@ class IsaacEnv(ModularEnv):
     
         # track spawned sphere
         from omni.isaac.core.articulations import Articulation
-        tracker = Articulation(prim_path, f"{name}Articulation", sphere.position + self._env_offsets[env_idx])
+        tracker = Articulation(prim_path, name, sphere.position + self._env_offsets[env_idx])
         self._obstacles.append(tracker)
 
         # add it to list of observable objects, if necessary
@@ -460,7 +493,7 @@ class IsaacEnv(ModularEnv):
     
         # track spawned cylinder
         from omni.isaac.core.articulations import Articulation
-        tracker = Articulation(prim_path, f"{name}Articulation", cylinder.position + self._env_offsets[env_idx])
+        tracker = Articulation(prim_path, name, cylinder.position + self._env_offsets[env_idx])
         self._obstacles.append(tracker)
 
         # add it to list of observable objects, if necessary
