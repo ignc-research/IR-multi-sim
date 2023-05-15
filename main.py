@@ -7,11 +7,14 @@ from stable_baselines3 import TD3
 
 # setup environment
 robots = [Robot("robots/ur5/urdf/ur5_with_gripper.urdf", np.array([0, 0, 1]))]
+
 obstacles = [
     Cube(np.array([0, 0, 0.5]), name="TargetCube", color=array([0, 1, 0])),
     Sphere(np.array([2, 2, 0.5]), name="Sphere"),
     Cylinder(np.array([2, 4, 0.5]))
     ]
+
+# todo: allow calculating distance between joints of robots and robots
 rewards = [Distance("TargetCube", "Sphere"), Distance(obstacles[2], obstacles[0])]
 
 # todo: reset conditions: Elapsed Timesteps, Reward above/below value
