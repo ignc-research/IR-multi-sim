@@ -14,12 +14,14 @@ class ModularEnv(VecEnv):
         self.env_data: Dict[int, Dict[str, Any]] = {}  # Env data saved in a dict
 
         # parse observation and action space
-        obs = self.reset()[str(0)]
+        num_obs = len(self.reset()[str(0)])
         limits = self.get_robot_dof_limits()
-        print("Obs:", obs)
-        print("Actions:", limits)
 
-        super().__init__(num_envs, None, Box([a[0] for a in limits], [a[1] for a in limits]))
+        obs_space = Box(np.ones(num_obs) * -np.inf, np.ones(num_obs) * np.inf)
+        action_space = Box(np.array([a[0] for a in limits]), np.array([a[1] for a in limits]))
+
+        # init base class with dynamically created action and observation space
+        super().__init__(num_envs, obs_space, action_space)
 
     @abstractmethod
     def get_robot_dof_limits(self) -> List[Tuple[float, float]]:
