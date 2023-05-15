@@ -6,7 +6,7 @@ from typing import Union
 
 
 class Distance(Reward):
-    def __init__(self, obj1: Union[Spawnable, str], obj2: Union[Spawnable, str], minimize: bool=True) -> None:
+    def __init__(self, obj1: Union[Spawnable, str], obj2: Union[Spawnable, str], minimize: bool=True, name: str=None) -> None:
         """
         obj1, ob2: References to the objects whose distance shall be measured. 
         The reference may either be a spwanabe object (name will be extracted automatically), or a str referencing an objects name.
@@ -17,7 +17,7 @@ class Distance(Reward):
         Note: All objects referenced in rewards must be observable.
         """
 
-        super().__init__(minimize)
+        super().__init__(minimize, name)
 
         # parse name of first object
         if isinstance(obj1, Spawnable):

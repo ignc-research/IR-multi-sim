@@ -14,6 +14,8 @@ obstacles = [
     ]
 rewards = [Distance("TargetCube", "Sphere"), Distance(obstacles[2], obstacles[0])]
 
+# todo: reset conditions: Elapsed Timesteps, Reward above/below value
+
 env = IsaacEnv("./data", 1, False, robots, obstacles, rewards, 2, (10, 10))
 
 # setup model
