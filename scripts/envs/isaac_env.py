@@ -255,8 +255,9 @@ class IsaacEnv(ModularEnv):
 
     def get_robot_dof_limits(self) -> np.ndarray:
         # todo: ony get dof limits from robots of first environment
-        print(self._robots.prims)
-        print("Limits:", self._robots.get_dof_limits())
+        print("Robot dof limits")
+        for robot in self._robots:
+            print(robot.dof_properties)
         raise "Not implemented!"
     
     def close(self) -> None:
@@ -283,7 +284,6 @@ class IsaacEnv(ModularEnv):
 
                 # add robot pos and rotation to list of observations
                 env_obs = np.concatenate((env_obs, pos, rot))
-                print("Robot", robot.name, pos, rot)
 
             # get observations from all obstacles in environment
             obstacle_idx_offset = self.observable_obstacles_count * env_idx
@@ -299,7 +299,6 @@ class IsaacEnv(ModularEnv):
 
                 # add obstacle pos and rotation to list of observations
                 env_obs = np.concatenate((env_obs, pos, rot))
-                print("Obstacle", obstacle.name, pos, rot)
 
             # add observations gathered in environment to dictionary
             obs[str(env_idx)] = env_obs                

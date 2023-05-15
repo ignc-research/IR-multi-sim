@@ -13,7 +13,7 @@ class ModularEnv(VecEnv):
         self.env_data: Dict[int, Dict[str, Any]] = {}  # Env data saved in a dict
 
         # parse observation and action space
-        obs = self.reset()[0]
+        obs = self.reset()[str(0)]
         actions = self.get_robot_dof_limits()
         print(obs, actions)
 
