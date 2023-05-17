@@ -35,7 +35,7 @@ class IsaacEnv(ModularEnv):
         self.observable_robots_count = len([r for r in robots if r.observable])
         self.obstacle_count = len(obstacles)
         self.observable_obstacles_count = len([o for o in obstacles if o.observable])
-        self._timesteps: List[int] = [0 for _ in range(num_envs)]
+        self._timesteps: List[int] = np.zeros(num_envs)
 
         # save the distances in the current environment
         self._distances: Dict[str, List[float]] = {}
@@ -250,10 +250,8 @@ class IsaacEnv(ModularEnv):
         for reset in resets:
             if isinstance(reset, DistanceReset):
                 # make sure that the referenced distance exists
-                assert (
-                    reset.distance in distance_names,
-                    f"DistanceReset {reset} references distance {reset.distance}, which doesn't exists in rewards!"
-                )
+                assert reset.distance_name in distance_names, f"DistanceReset {reset} references distance {reset.distance}, which doesn't exists in rewards!"
+                
 
                 self._reset_fns.append(self._parse_distance_reset(reset))
             elif isinstance(reset, TimestepsReset):
@@ -263,14 +261,17 @@ class IsaacEnv(ModularEnv):
 
     def _parse_distance_reset(self, reset: DistanceReset):
         # extract name to allot created function to access it easily
-        name = reset.name
+        name = reset.distance_name
         min_value = reset.min
         max_value = reset.max
 
         # parse function
         def reset_condition() -> np.ndarray:
+            # get distances of current timestep
+            d = self._distances[name]
+
             # return true whenever the distance exceed max or min value
-            return np.where(min_value <= self._distances[name] <= max_value, False, True)
+            return np.where(min_value <= d, np.where(d <= max_value, False, True), True)
 
         return reset_condition
 
@@ -280,7 +281,7 @@ class IsaacEnv(ModularEnv):
         # parse function
         def reset_condition() -> np.ndarray:
             # return true whenever the current timespets exceed the max value
-            return np.where(self._timesteps > max_value, True, False)
+            return np.where(self._timesteps <= max_value, False, True)
 
         return reset_condition
 

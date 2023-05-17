@@ -6,9 +6,9 @@ class DistanceReset(Reset):
     def __init__(self, distance: Union[Distance, str], min: float, max: float) -> None:
         # save the name of the distance
         if isinstance(distance, Distance):
-            self.distance = distance.name
+            self.distance_name = distance.name
         else:
-            self.distance = distance
+            self.distance_name = distance
 
         # save min and max values of distance
         self.min = min

@@ -19,10 +19,9 @@ obstacles = [
 # todo: allow calculating distance between joints of robots and robots
 rewards = [Distance("TargetCube", "Sphere", name="TargetDistance")]
 
-# todo: reset conditions: Elapsed Timesteps, Reward above/below value
-resets = [DistanceReset("TargetDistance", 1, 100), TimestepsReset(100)]
+resets = [DistanceReset("TargetDistance", 1, 10), TimestepsReset(100)]
 
-env = IsaacEnv("./data", 1, False, robots, obstacles, rewards, 2, (10, 10))
+env = IsaacEnv("./data", 1, False, robots, obstacles, rewards, resets, 2, (10, 10))
 
 # setup model
 model = TD3("MlpPolicy", env, train_freq=1)
