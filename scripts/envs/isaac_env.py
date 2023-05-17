@@ -381,7 +381,7 @@ class IsaacEnv(ModularEnv):
 
     def _get_dones(self) -> List[bool]:
         # init default array: No environment is done
-        dones = np.array([False for _ in range(self.num_envs)])
+        dones = np.full(self.num_envs, False)
 
         # check if any of the functions specify a reset
         for fn in self._reset_fns:
