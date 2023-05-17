@@ -36,6 +36,9 @@ class IsaacEnv(ModularEnv):
         self.obstacle_count = len(obstacles)
         self.observable_obstacles_count = len([o for o in obstacles if o.observable])
 
+        # save the distances in the current environment
+        self._distances: Dict[str, List[float]] = {}
+
         # calculate env offsets
         break_index = math.ceil(math.sqrt(self.num_envs))
         self._env_offsets = dict(zip(
@@ -58,6 +61,7 @@ class IsaacEnv(ModularEnv):
         # setup rl environment
         self._setup_environments(robots, obstacles, [])
         self._setup_rewards(rewards) # todo: implement
+        self._setup_resets(rewards, resets)
 
         # init bace class last, allowing it to automatically determine action and observation space
         super().__init__(step_size, headless, num_envs)
@@ -180,15 +184,24 @@ class IsaacEnv(ModularEnv):
         obj1_start, _ = self._parse_observable_object_range(distance.obj1)
         obj2_start, _ = self._parse_observable_object_range(distance.obj2)
 
+        # extract name to allot created function to access it easily
+        name = distance.name
+
         # parse function calculating distance to all targets
-        def distance_per_env() -> List[float]:
+        def distance_per_env() -> np.ndarray:
+            # calculate distances as np array
             result = []
             for i in range(self.num_envs):
                 result.append(calc_distance(
                     self._obs[str(i)][obj1_start:obj1_start+3],
                     self._obs[str(i)][obj2_start:obj2_start+3]
                 ))
-            return np.array(result)
+            result = np.array(result)
+
+            # save distance for current interation
+            self._distances[name] = result
+
+            return result
     
         # minimize reward output
         if distance.minimize:
@@ -228,10 +241,19 @@ class IsaacEnv(ModularEnv):
 
         raise f"Object {name} must be observable if used for reward"
 
-    def _setup_resets(self, resets: List[Reset]):
+    def _setup_resets(self, rewards: List[Reward], resets: List[Reset]):
+        # make sure that all resets referencing a distance are valid
+        distance_names = [r.name for r in rewards if isinstance(r, Distance)]
+
         self._reset_fns = []
         for reset in resets:
             if isinstance(reset, DistanceReset):
+                # make sure that the referenced distance exists
+                assert (
+                    reset.distance in distance_names,
+                    f"DistanceReset {reset} references distance {reset.distance}, which doesn't exists in rewards!"
+                )
+
                 self._reset_fns.append(self._parse_distance_reset(reset))
             elif isinstance(reset, TimestepsReset):
                 self._reset_fns.append(self._parse_timesteps_reset(reset))
@@ -239,7 +261,17 @@ class IsaacEnv(ModularEnv):
                 raise f"Reset {type(reset)} not implemented!"
 
     def _parse_distance_reset(self, reset: DistanceReset):
-        raise "Not implemented"
+        # extract name to allot created function to access it easily
+        name = reset.name
+        min_value = reset.min
+        max_value = reset.max
+
+        # parse function
+        def reset_condition() -> np.ndarray:
+            # return true whenever the distance exceed max or min value
+            return np.where(min_value <= self._distances[name] <= max_value, False, True)
+
+        return reset_condition
 
     def _parse_timesteps_reset(self, reset: TimestepsReset):
         raise "Not implemented"
