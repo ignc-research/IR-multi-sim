@@ -20,5 +20,7 @@ class Reward(ABC):
             _rewards += 1
         self.name = name
 
+        # todo: implement weight of reward (multiplier)
+
     
 
