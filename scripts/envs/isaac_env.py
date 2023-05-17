@@ -5,6 +5,9 @@ from scripts.rewards.distance import Distance, calc_distance
 from scripts.spawnables.obstacle import Obstacle, Cube, Sphere, Cylinder
 from scripts.spawnables.robot import Robot
 from scripts.rewards.reward import Reward
+from scripts.resets.reset import Reset
+from scripts.resets.distance_reset import DistanceReset
+from scripts.resets.timesteps_reset import TimestepsReset
 import numpy as np
 from stable_baselines3.common.vec_env.base_vec_env import *
 from pathlib import Path
@@ -12,7 +15,7 @@ from pathlib import Path
 # from omni.isaac.core.tasks import FollowTarget
 
 class IsaacEnv(ModularEnv):
-    def __init__(self, asset_path: str, step_size: float, headless: bool, robots: List[Robot], obstacles: List[Obstacle], rewards: List[Reward], num_envs: int, offset: Tuple[float, float]) -> None:
+    def __init__(self, asset_path: str, step_size: float, headless: bool, robots: List[Robot], obstacles: List[Obstacle], rewards: List[Reward], resets: List[Reset], num_envs: int, offset: Tuple[float, float]) -> None:
         """
         asset_path: relative path to root asset folder.
         step_size: amount of steps simulated before RL model is queried for new actions.
@@ -224,6 +227,22 @@ class IsaacEnv(ModularEnv):
                 return index + self.observable_robots_count
 
         raise f"Object {name} must be observable if used for reward"
+
+    def _setup_resets(self, resets: List[Reset]):
+        self._reset_fns = []
+        for reset in resets:
+            if isinstance(reset, DistanceReset):
+                self._reset_fns.append(self._parse_distance_reset(reset))
+            elif isinstance(reset, TimestepsReset):
+                self._reset_fns.append(self._parse_timesteps_reset(reset))
+            else:
+                raise f"Reset {type(reset)} not implemented!"
+
+    def _parse_distance_reset(self, reset: DistanceReset):
+        raise "Not implemented"
+
+    def _parse_timesteps_reset(self, reset: TimestepsReset):
+        raise "Not implemented"
 
     def step_async(self, actions: np.ndarray) -> None:
         # apply actions to robots

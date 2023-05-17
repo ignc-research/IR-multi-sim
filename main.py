@@ -2,6 +2,8 @@ from scripts.envs.isaac_env import IsaacEnv
 from scripts.spawnables.obstacle import *
 from scripts.spawnables.robot import Robot
 from scripts.rewards.distance import Distance
+from scripts.resets.distance_reset import DistanceReset
+from scripts.resets.timesteps_reset import TimestepsReset
 import numpy as np
 from stable_baselines3 import TD3
 
@@ -15,9 +17,10 @@ obstacles = [
     ]
 
 # todo: allow calculating distance between joints of robots and robots
-rewards = [Distance("TargetCube", "Sphere"), Distance(obstacles[2], obstacles[0])]
+rewards = [Distance("TargetCube", "Sphere", name="TargetDistance")]
 
 # todo: reset conditions: Elapsed Timesteps, Reward above/below value
+resets = [DistanceReset("TargetDistance", 1, 100), TimestepsReset(100)]
 
 env = IsaacEnv("./data", 1, False, robots, obstacles, rewards, 2, (10, 10))
 
