@@ -35,6 +35,7 @@ class IsaacEnv(ModularEnv):
         self.observable_robots_count = len([r for r in robots if r.observable])
         self.obstacle_count = len(obstacles)
         self.observable_obstacles_count = len([o for o in obstacles if o.observable])
+        self._timesteps: List[int] = [0 for _ in range(num_envs)]
 
         # save the distances in the current environment
         self._distances: Dict[str, List[float]] = {}
@@ -274,7 +275,14 @@ class IsaacEnv(ModularEnv):
         return reset_condition
 
     def _parse_timesteps_reset(self, reset: TimestepsReset):
-        raise "Not implemented"
+        max_value = reset.max
+
+        # parse function
+        def reset_condition() -> np.ndarray:
+            # return true whenever the current timespets exceed the max value
+            return np.where(self._timesteps > max_value, True, False)
+
+        return reset_condition
 
     def step_async(self, actions: np.ndarray) -> None:
         # apply actions to robots
@@ -293,6 +301,7 @@ class IsaacEnv(ModularEnv):
         print(self._rewards)
 
         # get dones
+        self._dones = self._get_dones()
 
         # get info
 
@@ -368,6 +377,22 @@ class IsaacEnv(ModularEnv):
             rewards += fn()
 
         return rewards
+
+    def _get_dones(self) -> List[bool]:
+        # init default array: No environment is done
+        dones = np.array([False for _ in range(self.num_envs)])
+
+        # check if any of the functions specify a reset
+        for fn in self._reset_fns:
+            dones = np.logical_or(dones, fn())
+
+        # increment elapsed timesteps if environment isn't done
+        self._timesteps = np.where(dones, 0, self._timesteps + 1)
+
+        # todo: reset environments where done == true
+        print(dones)
+
+        return dones
 
     def _on_contact_report_event(self, contact_headers, contact_data):
         """
