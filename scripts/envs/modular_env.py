@@ -11,7 +11,7 @@ class ModularEnv(VecEnv):
     def __init__(self, step_size: float, headless:bool, num_envs: int) -> None:
         self.headless = headless  # True if the simulation will not be rendered, otherwise false 
         self.step_size = step_size  # Amount of time passing each time .step() is called
-        self.env_data: Dict[int, Dict[str, Any]] = {}  # Env data saved in a dict
+        self.env_data: List[Dict[str, Any]] = [{} for _ in range(num_envs)]  # Env data saved in dicts
 
         # parse observation and action space
         num_obs = len(self.reset()[0])
