@@ -194,8 +194,8 @@ class IsaacEnv(ModularEnv):
             result = []
             for i in range(self.num_envs):
                 result.append(calc_distance(
-                    self._obs[str(i)][obj1_start:obj1_start+3],
-                    self._obs[str(i)][obj2_start:obj2_start+3]
+                    self._obs[i][obj1_start:obj1_start+3],
+                    self._obs[i][obj2_start:obj2_start+3]
                 ))
             result = np.array(result)
 
@@ -252,7 +252,6 @@ class IsaacEnv(ModularEnv):
                 # make sure that the referenced distance exists
                 assert reset.distance_name in distance_names, f"DistanceReset {reset} references distance {reset.distance}, which doesn't exists in rewards!"
                 
-
                 self._reset_fns.append(self._parse_distance_reset(reset))
             elif isinstance(reset, TimestepsReset):
                 self._reset_fns.append(self._parse_timesteps_reset(reset))
@@ -299,14 +298,14 @@ class IsaacEnv(ModularEnv):
 
         # get rewards
         self._rewards = self._get_rewards()
-        print(self._rewards)
 
         # get dones
         self._dones = self._get_dones()
 
-        # get info
+        # todo: reset environments where dones == True
 
-        raise "Not implemented"
+        # todo: get info
+        return self._obs, self._rewards, self._dones, []
 
     def reset(self) -> VecEnvObs:
         self._world.reset()
@@ -331,11 +330,11 @@ class IsaacEnv(ModularEnv):
         self._simulation.close()
 
     def _get_observations(self) -> VecEnvObs:
-        obs = {}
+        obs = []
 
         # iterate through each env
         for env_idx in range(self.num_envs):
-            env_obs = np.array([])
+            env_obs = []
 
             # get observations from all robots in environment
             robot_idx_offset = self.observable_robots_count * env_idx
@@ -350,7 +349,8 @@ class IsaacEnv(ModularEnv):
                 pos -= self._env_offsets[env_idx]
 
                 # add robot pos and rotation to list of observations
-                env_obs = np.concatenate((env_obs, pos, rot))
+                env_obs.extend(pos)
+                env_obs.extend(rot)
 
             # get observations from all obstacles in environment
             obstacle_idx_offset = self.observable_obstacles_count * env_idx
@@ -359,17 +359,17 @@ class IsaacEnv(ModularEnv):
                 obstacle = self._obstacles[obstacle_idx]
 
                 # get its pose
+                # obstacles pos is automatically adjusted according to env offset
                 pos, rot = obstacle.get_local_pose()
 
-                # calculate position relative to environment origin
-                pos -= self._env_offsets[env_idx]
-
                 # add obstacle pos and rotation to list of observations
-                env_obs = np.concatenate((env_obs, pos, rot))
+                env_obs.extend(pos)
+                env_obs.extend(rot)
 
             # add observations gathered in environment to dictionary
-            obs[str(env_idx)] = env_obs                
-        return obs
+            obs.append(env_obs)
+
+        return np.array(obs)
 
     def _get_rewards(self) -> List[float]:
         rewards = np.zeros(self.num_envs)
@@ -440,7 +440,7 @@ class IsaacEnv(ModularEnv):
 
         # move robot to desired location
         from omni.isaac.core.articulations import Articulation
-        obj = Articulation(prim_path, f"env{env_idx}-{robot.name}", self._env_offsets[env_idx] + robot.position, orientation=robot.orientation)
+        obj = Articulation(prim_path, f"env{env_idx}-{robot.name}", robot.position + self._env_offsets[env_idx], orientation=robot.orientation)
         self._scene.add(obj)
 
         # track spawned robot
