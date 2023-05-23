@@ -302,13 +302,23 @@ class IsaacEnv(ModularEnv):
         # get dones
         self._dones = self._get_dones()
 
-        # todo: reset environments where dones == True
-        print("Resets:", self._dones)
-
         return self._obs, self._rewards, self._dones, self.env_data
 
-    def reset(self) -> VecEnvObs:
-        self._world.reset()
+    def reset(self, env_idx=None) -> VecEnvObs:
+        # reset entire simulation
+        if env_idx is None:
+            # reset the world
+            self._world.reset()
+
+            # reset timestep tracking
+            self._timesteps = np.zeros(self.num_envs)
+
+        # reset envs manualls
+        else:
+            self._timesteps[env_idx] = 0
+
+            raise "Not implemented!"
+
 
         # get observations from world
         self._obs = self._get_observations()
@@ -389,6 +399,11 @@ class IsaacEnv(ModularEnv):
 
         # increment elapsed timesteps if environment isn't done
         self._timesteps = np.where(dones, 0, self._timesteps + 1)
+
+        # reset environments where dones == True
+        reset_idx = np.where(dones)
+        if len(reset_idx) > 0:
+            self.reset(reset_idx)
 
         return dones
 
