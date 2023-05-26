@@ -55,9 +55,11 @@ class IsaacEnv(ModularEnv):
         # allow tracking spawned objects
         from omni.isaac.core.articulations import Articulation
         self._robots: List[Articulation] = []
-        self._obstacles: List[Articulation] = []
         self._observable_robots: List[Articulation] = []
-        self._observable_obstacles: List[Articulation] = []
+        
+        from omni.isaac.core.prims.geometry_prim import GeometryPrim
+        self._obstacles: List[GeometryPrim] = []
+        self._observable_obstacles: List[GeometryPrim] = []
 
         # setup rl environment
         self._setup_environments(robots, obstacles, [])
@@ -280,7 +282,7 @@ class IsaacEnv(ModularEnv):
         # parse function
         def reset_condition() -> np.ndarray:
             # return true whenever the current timespets exceed the max value
-            return np.where(self._timesteps <= max_value, False, True)
+            return np.where(self._timesteps < max_value, False, True)
 
         return reset_condition
 
@@ -302,11 +304,16 @@ class IsaacEnv(ModularEnv):
         # get dones
         self._dones = self._get_dones()
 
+        print("Obs    :", self._obs)
+        print("Rewards:", self._rewards)
+        print("Dones  :", self._dones)
+        print("Timest.:", self._timesteps)
+
         return self._obs, self._rewards, self._dones, self.env_data
 
-    def reset(self, env_idx=None) -> VecEnvObs:
+    def reset(self, env_idxs: np.ndarray=None) -> VecEnvObs:
         # reset entire simulation
-        if env_idx is None:
+        if env_idxs is None:
             # reset the world
             self._world.reset()
 
@@ -315,10 +322,18 @@ class IsaacEnv(ModularEnv):
 
         # reset envs manualls
         else:
-            self._timesteps[env_idx] = 0
+            # reset timestep tracking
+            self._timesteps[env_idxs] = 0
 
-            raise "Not implemented!"
+            # select each environment
+            for i in env_idxs:
+                # reset all obstacles to default pose
+                for obstacle in self._get_obstacles(i):
+                    obstacle.post_reset()
 
+                # reset all robots to default pose
+                for robot in self._get_robots(i):
+                    robot.post_reset()
 
         # get observations from world
         self._obs = self._get_observations()
@@ -336,6 +351,16 @@ class IsaacEnv(ModularEnv):
         
         return limits
     
+    def _get_robots(self, env_idx: int):
+        start_idx = env_idx * self.robot_count
+
+        return [self._robots[i] for i in range(start_idx, start_idx + self.robot_count)]
+
+    def _get_obstacles(self, env_idx: int):
+        start_idx = env_idx * self.obstacle_count
+
+        return [self._obstacles[i] for i in range(start_idx, start_idx + self.obstacle_count)]
+
     def close(self) -> None:
         self._simulation.close()
 
@@ -401,8 +426,10 @@ class IsaacEnv(ModularEnv):
         self._timesteps = np.where(dones, 0, self._timesteps + 1)
 
         # reset environments where dones == True
-        reset_idx = np.where(dones)
-        if len(reset_idx) > 0:
+        reset_idx = np.where(dones)[0]
+
+        # reset environments if necessary
+        if reset_idx.size > 0:
             self.reset(reset_idx)
 
         return dones
@@ -509,15 +536,13 @@ class IsaacEnv(ModularEnv):
             color=cube.color
         )
         self._scene.add(cube_obj)
-    
+
         # track spawned cube
-        from omni.isaac.core.articulations import Articulation
-        tracker = Articulation(prim_path, name, cube.position + self._env_offsets[env_idx])
-        self._obstacles.append(tracker)
+        self._obstacles.append(cube_obj)
 
         # add it to list of observable objects, if necessary
         if cube.observable:
-            self._observable_obstacles.append(tracker)
+            self._observable_obstacles.append(cube_obj)
 
         # configure collision
         if cube.collision:
@@ -546,13 +571,11 @@ class IsaacEnv(ModularEnv):
         self._scene.add(sphere_obj)
     
         # track spawned sphere
-        from omni.isaac.core.articulations import Articulation
-        tracker = Articulation(prim_path, name, sphere.position + self._env_offsets[env_idx])
-        self._obstacles.append(tracker)
+        self._obstacles.append(sphere_obj)
 
         # add it to list of observable objects, if necessary
         if sphere.observable:
-            self._observable_obstacles.append(tracker)
+            self._observable_obstacles.append(sphere_obj)
 
         # configure collision
         if sphere.collision:
@@ -582,13 +605,11 @@ class IsaacEnv(ModularEnv):
         self._scene.add(cylinder_obj)
     
         # track spawned cylinder
-        from omni.isaac.core.articulations import Articulation
-        tracker = Articulation(prim_path, name, cylinder.position + self._env_offsets[env_idx])
-        self._obstacles.append(tracker)
+        self._obstacles.append(cylinder_obj)
 
         # add it to list of observable objects, if necessary
         if cylinder.observable:
-            self._observable_obstacles.append(tracker)
+            self._observable_obstacles.append(cylinder_obj)
 
         # configure collision
         if cylinder.collision:
