@@ -334,7 +334,6 @@ class IsaacEnv(ModularEnv):
                 for robot in self._get_robots(i):
                     robot.post_reset()
         
-
         return self._obs
 
     def get_robot_dof_limits(self) -> List[Tuple[float, float]]:
