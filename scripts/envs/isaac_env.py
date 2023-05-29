@@ -300,10 +300,10 @@ class IsaacEnv(ModularEnv):
         # get dones
         self._dones = self._get_dones()
 
-        print("Obs    :", self._obs)
-        print("Rewards:", self._rewards)
-        print("Dones  :", self._dones)
-        print("Timest.:", self._timesteps)
+        # print("Obs    :", self._obs)
+        # print("Rewards:", self._rewards)
+        # print("Dones  :", self._dones)
+        # print("Timest.:", self._timesteps)
 
         return self._obs, self._rewards, self._dones, self.env_data
 
@@ -316,7 +316,10 @@ class IsaacEnv(ModularEnv):
             # reset timestep tracking
             self._timesteps = np.zeros(self.num_envs)
 
-        # reset envs manualls
+            # reset observations
+            self._obs = self._get_observations()
+
+        # reset envs manually
         else:
             # reset timestep tracking
             self._timesteps[env_idxs] = 0
@@ -330,9 +333,7 @@ class IsaacEnv(ModularEnv):
                 # reset all robots to default pose
                 for robot in self._get_robots(i):
                     robot.post_reset()
-
-        # get observations from world
-        self._obs = self._get_observations()
+        
 
         return self._obs
 
@@ -390,10 +391,8 @@ class IsaacEnv(ModularEnv):
                 obstacle = self._obstacles[obstacle_idx]
 
                 # get its pose
+                # obstacles pos is automatically adjusted according to env offset
                 pos, rot = obstacle.get_local_pose()
-
-                # calculate position relative to environment origin
-                pos -= self._env_offsets[env_idx]
 
                 # add obstacle pos and rotation to list of observations
                 env_obs.extend(pos)
@@ -491,6 +490,8 @@ class IsaacEnv(ModularEnv):
         if robot.collision:
             self._add_collision_material(prim_path, self._collision_material_path)
 
+        obj.prim.GetAllChildren()[0].p
+
         # add reference to robot scene to current stage
         return prim_path
 
@@ -527,7 +528,7 @@ class IsaacEnv(ModularEnv):
         cube_obj = FixedCuboid(
             prim_path,
             name,
-            cube.position + self._env_offsets[env_idx],
+            cube.position,
             None,
             cube.orientation,
             cube.scale,
@@ -560,7 +561,7 @@ class IsaacEnv(ModularEnv):
         sphere_obj = FixedSphere(
             prim_path,
             name,
-            sphere.position + self._env_offsets[env_idx],
+            sphere.position,
             None,
             sphere.orientation,
             radius=sphere.radius,
@@ -593,7 +594,7 @@ class IsaacEnv(ModularEnv):
         cylinder_obj = FixedCylinder(
             prim_path,
             name,
-            cylinder.position + self._env_offsets[env_idx],
+            cylinder.position,
             None,
             cylinder.orientation,
             radius=cylinder.radius,

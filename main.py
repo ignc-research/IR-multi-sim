@@ -22,7 +22,7 @@ rewards = [Distance("TargetCube", "Sphere", name="TargetDistance")]
 
 resets = [DistanceReset("TargetDistance", 1, 10), TimestepsReset(100)]
 
-env = IsaacEnv("./data", 1, False, robots, obstacles, rewards, resets, 2, (10, 10))
+env = IsaacEnv("./data", 1, False, robots, obstacles, rewards, resets, 5, (10, 10))
 
 # setup model
 model = TD3("MlpPolicy", env, train_freq=1)
