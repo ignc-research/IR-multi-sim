@@ -62,8 +62,8 @@ class IsaacEnv(ModularEnv):
         self._observable_obstacles: List[GeometryPrim] = []
 
         # setup rl environment
-        self._setup_environments(robots, obstacles, [])
-        self._setup_rewards(rewards) # todo: implement
+        self._setup_environments(robots, obstacles)
+        self._setup_rewards(rewards)
         self._setup_resets(rewards, resets)
 
         # init bace class last, allowing it to automatically determine action and observation space
@@ -150,7 +150,7 @@ class IsaacEnv(ModularEnv):
         # add collision to ground plane
         self._add_collision_material(ground_prim_path, self._floor_material_path)
 
-    def _setup_environments(self, robots: List[Robot], obstacles: List[Obstacle], sensors: List) -> None:
+    def _setup_environments(self, robots: List[Robot], obstacles: List[Obstacle]) -> None:
         # spawn objects for each environment
         for env_idx in range(self.num_envs):    
             # spawn robots
@@ -168,10 +168,6 @@ class IsaacEnv(ModularEnv):
                     self._spawn_cylinder(obstacle, env_idx)
                 else:
                     raise f"Obstacle {type(obstacle)} not implemented"
-                
-            # spawn sensors
-            for i, sensor in enumerate(sensors):
-                raise "Sensors are not implemented"
         
     def _setup_rewards(self, rewards: List[Reward]) -> None:
         self._reward_fns = []
@@ -289,7 +285,7 @@ class IsaacEnv(ModularEnv):
     def step_async(self, actions: np.ndarray) -> None:
         # apply actions to robots
         for i, robot in enumerate(self._robots):
-            robot.set_joint_velocities(actions[i])
+            robot.set_joint_positions(actions[i])
 
         # step once with simulations
         self._simulation.update()
@@ -394,8 +390,10 @@ class IsaacEnv(ModularEnv):
                 obstacle = self._obstacles[obstacle_idx]
 
                 # get its pose
-                # obstacles pos is automatically adjusted according to env offset
                 pos, rot = obstacle.get_local_pose()
+
+                # calculate position relative to environment origin
+                pos -= self._env_offsets[env_idx]
 
                 # add obstacle pos and rotation to list of observations
                 env_obs.extend(pos)
@@ -529,7 +527,7 @@ class IsaacEnv(ModularEnv):
         cube_obj = FixedCuboid(
             prim_path,
             name,
-            cube.position,
+            cube.position + self._env_offsets[env_idx],
             None,
             cube.orientation,
             cube.scale,
@@ -562,7 +560,7 @@ class IsaacEnv(ModularEnv):
         sphere_obj = FixedSphere(
             prim_path,
             name,
-            sphere.position,
+            sphere.position + self._env_offsets[env_idx],
             None,
             sphere.orientation,
             radius=sphere.radius,
@@ -595,7 +593,7 @@ class IsaacEnv(ModularEnv):
         cylinder_obj = FixedCylinder(
             prim_path,
             name,
-            cylinder.position,
+            cylinder.position + self._env_offsets[env_idx],
             None,
             cylinder.orientation,
             radius=cylinder.radius,

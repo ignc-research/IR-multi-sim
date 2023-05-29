@@ -10,6 +10,7 @@ from stable_baselines3 import TD3
 # setup environment
 robots = [Robot("robots/ur5/urdf/ur5_with_gripper.urdf", np.array([0, 0, 1]))]
 
+# todo: obstacles contain range (min/max) for position and orientation values to allow randomization
 obstacles = [
     Cube(np.array([0, 0, 0.5]), name="TargetCube", color=array([0, 1, 0])),
     Sphere(np.array([2, 2, 0.5]), name="Sphere"),
