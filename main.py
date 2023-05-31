@@ -8,7 +8,7 @@ import numpy as np
 from stable_baselines3 import TD3
 
 # setup environment
-robots = [Robot("robots/ur5/urdf/ur5_with_gripper.urdf", np.array([0, 0, 1]))]
+robots = [Robot("robots/ur5/urdf/ur5_with_gripper.urdf", np.array([0, 0, 1]), observable_joints=["ee_link"])]
 
 # todo: obstacles contain range (min/max) for position and orientation values to allow randomization
 obstacles = [
@@ -22,7 +22,7 @@ rewards = [Distance("TargetCube", "Sphere", name="TargetDistance")]
 
 resets = [DistanceReset("TargetDistance", 1, 10), TimestepsReset(100)]
 
-env = IsaacEnv("./data", 1, False, robots, obstacles, rewards, resets, 5, (10, 10))
+env = IsaacEnv("./data", 1, False, robots, obstacles, rewards, resets, 2, (10, 10))
 
 # setup model
 model = TD3("MlpPolicy", env, train_freq=1)

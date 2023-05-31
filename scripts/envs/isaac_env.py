@@ -489,7 +489,13 @@ class IsaacEnv(ModularEnv):
         if robot.collision:
             self._add_collision_material(prim_path, self._collision_material_path)
 
-        obj.prim.GetAllChildren()[0].p
+        # track observable joints of robot
+        for obs_joint in robot.observable_joints:
+            if obs_joint not in self._get_robot_joint_names(obj):
+                raise f"Robot {robot.name} has no observable joint called {obs_joint}!"
+            
+            #self._observable_robots.append(Articulation(prim_path + f"/{obs_joint}", f"env{env_idx}-{robot.name}-{obs_joint}"))
+            pass
 
         # add reference to robot scene to current stage
         return prim_path
@@ -617,6 +623,9 @@ class IsaacEnv(ModularEnv):
             cylinder_obj.set_collision_enabled(False)
 
         return prim_path
+
+    def _get_robot_joint_names(self, robot_articulation) -> List[str]:
+        return [child.GetName() for child in robot_articulation.prim.GetAllChildren()]
 
     # static utillity functions
     @staticmethod
