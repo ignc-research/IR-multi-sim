@@ -8,19 +8,20 @@ import numpy as np
 from stable_baselines3 import TD3
 
 # setup environment
-robots = [Robot("robots/ur5/urdf/ur5_with_gripper.urdf", np.array([0, 0, 1]), observable_joints=["ee_link"])]
+robots = [Robot("robots/ur5/urdf/ur5_with_gripper.urdf", np.array([0, 0, 0.3]), observable_joints=["ee_link"], name="R1")]
 
 # todo: obstacles contain range (min/max) for position and orientation values to allow randomization
 obstacles = [
-    Cube(np.array([0, 0, 0.5]), name="TargetCube", color=array([0, 1, 0])),
+    Cube(np.array([0.4, 0.4, 1]), name="TargetCube", color=array([0, 1, 0]), scale=[0.1, 0.1, 0.1]),
     Sphere(np.array([2, 2, 0.5]), name="Sphere"),
     Cylinder(np.array([2, 4, 0.5]))
     ]
 
-# todo: allow calculating distance between joints of robots and robots
-rewards = [Distance("TargetCube", "Sphere", name="TargetDistance")]
+# calculate distance between red target cube and end effector of robot
+# todo: fix varying distance in environments
+rewards = [Distance("TargetCube", "R1/ee_link", name="TargetDistance")]
 
-resets = [DistanceReset("TargetDistance", 1, 10), TimestepsReset(100)]
+resets = [DistanceReset("TargetDistance", 0, 10), TimestepsReset(100)]
 
 env = IsaacEnv("./data", 1, False, robots, obstacles, rewards, resets, 2, (10, 10))
 
@@ -28,5 +29,5 @@ env = IsaacEnv("./data", 1, False, robots, obstacles, rewards, resets, 2, (10, 1
 model = TD3("MlpPolicy", env, train_freq=1)
 
 # start learning
-model.learn(1000)
+model.learn(10000)
 print("Simple example is complete!")
