@@ -285,8 +285,7 @@ class IsaacEnv(ModularEnv):
     def step_async(self, actions: np.ndarray) -> None:
         # apply actions to robots
         for i, robot in enumerate(self._robots):
-            # robot.set_joint_positions(actions[i])
-            pass
+            robot.set_joint_positions(actions[i])
 
         # step once with simulations
         self._simulation.update()
