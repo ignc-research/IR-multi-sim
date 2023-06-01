@@ -32,7 +32,7 @@ class IsaacEnv(ModularEnv):
         # setup basic information about simulation
         self.num_envs = num_envs
         self.robot_count = len(robots)
-        self.observable_robots_count = len([r for r in robots if r.observable])
+        self.observable_robots_count = len([r for r in robots if r.observable]) + sum(len(r.observable_joints) for r in robots)
         self.obstacle_count = len(obstacles)
         self.observable_obstacles_count = len([o for o in obstacles if o.observable])
         self._timesteps: List[int] = np.zeros(num_envs)
@@ -285,7 +285,8 @@ class IsaacEnv(ModularEnv):
     def step_async(self, actions: np.ndarray) -> None:
         # apply actions to robots
         for i, robot in enumerate(self._robots):
-            robot.set_joint_positions(actions[i])
+            # robot.set_joint_positions(actions[i])
+            pass
 
         # step once with simulations
         self._simulation.update()
@@ -300,7 +301,7 @@ class IsaacEnv(ModularEnv):
         # get dones
         self._dones = self._get_dones()
 
-        # print("Obs    :", self._obs)
+        print("Obs    :", self._obs)
         # print("Rewards:", self._rewards)
         # print("Dones  :", self._dones)
         # print("Timest.:", self._timesteps)
@@ -374,10 +375,8 @@ class IsaacEnv(ModularEnv):
                 robot = self._observable_robots[robot_idx]
                 
                 # get its pose
+                # obstacles pos is automatically adjusted according to env offset
                 pos, rot = robot.get_local_pose()
-
-                # calculate position relative to environment origin
-                pos -= self._env_offsets[env_idx]
 
                 # add robot pos and rotation to list of observations
                 env_obs.extend(pos)
@@ -475,7 +474,7 @@ class IsaacEnv(ModularEnv):
 
         # move robot to desired location
         from omni.isaac.core.articulations import Articulation
-        obj = Articulation(prim_path, f"env{env_idx}-{robot.name}", robot.position + self._env_offsets[env_idx], orientation=robot.orientation)
+        obj = Articulation(prim_path, f"env{env_idx}-{robot.name}")
         self._scene.add(obj)
 
         # track spawned robot
@@ -494,8 +493,7 @@ class IsaacEnv(ModularEnv):
             if obs_joint not in self._get_robot_joint_names(obj):
                 raise f"Robot {robot.name} has no observable joint called {obs_joint}!"
             
-            #self._observable_robots.append(Articulation(prim_path + f"/{obs_joint}", f"env{env_idx}-{robot.name}-{obs_joint}"))
-            pass
+            self._observable_robots.append(Articulation(prim_path + f"/{obs_joint}", f"env{env_idx}-{robot.name}-{obs_joint}"))
 
         # add reference to robot scene to current stage
         return prim_path
