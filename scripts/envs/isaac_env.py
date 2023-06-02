@@ -1,6 +1,7 @@
 import math
 from typing import List, Tuple
 from scripts.envs.modular_env import ModularEnv
+from scripts.envs.env_params import EnvParams
 from scripts.rewards.distance import Distance, calc_distance
 from scripts.spawnables.obstacle import Obstacle, Cube, Sphere, Cylinder
 from scripts.spawnables.robot import Robot
@@ -15,7 +16,7 @@ from pathlib import Path
 # from omni.isaac.core.tasks import FollowTarget
 
 class IsaacEnv(ModularEnv):
-    def __init__(self, asset_path: str, step_size: float, headless: bool, robots: List[Robot], obstacles: List[Obstacle], rewards: List[Reward], resets: List[Reset], num_envs: int, offset: Tuple[float, float]) -> None:
+    def __init__(self, params: EnvParams) -> None:
         """
         asset_path: relative path to root asset folder.
         step_size: amount of steps simulated before RL model is queried for new actions.
@@ -27,16 +28,16 @@ class IsaacEnv(ModularEnv):
         offset: Space between environments to prevent interference.
         """
         # setup asset path to allow importing robots
-        self.asset_path = Path().absolute().joinpath(asset_path)
+        self.asset_path = Path().absolute().joinpath(params.asset_path)
 
         # setup basic information about simulation
-        self.num_envs = num_envs
-        self.robot_count = len(robots)
-        self.observable_robots_count = len([r for r in robots if r.observable])
-        self.observable_robot_joint_count = sum(len(r.observable_joints) for r in robots)
-        self.obstacle_count = len(obstacles)
-        self.observable_obstacles_count = len([o for o in obstacles if o.observable])
-        self._timesteps: List[int] = np.zeros(num_envs)
+        self.num_envs = params.num_envs
+        self.robot_count = len(params.robots)
+        self.observable_robots_count = len([r for r in params.robots if r.observable])
+        self.observable_robot_joint_count = sum(len(r.observable_joints) for r in params.robots)
+        self.obstacle_count = len(params.obstacles)
+        self.observable_obstacles_count = len([o for o in params.obstacles if o.observable])
+        self._timesteps: List[int] = np.zeros(params.num_envs)
 
         # save the distances in the current environment
         self._distances: Dict[str, List[float]] = {}
@@ -44,12 +45,12 @@ class IsaacEnv(ModularEnv):
         # calculate env offsets
         break_index = math.ceil(math.sqrt(self.num_envs))
         self._env_offsets = dict(zip(
-            [i for i in range(num_envs)],
-            [np.array([(i % break_index) * offset[0], math.floor(i / break_index) * offset[1], 0]) for i in range(num_envs)]
+            [i for i in range(params.num_envs)],
+            [np.array([(i % break_index) * params.env_offset[0], math.floor(i / break_index) * params.env_offset[1], 0]) for i in range(params.num_envs)]
         ))
 
         # setup ISAAC simulation environment and interfaces
-        self._setup_simulation(headless, step_size)
+        self._setup_simulation(params.headless, params.step_size)
         self._setup_urdf_import()
         self._setup_physics()
 
@@ -65,12 +66,12 @@ class IsaacEnv(ModularEnv):
         self._observable_obstacles: List[GeometryPrim] = []
 
         # setup rl environment
-        self._setup_environments(robots, obstacles)
-        self._setup_rewards(rewards)
-        self._setup_resets(rewards, resets)
+        self._setup_environments(params.robots, params.obstacles)
+        self._setup_rewards(params.rewards)
+        self._setup_resets(params.rewards, params.resets)
 
         # init bace class last, allowing it to automatically determine action and observation space
-        super().__init__(step_size, headless, num_envs)
+        super().__init__(params.step_size, params.headless, params.num_envs)
     
     def _setup_simulation(self, headless: bool, step_size: float):
         # isaac imports may only be used after SimulationApp is started (ISAAC uses runtime plugin system)
@@ -291,6 +292,8 @@ class IsaacEnv(ModularEnv):
         return reset_condition
 
     def step_async(self, actions: np.ndarray) -> None:
+        # print("Actions:", actions)
+
         # apply actions to robots
         for i, robot in enumerate(self._robots):
             robot.set_joint_positions(actions[i])
