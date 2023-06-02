@@ -18,6 +18,18 @@ class EnvParams():
             num_envs: int=8,
             env_offset: Tuple[float, float]=(10, 10)
         ) -> None:
+        """
+        robots: Robots simulated in each environment.
+        obstacles: Obstacles simulated in each environment.
+        rewards: Environment rewards given depending on states of robots and obstacles.
+        resets: Environment resets given depending on states of robots and obstacles.
+        asset_path: Path to local files, e.g. urdf files of robots.
+        step_size: Physics step size of environment.
+        step_count: Amount of steps simulated before next control instance.
+        headless: True if the simulation will run without visualization, otherwise False.
+        num_envs: Number of environments simulated concurrently.
+        env_offset: Offset between environments if simulated in the same world.
+        """
         self.robots = robots
         self.obstacles = obstacles
         self.rewards = rewards
