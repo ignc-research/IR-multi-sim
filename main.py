@@ -21,16 +21,8 @@ params = EnvParams(
     [Distance("TargetCube", "R1/ee_link", name="TargetDistance")],
     # define reset conditions
     [DistanceReset("TargetDistance", 0, 1.5), TimestepsReset(100)],
-    # define path to urdf files
-    "./data",
-    # define step size
-    1,
-    # define headless mode
-    False,
-    # define number of environments
-    2,
-    # define spacing between environments
-    (10, 10)
+    # overwrite default headless parameter
+    headless=False
 )
 
 # create issac environment

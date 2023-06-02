@@ -11,11 +11,11 @@ class EnvParams():
             obstacles: List[Obstacle],
             rewards: List[Reward],
             resets: List[Reset],
-            asset_path: str,
-            step_size: float,
-            headless: bool,
-            num_envs: int,
-            env_offset: Tuple[float, float]
+            asset_path: str="./data",
+            step_size: float=1.0,
+            headless: bool=True,
+            num_envs: int=8,
+            env_offset: Tuple[float, float]=(10, 10)
         ) -> None:
         self.robots = robots
         self.obstacles = obstacles
