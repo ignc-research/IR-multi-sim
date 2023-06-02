@@ -33,8 +33,9 @@ class IsaacEnv(ModularEnv):
         self.num_envs = num_envs
         self.robot_count = len(robots)
         self.observable_robots_count = len([r for r in robots if r.observable])
+        self.observable_robot_joint_count = sum(len(r.observable_joints) for r in robots)
         self.obstacle_count = len(obstacles)
-        self.observable_obstacles_count = len([o for o in obstacles if o.observable]) + sum(len(r.observable_joints) for r in robots)
+        self.observable_obstacles_count = len([o for o in obstacles if o.observable])
         self._timesteps: List[int] = np.zeros(num_envs)
 
         # save the distances in the current environment
@@ -56,6 +57,7 @@ class IsaacEnv(ModularEnv):
         from omni.isaac.core.articulations import Articulation
         self._robots: List[Articulation] = []
         self._observable_robots: List[Articulation] = []
+        self._observable_robot_joints: List[Articulation] = []
         
         from omni.isaac.core.prims.geometry_prim import GeometryPrim
         self._obstacles: List[GeometryPrim] = []
@@ -184,7 +186,7 @@ class IsaacEnv(ModularEnv):
         obj1_start, _ = self._parse_observable_object_range(distance.obj1)
         obj2_start, _ = self._parse_observable_object_range(distance.obj2)
 
-        # extract name to allot created function to access it easily
+        # extract name to allow created function to access it easily
         name = distance.name
 
         # parse function calculating distance to all targets
@@ -198,7 +200,7 @@ class IsaacEnv(ModularEnv):
                 ))
             result = np.array(result)
 
-            # save distance for current interation
+            # save distance for current iteration
             self._distances[name] = result
 
             return result
@@ -234,10 +236,15 @@ class IsaacEnv(ModularEnv):
             if robot.name.endswith(name):
                 return index
         
+        # observable joints second
+        for index, joint in enumerate(self._observable_robot_joints):
+            if joint.name.endswith(name):
+                return index + self.observable_robots_count
+
         # obstacles third
         for index, obstacle in enumerate(self._observable_obstacles):
             if obstacle.name.endswith(name):
-                return index + self.observable_robots_count
+                return index + self.observable_robots_count + self.observable_robot_joint_count
 
         raise f"Object {name} must be observable if used for reward"
 
@@ -302,7 +309,7 @@ class IsaacEnv(ModularEnv):
         self._dones = self._get_dones()
 
         # print("Obs    :", self._obs)
-        print("Rewards:", self._rewards)
+        # print("Rewards:", self._rewards)
         # print("Dones  :", self._dones)
         # print("Timest.:", self._timesteps)
 
@@ -383,6 +390,19 @@ class IsaacEnv(ModularEnv):
                 env_obs.extend(pos)
                 env_obs.extend(rot)
 
+            # get observations from all observable joints in environment
+            joint_idx_offset = self.observable_robot_joint_count
+            for joint_idx in range(joint_idx_offset, self.observable_robot_joint_count + joint_idx_offset):
+                # get joint of environment
+                joint = self._observable_robot_joints[joint_idx]
+
+                # get its pose
+                pos, rot = joint.get_local_pose()
+
+                # add pos and rotation to list of observations
+                env_obs.extend(pos)
+                env_obs.extend(rot)
+
             # get observations from all obstacles in environment
             obstacle_idx_offset = self.observable_obstacles_count * env_idx
             for obstacle_idx in range(obstacle_idx_offset, self.observable_obstacles_count + obstacle_idx_offset):
@@ -390,8 +410,9 @@ class IsaacEnv(ModularEnv):
                 obstacle = self._observable_obstacles[obstacle_idx]
 
                 # get its pose
-                # obstacles pos is automatically adjusted according to env offset
                 pos, rot = obstacle.get_local_pose()
+                # apply env offset
+                pos -= self._env_offsets[env_idx]
 
                 # add obstacle pos and rotation to list of observations
                 env_obs.extend(pos)
@@ -495,7 +516,7 @@ class IsaacEnv(ModularEnv):
                 raise f"Robot {robot.name} has no observable joint called {obs_joint}!"
             
             # append to observable obstacles: No environment offset will be applied
-            self._observable_obstacles.append(Articulation(prim_path + f"/{obs_joint}", f"env{env_idx}-{robot.name}/{obs_joint}"))
+            self._observable_robot_joints.append(Articulation(prim_path + f"/{obs_joint}", f"env{env_idx}-{robot.name}/{obs_joint}"))
 
         # add reference to robot scene to current stage
         return prim_path

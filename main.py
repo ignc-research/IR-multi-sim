@@ -12,16 +12,16 @@ robots = [Robot("robots/ur5/urdf/ur5_with_gripper.urdf", np.array([0, 0, 0.3]), 
 
 # todo: obstacles contain range (min/max) for position and orientation values to allow randomization
 obstacles = [
-    Cube(np.array([0.4, 0.4, 1]), name="TargetCube", color=array([0, 1, 0]), scale=[0.1, 0.1, 0.1]),
+    Cube(np.array([0.4, 0.4, 1]), name="TargetCube", color=array([0, 1, 0]), scale=[0.1, 0.1, 0.1], collision=False),
     Sphere(np.array([2, 2, 0.5]), name="Sphere"),
     Cylinder(np.array([2, 4, 0.5]))
     ]
 
 # calculate distance between red target cube and end effector of robot
-# todo: fix varying distance in environments
 rewards = [Distance("TargetCube", "R1/ee_link", name="TargetDistance")]
 
-resets = [DistanceReset("TargetDistance", 0, 10), TimestepsReset(100)]
+# reset env once end effector is too far away from target cube, or after 100 timesteps
+resets = [DistanceReset("TargetDistance", 0, 1.5), TimestepsReset(100)]
 
 env = IsaacEnv("./data", 1, False, robots, obstacles, rewards, resets, 2, (10, 10))
 
