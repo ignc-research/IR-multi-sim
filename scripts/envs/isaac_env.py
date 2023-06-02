@@ -38,6 +38,7 @@ class IsaacEnv(ModularEnv):
         self.obstacle_count = len(params.obstacles)
         self.observable_obstacles_count = len([o for o in params.obstacles if o.observable])
         self._timesteps: List[int] = np.zeros(params.num_envs)
+        self.step_count = params.step_count
 
         # save the distances in the current environment
         self._distances: Dict[str, List[float]] = {}
@@ -298,8 +299,9 @@ class IsaacEnv(ModularEnv):
         for i, robot in enumerate(self._robots):
             robot.set_joint_positions(actions[i])
 
-        # step once with simulations
-        self._simulation.update()
+        # step simulation amount of times according to params
+        for _ in range(self.step_count):
+            self._simulation.update()
     
     def step_wait(self) -> VecEnvStepReturn:
         # get observations

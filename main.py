@@ -22,7 +22,9 @@ params = EnvParams(
     # define reset conditions
     [DistanceReset("TargetDistance", 0, 1.5), TimestepsReset(100)],
     # overwrite default headless parameter
-    headless=False
+    headless=False,
+    # overwrite default step count parameter
+    step_count=10
 )
 
 # create issac environment
