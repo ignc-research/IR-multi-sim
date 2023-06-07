@@ -394,6 +394,7 @@ class IsaacEnv(ModularEnv):
                 # add robot pos and rotation to list of observations
                 env_obs.extend(pos)
                 env_obs.extend(rot)
+                env_obs.extend(robot.get_local_scale())
 
             # get observations from all observable joints in environment
             joint_idx_offset = self.observable_robot_joint_count
@@ -422,6 +423,7 @@ class IsaacEnv(ModularEnv):
                 # add obstacle pos and rotation to list of observations
                 env_obs.extend(pos)
                 env_obs.extend(rot)
+                env_obs.extend(obstacle.get_local_scale())
 
             # add observations gathered in environment to dictionary
             obs.append(env_obs)
