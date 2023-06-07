@@ -1,5 +1,5 @@
-from scripts.envs.isaac_env import IsaacEnv
 from scripts.envs.env_params import EnvParams
+from scripts.envs import create_env
 from scripts.spawnables.obstacle import *
 from scripts.spawnables.robot import Robot
 from scripts.rewards.distance import Distance
@@ -28,7 +28,7 @@ params = EnvParams(
 )
 
 # create issac environment
-env = IsaacEnv(params)
+env = create_env("Isaac", params)
 
 # setup model
 model = TD3("MlpPolicy", env, train_freq=1)
