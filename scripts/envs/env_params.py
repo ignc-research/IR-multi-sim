@@ -3,10 +3,12 @@ from scripts.spawnables.robot import Robot
 from scripts.spawnables.obstacle import Obstacle
 from scripts.rewards.reward import Reward
 from scripts.resets.reset import Reset
+from typing import Union
 
 class EnvParams():
     def __init__(
             self,
+            engine: str,
             robots: List[Robot],
             obstacles: List[Obstacle],
             rewards: List[Reward],
@@ -19,6 +21,7 @@ class EnvParams():
             env_offset: Tuple[float, float]=(10, 10)
         ) -> None:
         """
+        engine: Type of engine used to simulate environment.
         robots: Robots simulated in each environment.
         obstacles: Obstacles simulated in each environment.
         rewards: Environment rewards given depending on states of robots and obstacles.
@@ -30,6 +33,10 @@ class EnvParams():
         num_envs: Number of environments simulated concurrently.
         env_offset: Offset between environments if simulated in the same world.
         """
+
+        # make sure engine is known
+        self.engine = engine
+
         self.robots = robots
         self.obstacles = obstacles
         self.rewards = rewards

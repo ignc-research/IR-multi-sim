@@ -10,6 +10,8 @@ from stable_baselines3 import TD3
 
 # create parameters for environment
 params = EnvParams(
+    # Type of environment
+    "Isaac",
     # define robots
     [Robot("robots/ur5/urdf/ur5_with_gripper.urdf", np.array([0, 0, 0.3]), observable_joints=["ee_link"], name="R1")],
     # define obstacles
@@ -28,7 +30,7 @@ params = EnvParams(
 )
 
 # create issac environment
-env = create_env("Isaac", params)
+env = create_env(params)
 
 # setup model
 model = TD3("MlpPolicy", env, train_freq=1)

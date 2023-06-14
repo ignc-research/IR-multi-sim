@@ -11,7 +11,9 @@ except ModuleNotFoundError as e:
 
 from scripts.envs.pybullet_env import PybulletEnv
 
-def create_env(name: str, params: EnvParams) -> ModularEnv:
+def create_env(params: EnvParams) -> ModularEnv:
+    name = params.engine
+
     # dictionary of existing environments
     envs = {
         "Isaac": IsaacEnv,
