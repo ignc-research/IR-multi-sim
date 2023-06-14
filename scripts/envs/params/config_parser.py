@@ -11,9 +11,6 @@ from scripts.resets.timesteps_reset import TimestepsReset
 
 
 def parse_config(path: str) -> EnvParams:
-    # init dict to save parameters in
-    params = {}
-
     # load yaml config file from path
     with open(path, 'r') as file:
         # parse yaml file

@@ -27,11 +27,13 @@ rewards:
     obj2: "R1/ee_link"
     type: "Distance"
 resets:
+  # Name of reset conditions is irrelevant
   one:
     distance: "TargetDistance"
     min: 0
     max: 1.5
     type: "DistanceReset"
+  # Name of reset conditions is irrelevant
   two:
     max: 100
     type: "TimestepsReset"
