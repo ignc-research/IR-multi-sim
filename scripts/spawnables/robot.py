@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Union
 from numpy import ndarray, array
 from scripts.spawnables.spawnable import Spawnable
 
@@ -7,9 +7,9 @@ class Robot(Spawnable):
     def __init__(
         self,
         urdf_path:str,
-        position: ndarray = array([0, 0, 0]), 
-        orientation: ndarray = array([1, 0, 0, 0]), 
-        color: List[float] = [1., 1., 1., 1.],
+        position: Union[ndarray, List] = array([0, 0, 0]), 
+        orientation: Union[ndarray, List] = array([1, 0, 0, 0]), 
+        color: Union[ndarray, List] = [1., 1., 1., 1.],
         collision: bool = True,
         observable: bool = True,
         observable_joints: List[str]=[],
@@ -25,6 +25,12 @@ class Robot(Spawnable):
         name: Name of the robot. Defaults to None.
         """
         super().__init__(position, color, collision, observable, name)
+
+        # parse orientation
+        if isinstance(orientation, List):
+            self.orientation = array(orientation)
+        else:
+            self.orientation = orientation
+
         self.urdf_path = urdf_path
-        self.orientation = orientation
         self.observable_joints = observable_joints

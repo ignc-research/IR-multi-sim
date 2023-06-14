@@ -68,7 +68,7 @@ def _parse_reward(params: dict) -> Reward:
 
     # make sure parsing of obstacle type is implemented
     if type not in selector:
-        raise Exception(f"Obstacle parsing of {type} is not implemented")
+        raise Exception(f"Reward parsing of {type} is not implemented")
     
     # remove type parameter from dict to allow passing params directly to constructor
     params.pop("type")
