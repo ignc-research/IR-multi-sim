@@ -28,3 +28,7 @@ class Robot(Spawnable):
         self.urdf_path = urdf_path
         self.orientation = orientation
         self.observable_joints = observable_joints
+
+
+def parse_robot(params: dict) -> Robot:
+    return Robot(**params)

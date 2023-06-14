@@ -1,5 +1,5 @@
 from scripts.envs.modular_env import ModularEnv
-from scripts.envs.env_params import EnvParams
+from scripts.envs.params.env_params import EnvParams
 
 # Isaac requires specialised python runtime. Only raise import exception if Isaac env is attempted to be used
 try:

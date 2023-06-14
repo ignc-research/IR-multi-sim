@@ -3,7 +3,6 @@ from scripts.spawnables.robot import Robot
 from scripts.spawnables.obstacle import Obstacle
 from scripts.rewards.reward import Reward
 from scripts.resets.reset import Reset
-from typing import Union
 
 class EnvParams():
     def __init__(
