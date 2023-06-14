@@ -11,21 +11,24 @@ from scripts.resets.timesteps_reset import TimestepsReset
 
 
 def parse_config(path: str) -> EnvParams:
-    # load yaml config from path
+    # init dict to save parameters in
+    params = {}
+
+    # load yaml config file from path
     with open(path, 'r') as file:
+        # parse yaml file
         content = yaml.load(file, yaml.SafeLoader)
 
         # parse required parameters
-        engine = content["engine"]
-        robots = [_parse_robot(params) for params in _parse_params(content["robots"])]
-        obstacles = [_parse_obstacle(params) for params in _parse_params(content["obstacles"])]
-        rewards = [_parse_reward(params) for params in _parse_params(content["rewards"])]
-        
+        content["robots"] = [_parse_robot(params) for params in _parse_params(content["robots"])]
+        content["obstacles"] = [_parse_obstacle(params) for params in _parse_params(content["obstacles"])]
+        content["rewards"] = [_parse_reward(params) for params in _parse_params(content["rewards"])]
+
         # parsing name is not required since reset conditions have no name
-        resets = [_parse_reset(params) for params in content["resets"].values()]
+        content["resets"] = [_parse_reset(params) for params in content["resets"].values()]
 
         # parse optional parameters
-        return EnvParams(engine, robots, obstacles, rewards, resets)
+        return EnvParams(**content)
 
 def _parse_params(config: dict) -> List[dict]:
     """
