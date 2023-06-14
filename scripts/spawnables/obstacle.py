@@ -49,24 +49,3 @@ class Cylinder(Obstacle):
         super().__init__(position, color, collision, observable, name)
         self.radius = radius
         self.height = height
-
-
-def parse_obstacle(params: dict) -> Obstacle:
-    selector = {
-        "Cube" : Cube,
-        "Sphere" : Sphere,
-        "Cylinder" : Cylinder
-    }
-
-    # extract required type
-    type = params["type"]
-
-    # make sure parsing of obstacle type is implemented
-    if type not in selector:
-        raise Exception(f"Obstacle parsing of {type} is not implemented")
-    
-    # remove type parameter from dict to allow passing params directly to constructor
-    params.pop("type")
-
-    # return instance of parsed obstacle
-    return selector[type](**params)

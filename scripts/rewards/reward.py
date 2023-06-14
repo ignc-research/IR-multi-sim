@@ -1,4 +1,4 @@
-from abc import ABC, abstractmethod
+from abc import ABC
 
 _rewards = 0
 
@@ -21,6 +21,3 @@ class Reward(ABC):
         self.name = name
 
         # todo: implement weight of reward (multiplier)
-
-    
-
