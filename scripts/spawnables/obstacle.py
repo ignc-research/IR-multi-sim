@@ -19,7 +19,13 @@ class Cube(Obstacle):
         name: str=None
     )-> None:
         super().__init__(position, color, collision, observable, name)
-        self.orientation = orientation
+
+        # parse orientation
+        if isinstance(orientation, List):
+            self.orientation = array(orientation)
+        else:
+            self.orientation = orientation
+            
         self.scale = scale
 
 class Sphere(Obstacle):
