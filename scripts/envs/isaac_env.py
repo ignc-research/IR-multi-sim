@@ -81,7 +81,7 @@ class IsaacEnv(ModularEnv):
 
         # make sure simulation was started
         assert self._simulation is not None, "Isaac Sim failed to start!"
-        assert self._simulation.is_running, "Isaac Sim failed to start!"
+        assert self._simulation.is_running(), "Isaac Sim failed to start!"
 
         # terminate simulation once program exits
         import atexit

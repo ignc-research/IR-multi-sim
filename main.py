@@ -13,7 +13,7 @@ def _config_specified(path: str):
     model = TD3("MlpPolicy", env, train_freq=1)
 
     # start learning
-    model.learn(1000)
+    model.learn(10)
     print("Simple example is complete!")
 
 
@@ -27,7 +27,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     # path to config file was specified
-    if "file" in args:        
+    if args.file is not None:        
         _config_specified(args.file)
         exit(0)
     
