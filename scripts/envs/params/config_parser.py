@@ -3,7 +3,7 @@ from scripts.envs.params.env_params import EnvParams
 import yaml
 from scripts.spawnables.robot import Robot
 from scripts.spawnables.obstacle import *
-from scripts.spawnables.dynamic_obstacle import *
+from scripts.spawnables.random_obstacle import *
 from scripts.rewards.reward import Reward
 from scripts.rewards.distance import Distance
 from scripts.resets.reset import Reset
@@ -49,9 +49,9 @@ def _parse_obstacle(params: dict) -> Obstacle:
         "Cube" : Cube,
         "Sphere" : Sphere,
         "Cylinder" : Cylinder,
-        "DynamicCube": DynamicCube,
-        "DynamicSphere": DynamicSphere,
-        "DynamicCylinder": DynamicCylinder,
+        "RandomCube": RandomCube,
+        "RandomSphere": RandomSphere,
+        "RandomCylinder": RandomCylinder,
     }
 
     # extract required type

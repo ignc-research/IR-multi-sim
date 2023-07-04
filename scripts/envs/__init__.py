@@ -3,7 +3,7 @@ from scripts.envs.params.env_params import EnvParams
 
 # Isaac requires specialised python runtime. Only raise import exception if Isaac env is attempted to be used
 try:
-    from scripts.envs.isaac_env import IsaacEnv
+    from scripts.envs.isaac.isaac_env import IsaacEnv
 except ModuleNotFoundError as e:
     class IssacEnv():
         def __init__(self, params: EnvParams) -> None:

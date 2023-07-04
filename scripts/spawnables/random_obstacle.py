@@ -1,8 +1,8 @@
-from typing import List, Tuple
+from typing import Tuple
 from numpy import ndarray, array
 from scripts.spawnables.obstacle import Obstacle
 
-class DynamicCube(Obstacle):
+class RandomCube(Obstacle):
     def __init__(
         self,
         position: Tuple[ndarray, ndarray] = (array([0, 0, 0]), array([1, 1, 1])),
@@ -27,15 +27,10 @@ class DynamicCube(Obstacle):
 
         super().__init__(position, color, collision, observable, name)
 
-        # parse orientation
-        if isinstance(orientation, List):
-            self.orientation = array(orientation)
-        else:
-            self.orientation = orientation
-            
+        self.orientation = orientation        
         self.scale = scale
 
-class DynamicSphere(Obstacle):
+class RandomSphere(Obstacle):
     def __init__(
         self,
         position: Tuple[ndarray, ndarray] = (array([0, 0, 0]), array([1, 1, 1])),
@@ -59,7 +54,7 @@ class DynamicSphere(Obstacle):
         super().__init__(position, color, collision, observable, name)
         self.radius = radius
 
-class DynamicCylinder(Obstacle):
+class RandomCylinder(Obstacle):
     def __init__(
         self,
         position: Tuple[ndarray, ndarray] = (array([0, 0, 0]), array([1, 1, 1])),

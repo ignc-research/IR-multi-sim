@@ -4,6 +4,7 @@ from scripts.envs.modular_env import ModularEnv
 from scripts.envs.params.env_params import EnvParams
 from scripts.rewards.distance import Distance, calc_distance
 from scripts.spawnables.obstacle import Obstacle, Cube, Sphere, Cylinder
+from scripts.spawnables.random_obstacle import RandomCube, RandomSphere, RandomCylinder
 from scripts.spawnables.robot import Robot
 from scripts.rewards.reward import Reward
 from scripts.resets.reset import Reset
@@ -62,7 +63,7 @@ class IsaacEnv(ModularEnv):
         self._observable_robot_joints: List[Articulation] = []
         
         from omni.isaac.core.prims.geometry_prim import GeometryPrim
-        self._obstacles: List[GeometryPrim] = []
+        self._obstacles: List[Tuple[GeometryPrim, Obstacle]] = []
         # contains list of observable obstacles and observable robot joints
         self._observable_obstacles: List[GeometryPrim] = []
 
@@ -340,8 +341,8 @@ class IsaacEnv(ModularEnv):
             # select each environment
             for i in env_idxs:
                 # reset all obstacles to default pose
-                for obstacle in self._get_obstacles(i):
-                    obstacle.post_reset()
+                for geometryPrim, obstacle in self._get_obstacles(i):
+                    geometryPrim.post_reset()
 
                 # reset all robots to default pose
                 for robot in self._get_robots(i):
@@ -570,7 +571,7 @@ class IsaacEnv(ModularEnv):
         self._scene.add(cube_obj)
 
         # track spawned cube
-        self._obstacles.append(cube_obj)
+        self._obstacles.append((cube_obj, cube))
 
         # add it to list of observable objects, if necessary
         if cube.observable:
@@ -603,7 +604,7 @@ class IsaacEnv(ModularEnv):
         self._scene.add(sphere_obj)
     
         # track spawned sphere
-        self._obstacles.append(sphere_obj)
+        self._obstacles.append((sphere_obj, sphere))
 
         # add it to list of observable objects, if necessary
         if sphere.observable:
@@ -637,7 +638,7 @@ class IsaacEnv(ModularEnv):
         self._scene.add(cylinder_obj)
     
         # track spawned cylinder
-        self._obstacles.append(cylinder_obj)
+        self._obstacles.append((cylinder_obj, cylinder))
 
         # add it to list of observable objects, if necessary
         if cylinder.observable:
