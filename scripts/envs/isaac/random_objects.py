@@ -50,8 +50,8 @@ class RandomCuboid(FixedCuboid):
         # generate random numbers to allow setting random properties efficiently
         rand_floats = np.random.random_sample(3)
 
-        # set random position and orientation
+        # set random position and orientation  # todo: this exceeds max value
         self.set_world_pose(pos + self.max_pos * rand_floats[0], ori + self.max_orientation[1] * rand_floats[1])
         
-        # set random scale
+        # set random scale   # todo: this exceeds max value
         self.set_local_scale(self.scale[0] + self.scale[1] * rand_floats[2])
