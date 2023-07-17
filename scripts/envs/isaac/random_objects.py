@@ -4,6 +4,21 @@ from omni.isaac.core.materials import PhysicsMaterial
 from omni.isaac.core.materials.visual_material import VisualMaterial
 from omni.isaac.core.objects import FixedCuboid
 
+def _get_value_in_range(min: float, max: float, range: float) -> float:
+    """Returns a value between min and max.
+        Example: Min=0, Max=10, range:0.5 -> 5
+
+    Args:
+        min (float): Min value
+        max (float): Max value
+        range (float): [0, 1]
+
+    Returns:
+        float: _description_
+    """
+
+    return min + (max - min) * range
+
 class RandomCuboid(FixedCuboid):
     def __init__(
         self,
@@ -50,8 +65,8 @@ class RandomCuboid(FixedCuboid):
         # generate random numbers to allow setting random properties efficiently
         rand_floats = np.random.random_sample(3)
 
-        # set random position and orientation  # todo: this exceeds max value
-        self.set_world_pose(pos + self.max_pos * rand_floats[0], ori + self.max_orientation[1] * rand_floats[1])
+        # set random position and orientation
+        self.set_world_pose(_get_value_in_range(pos, self.max_pos, rand_floats[0]), _get_value_in_range(ori, self.max_orientation, rand_floats[1]))
         
-        # set random scale   # todo: this exceeds max value
-        self.set_local_scale(self.scale[0] + self.scale[1] * rand_floats[2])
+        # set random scale
+        self.set_local_scale(_get_value_in_range(self.scale[0], self.scale[1], rand_floats[2]))
