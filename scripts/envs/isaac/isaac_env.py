@@ -3,6 +3,7 @@ from typing import List, Tuple
 from scripts.envs.modular_env import ModularEnv
 from scripts.envs.params.env_params import EnvParams
 from scripts.rewards.distance import Distance, calc_distance
+from scripts.rewards.timesteps import ElapsedTimesteps
 from scripts.spawnables.obstacle import Obstacle, Cube, Sphere, Cylinder
 from scripts.spawnables.random_obstacle import RandomCube, RandomSphere, RandomCylinder
 from scripts.spawnables.robot import Robot
@@ -186,6 +187,8 @@ class IsaacEnv(ModularEnv):
         for reward in rewards:
             if isinstance(reward, Distance):
                 self._reward_fns.append(self._parse_distance_reward(reward))
+            if isinstance(reward, ElapsedTimesteps):
+                self._reset_fns.append(self.)
             else:
                 raise f"Reward {type(reward)} not implemented!"
         
@@ -222,6 +225,21 @@ class IsaacEnv(ModularEnv):
         else:
             return distance_per_env
     
+    def _parse_timestep_reward(self, elapsed: ElapsedTimesteps):
+        # reward elapsed timesteps
+        def timestep_reward():
+            return self._timesteps
+
+        # punish elapsed timesteps
+        def timestep_penalty():
+            return self._timesteps * [-1 for _ in range(self.num_envs)]
+        
+        # return rewarding or punishing function, as specified in ElapsedTimesteps
+        if elapsed.minimize:
+            return timestep_penalty
+        
+        return timestep_reward
+
     def _parse_observable_object_range(self, name: str) -> Tuple[int, int]:
         """
         Given the name of an observable object, tries to retrieve its beginning and end position index in the observation buffer
