@@ -338,9 +338,10 @@ class IsaacEnv(ModularEnv):
         self._dones = self._get_dones()
 
         # print("Obs    :", self._obs)
+        print("Dist.  :", self._distances["TargetDistance"])
         # print("Rewards:", self._rewards)
         # print("Dones  :", self._dones)
-        # print("Timest.:", self._timesteps)
+        print("Timest.:", self._timesteps)
 
         return self._obs, self._rewards, self._dones, self.env_data
 
@@ -409,7 +410,7 @@ class IsaacEnv(ModularEnv):
             for robot_idx in range(robot_idx_offset, self.observable_robots_count + robot_idx_offset):
                 # get robot of environment
                 robot = self._observable_robots[robot_idx]
-                
+
                 # get its pose
                 pos, rot = robot.get_local_pose()
                 # apply env offset
@@ -421,7 +422,7 @@ class IsaacEnv(ModularEnv):
                 env_obs.extend(robot.get_local_scale())
 
             # get observations from all observable joints in environment
-            joint_idx_offset = self.observable_robot_joint_count
+            joint_idx_offset = self.observable_robot_joint_count * env_idx
             for joint_idx in range(joint_idx_offset, self.observable_robot_joint_count + joint_idx_offset):
                 # get joint of environment
                 joint = self._observable_robot_joints[joint_idx]

@@ -21,13 +21,15 @@ params = EnvParams(
         RandomCube((np.array([-2, -2, 0]), np.array([2, 2, 1.5])), scale=(np.array([0.01, 0.01, 0.01]), np.array([0.1, 0.1, 0.1])), name="TargetCube")
     ],
     # define rewards
-    [Distance("TargetCube", "R1/ee_link", name="TargetDistance"), ElapsedTimesteps(True)],
-    # define reset conditions
-    [TimestepsReset(25), DistanceReset("TargetDistance", 0, 1.5)],
+    [Distance("TargetCube", "R1/ee_link", name="TargetDistance")],
+    # reset every timestep to make sure ML model doesn't learn to randomly sweep vicinity
+    [TimestepsReset(1)],
     # overwrite default headless parameter
     headless=False,
     # overwrite default step count parameter
-    step_count=10
+    step_count=10,
+    # overwrite default nubmer of enviroments for testing
+    num_envs=4
 )
 
 # create issac environment
@@ -37,5 +39,5 @@ env = create_env(params)
 model = TD3("MlpPolicy", env, train_freq=1)
 
 # start learning
-model.learn(10000)
+model.learn(5000)
 print("Simple example is complete!")
