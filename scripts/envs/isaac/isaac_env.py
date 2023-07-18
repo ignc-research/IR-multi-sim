@@ -187,10 +187,10 @@ class IsaacEnv(ModularEnv):
         for reward in rewards:
             if isinstance(reward, Distance):
                 self._reward_fns.append(self._parse_distance_reward(reward))
-            if isinstance(reward, ElapsedTimesteps):
-                self._reset_fns.append(self.)
+            elif isinstance(reward, ElapsedTimesteps):
+                self._reward_fns.append(self._parse_timestep_reward(reward))
             else:
-                raise f"Reward {type(reward)} not implemented!"
+                raise Exception(f"Reward {type(reward)} not implemented!")
         
     def _parse_distance_reward(self, distance: Distance):
         # parse indices in observations
