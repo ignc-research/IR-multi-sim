@@ -341,7 +341,7 @@ class IsaacEnv(ModularEnv):
         print("Dist.  :", self._distances["TargetDistance"])
         # print("Rewards:", self._rewards)
         # print("Dones  :", self._dones)
-        print("Timest.:", self._timesteps)
+        # print("Timest.:", self._timesteps)
 
         return self._obs, self._rewards, self._dones, self.env_data
 
