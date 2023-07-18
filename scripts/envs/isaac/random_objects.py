@@ -52,7 +52,20 @@ class RandomCuboid(FixedCuboid):
         
 
         # init base class with default lowest values
-        FixedCuboid.__init__(prim_path, name, position[0], translation[0], orientation[0], scale[0], visible, color, size, visual_material, physics_material)
+        FixedCuboid.__init__(
+            self,
+            prim_path=prim_path,
+            name=name,
+            position=position[0],
+            translation=translation,
+            orientation=orientation[0],
+            scale=scale[0],
+            visible=visible,
+            color=color,
+            size=size,
+            visual_material=visual_material,
+            physics_material=physics_material
+        )
         
         # save max random values
         self.max_pos = position[1]
@@ -60,13 +73,19 @@ class RandomCuboid(FixedCuboid):
         self.scale = scale
 
     def post_reset(self) -> None:
-        pos, ori = self.get_default_state()
+        # get current position and orientation as XFormPrimState
+        state = self.get_default_state()
 
         # generate random numbers to allow setting random properties efficiently
         rand_floats = np.random.random_sample(3)
 
+        # generate new random position, orientation and scale
+        pos = _get_value_in_range(state.position, self.max_pos, rand_floats[0])
+        ori = _get_value_in_range(state.orientation, self.max_orientation, rand_floats[1])
+        scale = _get_value_in_range(self.scale[0], self.scale[1], rand_floats[2])
+
         # set random position and orientation
-        self.set_world_pose(_get_value_in_range(pos, self.max_pos, rand_floats[0]), _get_value_in_range(ori, self.max_orientation, rand_floats[1]))
+        self.set_world_pose(pos, ori)
         
         # set random scale
-        self.set_local_scale(_get_value_in_range(self.scale[0], self.scale[1], rand_floats[2]))
+        self.set_local_scale(scale)

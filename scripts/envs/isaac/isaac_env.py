@@ -14,7 +14,10 @@ import numpy as np
 from stable_baselines3.common.vec_env.base_vec_env import *
 from pathlib import Path
 
-# from omni.isaac.core.tasks import FollowTarget
+
+def _add_offset_to_tuple(tuple: Tuple[float, float], offset: float) -> Tuple[float, float]:
+    return (tuple[0] + offset, tuple[1] + offset)
+
 
 class IsaacEnv(ModularEnv):
     def __init__(self, params: EnvParams) -> None:
@@ -168,6 +171,8 @@ class IsaacEnv(ModularEnv):
             for obstacle in obstacles:
                 if isinstance(obstacle, Cube):
                     self._spawn_cube(obstacle, env_idx)
+                elif isinstance(obstacle, RandomCube):
+                    self._spawn_random_cube(obstacle, env_idx)
                 elif isinstance(obstacle, Sphere):
                     self._spawn_sphere(obstacle, env_idx)
                 elif isinstance(obstacle, Cylinder):
@@ -566,6 +571,38 @@ class IsaacEnv(ModularEnv):
             None,
             cube.orientation,
             cube.scale,
+            color=cube.color
+        )
+        self._scene.add(cube_obj)
+
+        # track spawned cube
+        self._obstacles.append((cube_obj, cube))
+
+        # add it to list of observable objects, if necessary
+        if cube.observable:
+            self._observable_obstacles.append(cube_obj)
+
+        # configure collision
+        if cube.collision:
+            # add collision material, allowing callbacks to register collisions in simulation
+            self._add_collision_material(prim_path, self._collision_material_path)
+        else:
+            cube_obj.set_collision_enabled(False)
+
+        return prim_path
+
+    def _spawn_random_cube(self, cube: RandomCube, env_idx: int) -> str:
+        prim_path = f"/World/env{env_idx}/{cube.name}"
+        name = f"env{env_idx}-{cube.name}"
+
+        # create cube
+        from scripts.envs.isaac.random_objects import RandomCuboid
+        cube_obj = RandomCuboid(
+            prim_path,
+            _add_offset_to_tuple(cube.position, self._env_offsets[env_idx]),
+            cube.orientation,
+            cube.scale,
+            name,
             color=cube.color
         )
         self._scene.add(cube_obj)
