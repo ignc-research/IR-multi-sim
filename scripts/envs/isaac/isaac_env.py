@@ -322,6 +322,7 @@ class IsaacEnv(ModularEnv):
         # apply actions to robots
         for i, robot in enumerate(self._robots):
             robot.set_joint_positions(actions[i])
+            robot.set_joint
 
         # step simulation amount of times according to params
         for _ in range(self.step_count):

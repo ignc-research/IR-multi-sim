@@ -18,6 +18,7 @@ params = EnvParams(
     [Robot("robots/ur5/urdf/ur5_with_gripper.urdf", np.array([0, 0, 0.3]), observable_joints=["ee_link"], name="R1")],
     # define obstacles
     [
+        #todo: implement other random obstacles, implement pick&place
         RandomCube((np.array([-2, -2, 0]), np.array([2, 2, 1.5])), scale=(np.array([0.01, 0.01, 0.01]), np.array([0.1, 0.1, 0.1])), name="TargetCube")
     ],
     # define rewards
