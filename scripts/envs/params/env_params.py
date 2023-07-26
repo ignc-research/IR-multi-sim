@@ -3,6 +3,7 @@ from scripts.spawnables.robot import Robot
 from scripts.spawnables.obstacle import Obstacle
 from scripts.rewards.reward import Reward
 from scripts.resets.reset import Reset
+from scripts.envs.params.control_type import ControlType
 
 class EnvParams():
     def __init__(
@@ -17,7 +18,9 @@ class EnvParams():
             step_count: int=1,
             headless: bool=True,
             num_envs: int=8,
-            env_offset: Tuple[float, float]=(10, 10)
+            env_offset: Tuple[float, float]=(10, 10),
+            control_type: ControlType=ControlType.POSITION,
+            max_velocity: int = 1
         ) -> None:
         """
         engine: Type of engine used to simulate environment.
@@ -31,6 +34,7 @@ class EnvParams():
         headless: True if the simulation will run without visualization, otherwise False.
         num_envs: Number of environments simulated concurrently.
         env_offset: Offset between environments if simulated in the same world.
+        control_type: Type of robot control by ML algorithm
         """
 
         # make sure engine is known
@@ -46,3 +50,5 @@ class EnvParams():
         self.headless = headless
         self.num_envs = num_envs
         self.env_offset = env_offset
+        self.control_type = control_type
+        self.max_velocity = max_velocity

@@ -11,6 +11,7 @@ from scripts.rewards.reward import Reward
 from scripts.resets.reset import Reset
 from scripts.resets.distance_reset import DistanceReset
 from scripts.resets.timesteps_reset import TimestepsReset
+from scripts.envs.params.control_type import ControlType
 import numpy as np
 from stable_baselines3.common.vec_env.base_vec_env import *
 from pathlib import Path
@@ -44,6 +45,7 @@ class IsaacEnv(ModularEnv):
         self.observable_obstacles_count = len([o for o in params.obstacles if o.observable])
         self._timesteps: List[int] = np.zeros(params.num_envs)
         self.step_count = params.step_count
+        self.control_type = params.control_type
 
         # save the distances in the current environment
         self._distances: Dict[str, List[float]] = {}
@@ -77,7 +79,7 @@ class IsaacEnv(ModularEnv):
         self._setup_resets(params.rewards, params.resets)
 
         # init bace class last, allowing it to automatically determine action and observation space
-        super().__init__(params.step_size, params.headless, params.num_envs)
+        super().__init__(params)
     
     def _setup_simulation(self, headless: bool, step_size: float):
         # isaac imports may only be used after SimulationApp is started (ISAAC uses runtime plugin system)
@@ -319,10 +321,16 @@ class IsaacEnv(ModularEnv):
     def step_async(self, actions: np.ndarray) -> None:
         # print("Actions:", actions)
 
-        # apply actions to robots
-        for i, robot in enumerate(self._robots):
-            robot.set_joint_positions(actions[i])
-            robot.set_joint
+        if self.control_type == ControlType.VELOCITY:
+            # set joint velocities
+            for i, robot in enumerate(self._robots):
+                robot.set_joint_velocities(actions[i])
+        elif self.control_type == ControlType.POSITION:
+            # set joint positions
+            for i, robot in enumerate(self._robots):
+                robot.set_joint_positions(actions[i])
+        else:
+            raise Exception(f"Control type {self.control_type} not implemented!")
 
         # step simulation amount of times according to params
         for _ in range(self.step_count):
