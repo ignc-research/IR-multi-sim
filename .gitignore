@@ -10,3 +10,6 @@ _*/
 /.vs
 
 /app
+
+.venv
+.vscode
