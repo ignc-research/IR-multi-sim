@@ -9,7 +9,7 @@ Follow the instructions found [here](https://docs.omniverse.nvidia.com/app_isaac
 Run any python files with Isaacs own python interpreter, usually located at "~/.local/share/ov/package/isaac_sim-*/python.shell", where the * is a wildcard for the installed issac sim version.
 
 ## PyBullet
-Todo, requirements.txt?
+Install the pybullet_requirements.txt to use the PyBullet Engine. You can test the setup by running the pybulet_example.py with your python interpreter.
 
 # Usage
 Define your environment with simple classes: Robot, Obstacle, Reward and Reset. The environment will automatically be created in the specified engine. Observation and Action space will be automatically parsed depending on the robots and obstacles spawned in the environment.
@@ -91,6 +91,6 @@ In this example, the robot will try to touch the target cube with its end effect
 
 # Supported Engines
 - [IsaacSim](https://developer.nvidia.com/isaac-sim)
+- [Pybullet](https://pybullet.org/wordpress/)
 
 ## Planned Support
-- [Pybullet](https://pybullet.org/wordpress/)
