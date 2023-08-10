@@ -1,5 +1,5 @@
 from scripts.envs.modular_env import ModularEnv
-from scripts.envs.env_params import EnvParams
+from scripts.envs.params.env_params import EnvParams
 
 from typing import List, Tuple
 from scripts.rewards.distance import Distance, calc_distance

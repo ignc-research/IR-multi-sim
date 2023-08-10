@@ -1,19 +1,25 @@
 import math
 from typing import List, Tuple
 from scripts.envs.modular_env import ModularEnv
-from scripts.envs.env_params import EnvParams
+from scripts.envs.params.env_params import EnvParams
 from scripts.rewards.distance import Distance, calc_distance
+from scripts.rewards.timesteps import ElapsedTimesteps
 from scripts.spawnables.obstacle import Obstacle, Cube, Sphere, Cylinder
+from scripts.spawnables.random_obstacle import RandomCube, RandomSphere, RandomCylinder
 from scripts.spawnables.robot import Robot
 from scripts.rewards.reward import Reward
 from scripts.resets.reset import Reset
 from scripts.resets.distance_reset import DistanceReset
 from scripts.resets.timesteps_reset import TimestepsReset
+from scripts.envs.params.control_type import ControlType
 import numpy as np
 from stable_baselines3.common.vec_env.base_vec_env import *
 from pathlib import Path
 
-# from omni.isaac.core.tasks import FollowTarget
+
+def _add_offset_to_tuple(tuple: Tuple[float, float], offset: float) -> Tuple[float, float]:
+    return (tuple[0] + offset, tuple[1] + offset)
+
 
 class IsaacEnv(ModularEnv):
     def __init__(self, params: EnvParams) -> None:
@@ -39,6 +45,7 @@ class IsaacEnv(ModularEnv):
         self.observable_obstacles_count = len([o for o in params.obstacles if o.observable])
         self._timesteps: List[int] = np.zeros(params.num_envs)
         self.step_count = params.step_count
+        self.control_type = params.control_type
 
         # save the distances in the current environment
         self._distances: Dict[str, List[float]] = {}
@@ -62,7 +69,7 @@ class IsaacEnv(ModularEnv):
         self._observable_robot_joints: List[Articulation] = []
         
         from omni.isaac.core.prims.geometry_prim import GeometryPrim
-        self._obstacles: List[GeometryPrim] = []
+        self._obstacles: List[Tuple[GeometryPrim, Obstacle]] = []
         # contains list of observable obstacles and observable robot joints
         self._observable_obstacles: List[GeometryPrim] = []
 
@@ -72,7 +79,7 @@ class IsaacEnv(ModularEnv):
         self._setup_resets(params.rewards, params.resets)
 
         # init bace class last, allowing it to automatically determine action and observation space
-        super().__init__(params.step_size, params.headless, params.num_envs)
+        super().__init__(params)
     
     def _setup_simulation(self, headless: bool, step_size: float):
         # isaac imports may only be used after SimulationApp is started (ISAAC uses runtime plugin system)
@@ -81,7 +88,7 @@ class IsaacEnv(ModularEnv):
 
         # make sure simulation was started
         assert self._simulation is not None, "Isaac Sim failed to start!"
-        assert self._simulation.is_running, "Isaac Sim failed to start!"
+        assert self._simulation.is_running(), "Isaac Sim failed to start!"
 
         # terminate simulation once program exits
         import atexit
@@ -167,6 +174,8 @@ class IsaacEnv(ModularEnv):
             for obstacle in obstacles:
                 if isinstance(obstacle, Cube):
                     self._spawn_cube(obstacle, env_idx)
+                elif isinstance(obstacle, RandomCube):
+                    self._spawn_random_cube(obstacle, env_idx)
                 elif isinstance(obstacle, Sphere):
                     self._spawn_sphere(obstacle, env_idx)
                 elif isinstance(obstacle, Cylinder):
@@ -180,8 +189,10 @@ class IsaacEnv(ModularEnv):
         for reward in rewards:
             if isinstance(reward, Distance):
                 self._reward_fns.append(self._parse_distance_reward(reward))
+            elif isinstance(reward, ElapsedTimesteps):
+                self._reward_fns.append(self._parse_timestep_reward(reward))
             else:
-                raise f"Reward {type(reward)} not implemented!"
+                raise Exception(f"Reward {type(reward)} not implemented!")
         
     def _parse_distance_reward(self, distance: Distance):
         # parse indices in observations
@@ -216,6 +227,21 @@ class IsaacEnv(ModularEnv):
         else:
             return distance_per_env
     
+    def _parse_timestep_reward(self, elapsed: ElapsedTimesteps):
+        # reward elapsed timesteps
+        def timestep_reward():
+            return self._timesteps
+
+        # punish elapsed timesteps
+        def timestep_penalty():
+            return self._timesteps * [-1 for _ in range(self.num_envs)]
+        
+        # return rewarding or punishing function, as specified in ElapsedTimesteps
+        if elapsed.minimize:
+            return timestep_penalty
+        
+        return timestep_reward
+
     def _parse_observable_object_range(self, name: str) -> Tuple[int, int]:
         """
         Given the name of an observable object, tries to retrieve its beginning and end position index in the observation buffer
@@ -295,9 +321,16 @@ class IsaacEnv(ModularEnv):
     def step_async(self, actions: np.ndarray) -> None:
         # print("Actions:", actions)
 
-        # apply actions to robots
-        for i, robot in enumerate(self._robots):
-            robot.set_joint_positions(actions[i])
+        if self.control_type == ControlType.VELOCITY:
+            # set joint velocities
+            for i, robot in enumerate(self._robots):
+                robot.set_joint_velocities(actions[i])
+        elif self.control_type == ControlType.POSITION:
+            # set joint positions
+            for i, robot in enumerate(self._robots):
+                robot.set_joint_positions(actions[i])
+        else:
+            raise Exception(f"Control type {self.control_type} not implemented!")
 
         # step simulation amount of times according to params
         for _ in range(self.step_count):
@@ -314,6 +347,7 @@ class IsaacEnv(ModularEnv):
         self._dones = self._get_dones()
 
         # print("Obs    :", self._obs)
+        # print("Dist.  :", self._distances["TargetDistance"])
         # print("Rewards:", self._rewards)
         # print("Dones  :", self._dones)
         # print("Timest.:", self._timesteps)
@@ -340,8 +374,8 @@ class IsaacEnv(ModularEnv):
             # select each environment
             for i in env_idxs:
                 # reset all obstacles to default pose
-                for obstacle in self._get_obstacles(i):
-                    obstacle.post_reset()
+                for geometryPrim, obstacle in self._get_obstacles(i):
+                    geometryPrim.post_reset()
 
                 # reset all robots to default pose
                 for robot in self._get_robots(i):
@@ -385,7 +419,7 @@ class IsaacEnv(ModularEnv):
             for robot_idx in range(robot_idx_offset, self.observable_robots_count + robot_idx_offset):
                 # get robot of environment
                 robot = self._observable_robots[robot_idx]
-                
+
                 # get its pose
                 pos, rot = robot.get_local_pose()
                 # apply env offset
@@ -397,7 +431,7 @@ class IsaacEnv(ModularEnv):
                 env_obs.extend(robot.get_local_scale())
 
             # get observations from all observable joints in environment
-            joint_idx_offset = self.observable_robot_joint_count
+            joint_idx_offset = self.observable_robot_joint_count * env_idx
             for joint_idx in range(joint_idx_offset, self.observable_robot_joint_count + joint_idx_offset):
                 # get joint of environment
                 joint = self._observable_robot_joints[joint_idx]
@@ -570,7 +604,39 @@ class IsaacEnv(ModularEnv):
         self._scene.add(cube_obj)
 
         # track spawned cube
-        self._obstacles.append(cube_obj)
+        self._obstacles.append((cube_obj, cube))
+
+        # add it to list of observable objects, if necessary
+        if cube.observable:
+            self._observable_obstacles.append(cube_obj)
+
+        # configure collision
+        if cube.collision:
+            # add collision material, allowing callbacks to register collisions in simulation
+            self._add_collision_material(prim_path, self._collision_material_path)
+        else:
+            cube_obj.set_collision_enabled(False)
+
+        return prim_path
+
+    def _spawn_random_cube(self, cube: RandomCube, env_idx: int) -> str:
+        prim_path = f"/World/env{env_idx}/{cube.name}"
+        name = f"env{env_idx}-{cube.name}"
+
+        # create cube
+        from scripts.envs.isaac.random_objects import RandomCuboid
+        cube_obj = RandomCuboid(
+            prim_path,
+            _add_offset_to_tuple(cube.position, self._env_offsets[env_idx]),
+            cube.orientation,
+            cube.scale,
+            name,
+            color=cube.color
+        )
+        self._scene.add(cube_obj)
+
+        # track spawned cube
+        self._obstacles.append((cube_obj, cube))
 
         # add it to list of observable objects, if necessary
         if cube.observable:
@@ -603,7 +669,7 @@ class IsaacEnv(ModularEnv):
         self._scene.add(sphere_obj)
     
         # track spawned sphere
-        self._obstacles.append(sphere_obj)
+        self._obstacles.append((sphere_obj, sphere))
 
         # add it to list of observable objects, if necessary
         if sphere.observable:
@@ -637,7 +703,7 @@ class IsaacEnv(ModularEnv):
         self._scene.add(cylinder_obj)
     
         # track spawned cylinder
-        self._obstacles.append(cylinder_obj)
+        self._obstacles.append((cylinder_obj, cylinder))
 
         # add it to list of observable objects, if necessary
         if cylinder.observable:

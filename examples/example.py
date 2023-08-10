@@ -1,4 +1,4 @@
-from scripts.envs.env_params import EnvParams
+from scripts.envs.params.env_params import EnvParams
 from scripts.envs import create_env
 from scripts.spawnables.obstacle import *
 from scripts.spawnables.robot import Robot

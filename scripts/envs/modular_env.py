@@ -5,23 +5,34 @@ from pathlib import Path
 from stable_baselines3.common.vec_env.base_vec_env import *
 from gym.utils import seeding
 from gym.spaces import Box
+from scripts.envs.params.control_type import ControlType
+from scripts.envs.params.env_params import EnvParams
 
 
 class ModularEnv(VecEnv):
-    def __init__(self, step_size: float, headless:bool, num_envs: int) -> None:
-        self.headless = headless  # True if the simulation will not be rendered, otherwise false 
-        self.step_size = step_size  # Amount of time passing each time .step() is called
-        self.env_data: List[Dict[str, Any]] = [{} for _ in range(num_envs)]  # Env data saved in dicts
+    def __init__(self, params: EnvParams) -> None:
+        self.headless = params.headless  # True if the simulation will not be rendered, otherwise false 
+        self.step_size = params.step_size  # Amount of time passing each time .step() is called
+        self.env_data: List[Dict[str, Any]] = [{} for _ in range(params.num_envs)]  # Env data saved in dicts
 
         # parse observation and action space
         num_obs = len(self.reset()[0])
-        limits = self.get_robot_dof_limits()
+        limits = self._get_action_space(params)
 
         obs_space = Box(np.ones(num_obs) * -np.inf, np.ones(num_obs) * np.inf)
         action_space = Box(np.array([a[0] for a in limits]), np.array([a[1] for a in limits]))
 
         # init base class with dynamically created action and observation space
-        super().__init__(num_envs, obs_space, action_space)
+        super().__init__(params.num_envs, obs_space, action_space)
+
+    def _get_action_space(self, params: EnvParams) -> List[Tuple[float, float]]:
+        if params.control_type == ControlType.POSITION:
+            return self.get_robot_dof_limits()
+        if params.control_type == ControlType.VELOCITY:
+            return [(-params.max_velocity, params.max_velocity) for _ in range(len(params.robots))]
+        
+        raise Exception(f"Unknown control type: {params.control_type}")
+
 
     @abstractmethod
     def get_robot_dof_limits(self) -> List[Tuple[float, float]]:

@@ -19,8 +19,18 @@ class Spawnable(ABC):
             name = f"obj{_spawnable_objects}"
             _spawnable_objects += 1
 
-        self.position = position
-        self.color = color
+        # parse position
+        if isinstance(position, List):
+            self.position = np.array(position)
+        else:
+            self.position = position
+        
+        # parse color
+        if isinstance(color, List):
+            self.color = np.array(color)
+        else:
+            self.color = color
+
         self.collision = collision
         self.orientation = np.array([1, 0, 0, 0])  # default orientation of any spawnable object
         self.observable = observable
