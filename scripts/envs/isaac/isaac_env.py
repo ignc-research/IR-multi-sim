@@ -176,6 +176,10 @@ class IsaacEnv(ModularEnv):
                     self._spawn_cube(obstacle, env_idx)
                 elif isinstance(obstacle, RandomCube):
                     self._spawn_random_cube(obstacle, env_idx)
+                elif isinstance(obstacle, RandomCylinder):
+                    self._spawn_random_cylinder(obstacle, env_idx)
+                elif isinstance(obstacle, RandomSphere):
+                    self._spawn_random_sphere(obstacle, env_idx)
                 elif isinstance(obstacle, Sphere):
                     self._spawn_sphere(obstacle, env_idx)
                 elif isinstance(obstacle, Cylinder):
@@ -648,6 +652,70 @@ class IsaacEnv(ModularEnv):
             self._add_collision_material(prim_path, self._collision_material_path)
         else:
             cube_obj.set_collision_enabled(False)
+
+        return prim_path
+
+    def _spawn_random_cylinder(self, cylinder: RandomCylinder, env_idx: int) -> str:
+        prim_path = f"/World/env{env_idx}/{cylinder.name}"
+        name = f"env{env_idx}-{cylinder.name}"
+
+        # create cube
+        from scripts.envs.isaac.random_objects import RandomCylinder
+        cylinder_obj = RandomCylinder(
+            prim_path,
+            _add_offset_to_tuple(cylinder.position, self._env_offsets[env_idx]),
+            cylinder.orientation,
+            cylinder.scale,
+            name,
+            color=cylinder.color
+        )
+        self._scene.add(cylinder_obj)
+
+        # track spawned cube
+        self._obstacles.append((cylinder_obj, cylinder))
+
+        # add it to list of observable objects, if necessary
+        if cylinder.observable:
+            self._observable_obstacles.append(cylinder_obj)
+
+        # configure collision
+        if cylinder.collision:
+            # add collision material, allowing callbacks to register collisions in simulation
+            self._add_collision_material(prim_path, self._collision_material_path)
+        else:
+            cylinder_obj.set_collision_enabled(False)
+
+        return prim_path
+
+    def _spawn_random_sphere(self, sphere: RandomSphere, env_idx: int) -> str:
+        prim_path = f"/World/env{env_idx}/{sphere.name}"
+        name = f"env{env_idx}-{sphere.name}"
+
+        # create cube
+        from scripts.envs.isaac.random_objects import RandomSphere
+        sphere_obj = RandomSphere(
+            prim_path,
+            _add_offset_to_tuple(sphere.position, self._env_offsets[env_idx]),
+            sphere.orientation,
+            sphere.scale,
+            name,
+            color=sphere.color
+        )
+        self._scene.add(sphere_obj)
+
+        # track spawned cube
+        self._obstacles.append((sphere_obj, sphere))
+
+        # add it to list of observable objects, if necessary
+        if sphere.observable:
+            self._observable_obstacles.append(sphere_obj)
+
+        # configure collision
+        if sphere.collision:
+            # add collision material, allowing callbacks to register collisions in simulation
+            self._add_collision_material(prim_path, self._collision_material_path)
+        else:
+            sphere_obj.set_collision_enabled(False)
 
         return prim_path
 
