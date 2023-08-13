@@ -1,4 +1,4 @@
-from scripts.envs.env_params import EnvParams
+from scripts.envs.params.env_params import EnvParams
 from scripts.envs import create_env
 from scripts.spawnables.obstacle import *
 from scripts.spawnables.robot import Robot
@@ -7,7 +7,6 @@ from scripts.resets.distance_reset import DistanceReset
 from scripts.resets.timesteps_reset import TimestepsReset
 import numpy as np
 from stable_baselines3 import TD3
-
 
 # create parameters for environment
 params = EnvParams(
@@ -25,7 +24,7 @@ params = EnvParams(
     # define reset conditions
     [DistanceReset("TargetDistance", 0, 1.5), TimestepsReset(100)],
     # overwrite default headless parameter
-    headless=False,
+    headless=True,
     # overwrite default step count parameter
     step_count=(100*1*2), # 100 * robts * env for slow hardware
     step_size= 1./600.
@@ -38,5 +37,5 @@ env = create_env(params)
 model = TD3("MlpPolicy", env, train_freq=1)
 
 # start learning
-model.learn(100)
+model.learn(500)
 print("Simple example is complete!")

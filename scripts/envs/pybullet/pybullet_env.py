@@ -1,28 +1,34 @@
 from scripts.envs.modular_env import ModularEnv
 from scripts.envs.params.env_params import EnvParams
+from scripts.envs.params.control_type import ControlType
 
-from typing import List, Tuple
-from scripts.rewards.distance import Distance, calc_distance
 from scripts.spawnables.obstacle import Obstacle, Cube, Sphere, Cylinder
+from scripts.spawnables.random_obstacle import RandomCube, RandomSphere, RandomCylinder
 from scripts.spawnables.robot import Robot
+
 from scripts.rewards.reward import Reward
+from scripts.rewards.distance import Distance, calc_distance
+from scripts.rewards.timesteps import ElapsedTimesteps
+
 from scripts.resets.reset import Reset
 from scripts.resets.distance_reset import DistanceReset
 from scripts.resets.timesteps_reset import TimestepsReset
-import numpy as np
+
 from stable_baselines3.common.vec_env.base_vec_env import *
 from pathlib import Path
+from typing import List, Tuple
+
+import pybullet as pyb
+import numpy as np
 import math
-
-import pybullet as pyb   
-
-import time
 
 class PybulletEnv(ModularEnv):
     def __init__(self, params: EnvParams) -> None:
 
-        # setup basic information about simulation
+        # setup asset path to allow importing robots
         self.asset_path = str(Path().absolute().joinpath(params.asset_path)) + "/"
+
+        # setup basic information about simulation
         self.num_envs = params.num_envs
         self.robot_count = len(params.robots)
         self.observable_robots_count = len([r for r in params.robots if r.observable])
@@ -32,6 +38,7 @@ class PybulletEnv(ModularEnv):
         self._timesteps: List[int] = np.zeros(params.num_envs)
         self.step_count = params.step_count
         self.step_size = params.step_size
+        self.control_type = params.control_type
         self.initState = None
 
         # save the distances in the current environment
@@ -47,32 +54,26 @@ class PybulletEnv(ModularEnv):
         # setup PyBullet simulation environment and interfaces
         disp = pyb.DIRECT if params.headless else pyb.GUI
         pyb.connect(disp)
-
-
         pyb.setTimeStep(self.step_size)
         pyb.setPhysicsEngineParameter(numSubSteps=1)
         pyb.setGravity(0, 0, -9.8) 
         pyb.setRealTimeSimulation(0)
         pyb.resetSimulation()
+        pyb.loadURDF(self.asset_path  + "workspace/plane.urdf", [0,0,-0.01])    # load ground plane
 
         ### allow tracking spawned objects ###
-        #name, robotId, jointNames, joints, observableJoints, controllableJoint, initPos
         self._robots: List = []               # Tupel: (name, robotId, jointNames, joints, observableJoints, controllableJoint, initialPos)
         self._observable_robots: List = []    # Tupel: (name, robotId, jointNames, joints, observableJoints, controllableJoint, initialPos)
-
         self._obstacles: List = []              # Tupel: (name:str, obstacleID:int, position:array, rotation:list)
         self._observable_obstacles: List = []   # Tupel: (name:str, obstacleID:int, position:array, rotation:list)
-
-        pyb.loadURDF(self.asset_path  + "workspace/plane.urdf", [0,0,-0.01])    # load ground plane
 
         # setup rl environment
         self._setup_environments(params.robots, params.obstacles)
         self._setup_rewards(params.rewards)
         self._setup_resets(params.rewards, params.resets)
 
-       
         # init bace class last, allowing it to automatically determine action and observation space
-        super().__init__(params.step_size, params.headless, params.num_envs)
+        super().__init__(params)
 
     
     def _setup_environments(self, robots: List[Robot], obstacles: List[Obstacle]) -> None:
@@ -87,10 +88,16 @@ class PybulletEnv(ModularEnv):
             for obstacle in obstacles:
                 if isinstance(obstacle, Cube):
                     self._spawn_cube(obstacle, env_idx)
+                elif isinstance(obstacle, RandomCube):
+                    self._spawn_random_cube(obstacle, env_idx)
                 elif isinstance(obstacle, Sphere):
                     self._spawn_sphere(obstacle, env_idx)
+                elif isinstance(obstacle, RandomSphere):
+                    self._spawn_random_sphere(obstacle, env_idx)
                 elif isinstance(obstacle, Cylinder):
                     self._spawn_cylinder(obstacle, env_idx)
+                elif isinstance(obstacle, RandomCylinder):
+                    self._spawn_random_cylinder(obstacle, env_idx)
                 else:
                     raise f"Obstacle {type(obstacle)} not implemented"
         
@@ -104,8 +111,11 @@ class PybulletEnv(ModularEnv):
         for reward in rewards:
             if isinstance(reward, Distance):
                 self._reward_fns.append(self._parse_distance_reward(reward))
+            elif isinstance(reward, ElapsedTimesteps):
+                self._reward_fns.append(self._parse_timestep_reward(reward))
             else:
                 raise f"Reward {type(reward)} not implemented!"
+
 
     def _parse_distance_reward(self, distance: Distance):
         # parse indices in observations
@@ -137,6 +147,22 @@ class PybulletEnv(ModularEnv):
         # maximize reward output
         else:
             return distance_per_env
+    
+    
+    def _parse_timestep_reward(self, elapsed: ElapsedTimesteps):
+        # reward elapsed timesteps
+        def timestep_reward():
+            return self._timesteps
+
+        # punish elapsed timesteps
+        def timestep_penalty():
+            return self._timesteps * [-1 for _ in range(self.num_envs)]
+        
+        # return rewarding or punishing function, as specified in ElapsedTimesteps
+        if elapsed.minimize:
+            return timestep_penalty
+        
+        return timestep_reward
 
 
     def _find_observable_object(self, name: str) -> int:
@@ -224,17 +250,24 @@ class PybulletEnv(ModularEnv):
                     robotId, controllableJoints = robot[1], robot[5]
                     action = [actions[envId][i] for i in controllableJoints] 
 
-                    pyb.setJointMotorControlArray(bodyUniqueId=robotId, jointIndices=controllableJoints, controlMode=pyb.POSITION_CONTROL, targetPositions=action) 
+                    if self.control_type == ControlType.VELOCITY:
+                        pyb.setJointMotorControlArray(bodyUniqueId=robotId, jointIndices=controllableJoints, controlMode=pyb.VELOCITY_CONTROL, targetVelocity=action) 
+                    
+                    elif self.control_type == ControlType.POSITION:
+                        pyb.setJointMotorControlArray(bodyUniqueId=robotId, jointIndices=controllableJoints, controlMode=pyb.POSITION_CONTROL, targetPositions=action) 
+                    
+                    else:
+                        raise Exception(f"Control type {self.control_type} not implemented!")
 
                 # step simulation amount of times according to params
                 for _ in range(self.step_count):
                     pyb.stepSimulation()  
             
-            else:
+            else:           
                 for robot in robots:
                     robotId, controllableJoints = robot[1], robot[5]
                     action = [[actions[envId][i]] for i in controllableJoints] 
-                    pyb.resetJointStatesMultiDof(robotId, [1,2,3,4,5,6], action)   
+                    pyb.resetJointStatesMultiDof(robotId, controllableJoints, action)   
                     pyb.performCollisionDetection()  
 
             self._on_contact_report_event()
@@ -412,7 +445,7 @@ class PybulletEnv(ModularEnv):
 
     def _on_contact_report_event(self) -> None:
         # get collisions
-        contactPoints = pyb.getContactPoints()  
+        contactPoints = pyb.getContactPoints() 
         
         # do nothing if there are no collisions
         if len(contactPoints) <= 0:
@@ -429,6 +462,8 @@ class PybulletEnv(ModularEnv):
         finalCollisions = [tup for tup in self._collisions if not any(val == 0 for val in tup)]
         if len(finalCollisions) > 0: 
             print("Collisions:", finalCollisions)  # 0:plane, 1,5:robots
+        
+        
 
 
     ################################
@@ -531,3 +566,15 @@ class PybulletEnv(ModularEnv):
         if cylinder.observable:
             self._observable_obstacles.append((name, cylinder_id, position, rotation))  
         return name
+    
+
+    def _spawn_random_cube(self, cube: RandomCube, env_idx: int) -> str:
+        pass
+
+
+    def _spawn_random_cylinder(self, cylinder: RandomCylinder, env_idx: int) -> str:
+        pass
+
+
+    def _spawn_random_sphere(self, sphere: RandomSphere, env_idx: int) -> str:
+        pass
