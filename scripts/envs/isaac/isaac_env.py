@@ -101,7 +101,7 @@ class IsaacEnv(ModularEnv):
 
         # create a world, allowing to spawn objects
         from omni.isaac.core import World
-        self._world = World(physics_dt=step_size)
+        self._world = World(physics_dt=step_size) # todo: find default parameter in env_args for physics_dt=step_size
         self._scene = self._world.scene
         self._stage = self._world.stage
         
@@ -118,10 +118,11 @@ class IsaacEnv(ModularEnv):
         
         # set defaults in import config
         self._config.merge_fixed_joints = False
-        self._config.convex_decomp = False
-        self._config.import_inertia_tensor = True
+        #self._config.convex_decomp = False
+        #self._config.import_inertia_tensor = True
         self._config.fix_base = True
-        self._config.create_physics_scene = True
+        self._config.make_default_prim = True
+        #self._config.create_physics_scene = True
 
     def _setup_physics(self):
         # setup physics
@@ -136,7 +137,7 @@ class IsaacEnv(ModularEnv):
         from omni.physx.scripts.physicsUtils import UsdPhysics, UsdShade, Gf
         scene = UsdPhysics.Scene.Define(self._stage, "/physicsScene")
         scene.CreateGravityDirectionAttr().Set(Gf.Vec3f(0.0, 0.0, -1.0))
-        scene.CreateGravityMagnitudeAttr().Set(981.0)
+        scene.CreateGravityMagnitudeAttr().Set(9.81)
 
         # Configure default floor material
         self._floor_material_path = "/floorMaterial"
@@ -278,7 +279,7 @@ class IsaacEnv(ModularEnv):
             if obstacle.name.endswith(name):
                 return index + self.observable_robots_count + self.observable_robot_joint_count
 
-        raise f"Object {name} must be observable if used for reward"
+        raise Exception(f"Object {name} must be observable if used for reward")
 
     def _setup_resets(self, rewards: List[Reward], resets: List[Reset]):
         # make sure that all resets referencing a distance are valid
@@ -325,6 +326,7 @@ class IsaacEnv(ModularEnv):
     def step_async(self, actions: np.ndarray) -> None:
         # print("Actions:", actions)
 
+        # apply actions
         if self.control_type == ControlType.VELOCITY:
             # set joint velocities
             for i, robot in enumerate(self._robots):
@@ -335,7 +337,7 @@ class IsaacEnv(ModularEnv):
                 robot.set_joint_positions(actions[i])
         else:
             raise Exception(f"Control type {self.control_type} not implemented!")
-
+            
         # step simulation amount of times according to params
         for _ in range(self.step_count):
             self._simulation.update()
@@ -594,9 +596,15 @@ class IsaacEnv(ModularEnv):
         prim_path = f"/World/env{env_idx}/{cube.name}"
         name = f"env{env_idx}-{cube.name}"
 
+        # parse required class
+        from omni.isaac.core.objects import FixedCuboid, DynamicCuboid
+        if cube.static:
+            cube_class = FixedCuboid
+        else:
+            cube_class = DynamicCuboid
+
         # create cube
-        from omni.isaac.core.objects import FixedCuboid
-        cube_obj = FixedCuboid(
+        cube_obj = cube_class(
             prim_path,
             name,
             cube.position + self._env_offsets[env_idx],
@@ -723,9 +731,15 @@ class IsaacEnv(ModularEnv):
         prim_path = f"/World/env{env_idx}/{sphere.name}"
         name = f"env{env_idx}-{sphere.name}"
 
+        # parse required class
+        from omni.isaac.core.objects import FixedSphere, DynamicSphere
+        if(sphere.static):
+            sphere_class = FixedSphere
+        else:
+            sphere_class = DynamicSphere
+
         # create sphere
-        from omni.isaac.core.objects import FixedSphere
-        sphere_obj = FixedSphere(
+        sphere_obj = sphere_class(
             prim_path,
             name,
             sphere.position + self._env_offsets[env_idx],
@@ -756,9 +770,15 @@ class IsaacEnv(ModularEnv):
         prim_path = f"/World/env{env_idx}/{cylinder.name}"
         name = f"env{env_idx}-{cylinder.name}"
 
+        # parse required class
+        from omni.isaac.core.objects import FixedCylinder, DynamicCylinder
+        if cylinder.static:
+            cylinder_class = FixedCylinder
+        else:
+            cylinder_class = DynamicCylinder
+
         # create cylinder
-        from omni.isaac.core.objects import FixedCylinder
-        cylinder_obj = FixedCylinder(
+        cylinder_obj = cylinder_class(
             prim_path,
             name,
             cylinder.position + self._env_offsets[env_idx],

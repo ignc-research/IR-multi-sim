@@ -25,7 +25,8 @@ class RandomCube(Obstacle):
             name (str, optional): Name of cube, allowing it to be referenced. Defaults to None.
         """
 
-        super().__init__(position, color, collision, observable, name)
+        # per default, all random obstacles are not-static
+        super().__init__(position, color, collision, observable, False, name)
 
         self.orientation = orientation        
         self.scale = scale

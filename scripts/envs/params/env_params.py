@@ -14,13 +14,13 @@ class EnvParams():
             rewards: List[Reward],
             resets: List[Reset],
             asset_path: str="./data",
-            step_size: float=1.0,
+            step_size: float=0.01,
             step_count: int=1,
             headless: bool=True,
             num_envs: int=8,
             env_offset: Tuple[float, float]=(10, 10),
             control_type: ControlType=ControlType.POSITION,
-            max_velocity: int = 1
+            max_velocity: int = 5
         ) -> None:
         """
         engine: Type of engine used to simulate environment.

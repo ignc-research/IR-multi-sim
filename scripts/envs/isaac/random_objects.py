@@ -2,7 +2,7 @@ from typing import Optional, Tuple
 import numpy as np
 from omni.isaac.core.materials import PhysicsMaterial
 from omni.isaac.core.materials.visual_material import VisualMaterial
-from omni.isaac.core.objects import FixedCuboid, FixedSphere, FixedCylinder
+from omni.isaac.core.objects import DynamicCuboid, DynamicSphere, DynamicCylinder
 
 def _get_value_in_range(min: float, max: float, range: float) -> float:
     """Returns a value between min and max.
@@ -19,7 +19,7 @@ def _get_value_in_range(min: float, max: float, range: float) -> float:
 
     return min + (max - min) * range
 
-class RandomCuboid(FixedCuboid):
+class RandomCuboid(DynamicCuboid):
     def __init__(
         self,
         prim_path: str,
@@ -52,7 +52,7 @@ class RandomCuboid(FixedCuboid):
         
 
         # init base class with default lowest values
-        FixedCuboid.__init__(
+        DynamicCuboid.__init__(
             self,
             prim_path=prim_path,
             name=name,
@@ -90,7 +90,7 @@ class RandomCuboid(FixedCuboid):
         # set random scale
         self.set_local_scale(scale)
 
-class RandomSphere(FixedSphere):
+class RandomSphere(DynamicSphere):
     def __init__(
         self,
         prim_path: str,
@@ -123,7 +123,7 @@ class RandomSphere(FixedSphere):
         
 
         # init base class with default lowest values
-        FixedSphere.__init__(
+        DynamicSphere.__init__(
             self,
             prim_path=prim_path,
             name=name,
@@ -161,7 +161,7 @@ class RandomSphere(FixedSphere):
         # set random scale
         self.set_local_scale(scale)
 
-class RandomCylinder(FixedCylinder):
+class RandomCylinder(DynamicCylinder):
     def __init__(
         self,
         prim_path: str,
@@ -194,7 +194,7 @@ class RandomCylinder(FixedCylinder):
         
 
         # init base class with default lowest values
-        FixedCylinder.__init__(
+        DynamicCylinder.__init__(
             self,
             prim_path=prim_path,
             name=name,

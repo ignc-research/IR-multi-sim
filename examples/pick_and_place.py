@@ -22,7 +22,7 @@ params = EnvParams(
     [Robot("robots/ur5/urdf/ur5_with_gripper.urdf", np.array([0, 0, 0.3]), observable_joints=["ee_link"], name="R1")],
     # define obstacles
     [
-        # Cube which is supposed to move
+        # Cube which is supposed to be move
         RandomCube(
             position=(np.array([-2, -2, 0]), np.array([2, 2, 1.5])),
             scale=(np.array([0.1, 0.1, 0.1]), np.array([0.01, 0.01, 0.01])),
@@ -47,7 +47,7 @@ params = EnvParams(
         Distance("ToMove", "GoalCube", name="TargetDistance")
     ],
     # reset if max timesteps was exceeded, or once targetCube reached goal
-    [TimestepsReset(50)], # , DistanceReset("TargetDistance", goal_tolerance, 1000)
+    [TimestepsReset(500), DistanceReset("TargetDistance", goal_tolerance, 1000)], 
     # overwrite default headless parameter
     headless=False,
     # overwrite default control type
@@ -65,5 +65,5 @@ model = TD3(
 )
 
 # start learning
-model.learn(5000)
+model.learn(500000)
 print("Simple example is complete!")
