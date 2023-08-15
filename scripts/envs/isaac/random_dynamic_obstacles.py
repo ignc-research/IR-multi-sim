@@ -57,6 +57,8 @@ class RandomDynamicCuboid(DynamicCuboid):
             linear_velocity (Optional[Sequence[float]], optional): _description_. Defaults to None.
             angular_velocity (Optional[Sequence[float]], optional): _description_. Defaults to None.
         """
+        # todo: check if params are tuples or singular params -> en/disable randomization of parameter
+        print(position, orientation, scale)
         
         # init base class with default lowest values
         DynamicCuboid.__init__(

@@ -635,8 +635,6 @@ class IsaacEnv(ModularEnv):
                 cube_class = DynamicCuboid
 
         # create cube
-        print(name, "is", cube_class)
-        
         cube_obj = cube_class(
             prim_path=prim_path,
             name=name,
