@@ -2,7 +2,6 @@ from scripts.envs.params.control_type import ControlType
 from scripts.envs.params.env_params import EnvParams
 from scripts.envs import create_env
 from scripts.spawnables.obstacle import *
-from scripts.spawnables.random_obstacle import *
 from scripts.spawnables.robot import Robot
 from scripts.rewards.distance import Distance
 from scripts.rewards.timesteps import ElapsedTimesteps
@@ -23,7 +22,7 @@ params = EnvParams(
     # define obstacles
     [
         # Cube which is supposed to be moved
-        RandomCube(
+        Cube(
             position=(np.array([-1, -1, 0.1]), np.array([1, 1, 0.1])),
             scale=(np.array([0.1, 0.1, 0.1]), np.array([0.1, 0.1, 0.1])),
             name="ToMove",
@@ -31,7 +30,7 @@ params = EnvParams(
             static=False
         ),
         # Cube which defines target of movement
-        RandomCube(
+        Cube(
             position=(np.array([-1, -1, 0]), np.array([1, 1, 1.5])),
             scale=(np.array([0.1, 0.1, 0.1]), np.array([0.1, 0.1, 0.1])),
             name="GoalCube",
