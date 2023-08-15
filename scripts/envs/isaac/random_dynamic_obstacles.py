@@ -57,9 +57,15 @@ class RandomDynamicCuboid(DynamicCuboid):
             linear_velocity (Optional[Sequence[float]], optional): _description_. Defaults to None.
             angular_velocity (Optional[Sequence[float]], optional): _description_. Defaults to None.
         """
-        # todo: check if params are tuples or singular params -> en/disable randomization of parameter
-        print(position, orientation, scale)
         
+        # expand input parameters if no random values were specified
+        if(type(position) is not tuple):
+            position = (position, None)
+        if(type(orientation) is not tuple):
+            orientation = (orientation, None)
+        if(type(scale) is not tuple):
+            scale = (scale, None)
+
         # init base class with default lowest values
         DynamicCuboid.__init__(
             self,
@@ -92,13 +98,20 @@ class RandomDynamicCuboid(DynamicCuboid):
         # generate random numbers to allow setting random properties efficiently
         rand_floats = np.random.random_sample(3)
 
-        # generate new random position, orientation and scale
-        pos = _get_value_in_range(state.position, self.max_pos, rand_floats[0])
-        ori = _get_value_in_range(state.orientation, self.max_orientation, rand_floats[1])
-        scale = _get_value_in_range(self.scale[0], self.scale[1], rand_floats[2])
+        # generate new random position, orientation and scale (if necessary)
+        if self.max_pos is None:
+            pos = None
+        else:
+            pos = _get_value_in_range(state.position, self.max_pos, rand_floats[0])
+        
+        if self.max_orientation is None:
+            ori = None
+        else:
+            ori = _get_value_in_range(state.orientation, self.max_orientation, rand_floats[1])
         
         # set random scale
-        self.set_local_scale(scale)
+        if self.scale[1] is not None:
+            self.set_local_scale(_get_value_in_range(self.scale[0], self.scale[1], rand_floats[2]))
 
         # obj with rigid bodies need to be reset by internal C++ callback
         self.set_default_state(pos, ori)
@@ -135,6 +148,13 @@ class RandomDynamicSphere(DynamicSphere):
             physics_material (Optional[PhysicsMaterial], optional): _description_. Defaults to None.
         """
         
+        # expand input parameters if no random values were specified
+        if(type(position) is not tuple):
+            position = (position, None)
+        if(type(orientation) is not tuple):
+            orientation = (orientation, None)
+        if(type(scale) is not tuple):
+            scale = (scale, None)
 
         # init base class with default lowest values
         DynamicSphere.__init__(
@@ -207,6 +227,13 @@ class RandomDynamicCylinder(DynamicCylinder):
             physics_material (Optional[PhysicsMaterial], optional): _description_. Defaults to None.
         """
         
+        # expand input parameters if no random values were specified
+        if(type(position) is not tuple):
+            position = (position, None)
+        if(type(orientation) is not tuple):
+            orientation = (orientation, None)
+        if(type(scale) is not tuple):
+            scale = (scale, None)
 
         # init base class with default lowest values
         DynamicCylinder.__init__(

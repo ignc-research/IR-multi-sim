@@ -375,35 +375,9 @@ class IsaacEnv(ModularEnv):
             # select each environment
             for i in env_idxs:
                 # reset all obstacles to default pose
-                for geometryPrim, obstacle in self._get_obstacles(i):
-                    # reset random obstacles
-                    if isinstance(obstacle, RandomCube):
-                        pos, ori, scale = obstacle.get_random_state()
-
-                        if obstacle.static:
-                            geometryPrim.set_world_pose(pos + self._env_offsets[i], ori)
-                        else:
-                            # dynamic obstacles can't be moved directly
-                            geometryPrim.set_default_state(pos)
-                            geometryPrim.post_reset()
-
-                        geometryPrim.set_local_scale(scale)
-                    elif isinstance(obstacle, RandomCylinder):
-                        pos, rad, height = obstacle.get_random_state()
-                        # todo: test
-                        geometryPrim.set_world_pose(pos)
-                        geometryPrim.set_height(height)
-                        geometryPrim.set_radius(rad)
-                    elif isinstance(obstacle, RandomSphere):
-                        pos, rad = obstacle.get_random_state()
-                        # todo: test
-                        geometryPrim.set_world_pose(pos)
-                        geometryPrim.set_radius(rad)
-                    elif isinstance(obstacle, RandomObstacle):
-                        raise Exception(f"Random obstacle of type {obstacle} not implemented!")
-                    else:
-                        # default case: reset obstacle to default position without randomization
-                        geometryPrim.post_reset()
+                for geometryPrim, _ in self._get_obstacles(i):
+                    # default case: reset obstacle to default position without randomization
+                    geometryPrim.post_reset()
 
                 # reset all robots to default pose
                 for robot in self._get_robots(i):
@@ -633,6 +607,8 @@ class IsaacEnv(ModularEnv):
                 cube_class = FixedCuboid
             else:
                 cube_class = DynamicCuboid
+
+        print("Creating", cube_class)
 
         # create cube
         cube_obj = cube_class(
