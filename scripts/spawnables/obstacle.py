@@ -1,19 +1,30 @@
-from typing import List
+from typing import List, Tuple, Union, DefaultDict
 from numpy import ndarray, array
 from scripts.spawnables.spawnable import Spawnable
+from abc import abstractmethod
 
 class Obstacle(Spawnable):
-    def __init__(self, position: ndarray, color: List[float], collision: bool, observable:bool, static:bool, name: str=None) -> None:
+    def __init__(self, position: Union[ndarray, Tuple[ndarray, ndarray]], color: List[float], collision: bool, observable:bool, static:bool, name: str=None) -> None:
         super().__init__(position, color, collision, observable, name)
         self.static = static
 
+    def has_random_position(self):
+        return type(self.position) is tuple
+
+    @abstractmethod
+    def is_randomized(self):
+        pass
+
+    @abstractmethod
+    def get_constructor_params(self) -> DefaultDict:
+        pass
 
 class Cube(Obstacle):
     def __init__(
         self,
-        position: ndarray = array([0, 0, 0]), 
-        orientation: ndarray = array([1, 0, 0, 0]),
-        scale: List[float] = [1., 1., 1.],
+        position: Union[ndarray, Tuple[ndarray, ndarray]] = array([0, 0, 0]), 
+        orientation: Union[ndarray, Tuple[ndarray, ndarray]] = array([1, 0, 0, 0]),
+        scale: Union[List[float], Tuple[List[float], List[float]]] = [1., 1., 1.],
         color: ndarray = array([1., 1., 1.]),
         collision: bool = True,
         observable: bool = True,
@@ -23,7 +34,7 @@ class Cube(Obstacle):
         """A cube obstacle spawned in each environment with fixed parameters.
 
         Args:
-            position (ndarray, optional): Position of cube. Defaults to array([0, 0, 0]).
+            position (ndarray, optional): Position of cube. Defaults to array([0, 0, 0])
             orientation (ndarray, optional): Orientation of cube in quaternion. Defaults to array([1, 0, 0, 0]).
             scale (List[float], optional): Scale of cube. Defaults to [1., 1., 1.].
             color (ndarray, optional): Color of cube in RGB. Defaults to array([1., 1., 1.]).
@@ -42,11 +53,23 @@ class Cube(Obstacle):
             
         self.scale = scale
 
+    def get_constructor_params(self):
+        return {"position": self.position, "orientation": self.orientation, "scale":self.scale, "color":self.color}
+
+    def has_random_orientation(self):
+        return type(self.orientation) is tuple
+    
+    def has_random_scale(self):
+        return type(self.scale) is tuple
+    
+    def is_randomized(self):
+        return self.has_random_position() or self.has_random_orientation() or self.has_random_scale()
+
 class Sphere(Obstacle):
     def __init__(
         self,
-        position: ndarray = array([0, 0, 0]),
-        radius: float = 1.,
+        position: Union[ndarray, Tuple[ndarray, ndarray]] = array([0, 0, 0]),
+        radius: Union[float, Tuple[float, float]] = 1.,
         color: ndarray = array([1., 1., 1.]),
         collision: bool = True,
         observable: bool = True,
@@ -67,12 +90,21 @@ class Sphere(Obstacle):
         super().__init__(position, color, collision, observable, static, name)
         self.radius = radius
 
+    def get_constructor_params(self):
+        return {"position": self.position, "radius": self.radius, "color":self.color}
+
+    def has_random_radius(self):
+        return type(self.radius) is tuple
+    
+    def is_randomized(self):
+        return self.has_random_position() or self.has_random_radius()
+
 class Cylinder(Obstacle):
     def __init__(
         self,
-        position: ndarray = array([0, 0, 0]),
-        radius: float = 1.,
-        height: float = 2.,
+        position: Union[ndarray, Tuple[ndarray, ndarray]] = array([0, 0, 0]),
+        radius: Union[float, Tuple[float, float]] = 1.,
+        height: Union[float, Tuple[float, float]] = 2.,
         color: ndarray = array([1., 1., 1.]),
         collision: bool = True,
         observable: bool = True,
@@ -95,3 +127,15 @@ class Cylinder(Obstacle):
         super().__init__(position, color, collision, observable, static, name)
         self.radius = radius
         self.height = height
+
+    def get_constructor_params(self):
+        return {"position": self.position, "radius": self.radius, "height": self.height, "color":self.color}
+    
+    def has_random_radius(self):
+        return type(self.radius) is tuple
+    
+    def has_random_height(self):
+        return type(self.height) is tuple
+
+    def is_randomized(self):
+        return self.has_random_position() or  self.has_random_radius() or self.has_random_height()
