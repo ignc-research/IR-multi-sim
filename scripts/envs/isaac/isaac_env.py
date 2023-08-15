@@ -5,7 +5,7 @@ from scripts.envs.params.env_params import EnvParams
 from scripts.rewards.distance import Distance, calc_distance
 from scripts.rewards.timesteps import ElapsedTimesteps
 from scripts.spawnables.obstacle import Obstacle, Cube, Sphere, Cylinder
-from scripts.spawnables.random_obstacle import RandomCube, RandomSphere, RandomCylinder
+from scripts.spawnables.random_obstacle import RandomCube, RandomSphere, RandomCylinder, RandomObstacle
 from scripts.spawnables.robot import Robot
 from scripts.rewards.reward import Reward
 from scripts.resets.reset import Reset
@@ -17,9 +17,9 @@ from stable_baselines3.common.vec_env.base_vec_env import *
 from pathlib import Path
 
 
-def _add_offset_to_tuple(tuple: Tuple[float, float], offset: float) -> Tuple[float, float]:
-    return (tuple[0] + offset, tuple[1] + offset)
-
+def _add_offset_to_tuples(positions: Tuple[np.ndarray, np.ndarray], offset: np.ndarray):
+    return positions[0] + offset, positions[1] + offset
+    
 
 class IsaacEnv(ModularEnv):
     def __init__(self, params: EnvParams) -> None:
@@ -43,6 +43,7 @@ class IsaacEnv(ModularEnv):
         self.observable_robot_joint_count = sum(len(r.observable_joints) for r in params.robots)
         self.obstacle_count = len(params.obstacles)
         self.observable_obstacles_count = len([o for o in params.obstacles if o.observable])
+        self.random_obstacle_count = len([o for o in params.obstacles if isinstance(o, RandomObstacle)])
         self._timesteps: List[int] = np.zeros(params.num_envs)
         self.step_count = params.step_count
         self.control_type = params.control_type
@@ -72,6 +73,8 @@ class IsaacEnv(ModularEnv):
         self._obstacles: List[Tuple[GeometryPrim, Obstacle]] = []
         # contains list of observable obstacles and observable robot joints
         self._observable_obstacles: List[GeometryPrim] = []
+        # contains list of obstacles whose attributes are randomized each reset
+        self._random_obstacles: List[Tuple[GeometryPrim, Obstacle]] = []
 
         # setup rl environment
         self._setup_environments(params.robots, params.obstacles)
@@ -143,8 +146,8 @@ class IsaacEnv(ModularEnv):
         self._floor_material_path = "/floorMaterial"
         UsdShade.Material.Define(self._stage, self._floor_material_path)
         floor_material = UsdPhysics.MaterialAPI.Apply(self._stage.GetPrimAtPath(self._floor_material_path))
-        floor_material.CreateStaticFrictionAttr().Set(0.0)
-        floor_material.CreateDynamicFrictionAttr().Set(0.0)
+        floor_material.CreateStaticFrictionAttr().Set(0.8)
+        floor_material.CreateDynamicFrictionAttr().Set(0.8)
         floor_material.CreateRestitutionAttr().Set(1.0)
 
         # Configure default collision material
@@ -175,16 +178,16 @@ class IsaacEnv(ModularEnv):
             for obstacle in obstacles:
                 if isinstance(obstacle, Cube):
                     self._spawn_cube(obstacle, env_idx)
+                elif isinstance(obstacle, Sphere):
+                    self._spawn_sphere(obstacle, env_idx)
+                elif isinstance(obstacle, Cylinder):
+                    self._spawn_cylinder(obstacle, env_idx)
                 elif isinstance(obstacle, RandomCube):
                     self._spawn_random_cube(obstacle, env_idx)
                 elif isinstance(obstacle, RandomCylinder):
                     self._spawn_random_cylinder(obstacle, env_idx)
                 elif isinstance(obstacle, RandomSphere):
                     self._spawn_random_sphere(obstacle, env_idx)
-                elif isinstance(obstacle, Sphere):
-                    self._spawn_sphere(obstacle, env_idx)
-                elif isinstance(obstacle, Cylinder):
-                    self._spawn_cylinder(obstacle, env_idx)
                 else:
                     raise f"Obstacle {type(obstacle)} not implemented"
         
@@ -381,12 +384,39 @@ class IsaacEnv(ModularEnv):
             for i in env_idxs:
                 # reset all obstacles to default pose
                 for geometryPrim, obstacle in self._get_obstacles(i):
-                    geometryPrim.post_reset()
+                    # reset random obstacles
+                    if isinstance(obstacle, RandomCube):
+                        pos, ori, scale = obstacle.get_random_state()
+
+                        if obstacle.static:
+                            geometryPrim.set_world_pose(pos + self._env_offsets[i], ori)
+                        else:
+                            # dynamic obstacles can't be moved directly
+                            geometryPrim.set_default_state(pos)
+                            geometryPrim.post_reset()
+
+                        geometryPrim.set_local_scale(scale)
+                    elif isinstance(obstacle, RandomCylinder):
+                        pos, rad, height = obstacle.get_random_state()
+                        # todo: test
+                        geometryPrim.set_world_pose(pos)
+                        geometryPrim.set_height(height)
+                        geometryPrim.set_radius(rad)
+                    elif isinstance(obstacle, RandomSphere):
+                        pos, rad = obstacle.get_random_state()
+                        # todo: test
+                        geometryPrim.set_world_pose(pos)
+                        geometryPrim.set_radius(rad)
+                    elif isinstance(obstacle, RandomObstacle):
+                        raise Exception(f"Random obstacle of type {obstacle} not implemented!")
+                    else:
+                        # default case: reset obstacle to default position without randomization
+                        geometryPrim.post_reset()
 
                 # reset all robots to default pose
                 for robot in self._get_robots(i):
                     robot.post_reset()
-        
+
         return self._obs
 
     def get_robot_dof_limits(self) -> List[Tuple[float, float]]:
@@ -631,102 +661,6 @@ class IsaacEnv(ModularEnv):
 
         return prim_path
 
-    def _spawn_random_cube(self, cube: RandomCube, env_idx: int) -> str:
-        prim_path = f"/World/env{env_idx}/{cube.name}"
-        name = f"env{env_idx}-{cube.name}"
-
-        # create cube
-        from scripts.envs.isaac.random_objects import RandomCuboid
-        cube_obj = RandomCuboid(
-            prim_path,
-            _add_offset_to_tuple(cube.position, self._env_offsets[env_idx]),
-            cube.orientation,
-            cube.scale,
-            name,
-            color=cube.color
-        )
-        self._scene.add(cube_obj)
-
-        # track spawned cube
-        self._obstacles.append((cube_obj, cube))
-
-        # add it to list of observable objects, if necessary
-        if cube.observable:
-            self._observable_obstacles.append(cube_obj)
-
-        # configure collision
-        if cube.collision:
-            # add collision material, allowing callbacks to register collisions in simulation
-            self._add_collision_material(prim_path, self._collision_material_path)
-        else:
-            cube_obj.set_collision_enabled(False)
-
-        return prim_path
-
-    def _spawn_random_cylinder(self, cylinder: RandomCylinder, env_idx: int) -> str:
-        prim_path = f"/World/env{env_idx}/{cylinder.name}"
-        name = f"env{env_idx}-{cylinder.name}"
-
-        # create cube
-        from scripts.envs.isaac.random_objects import RandomCylinder
-        cylinder_obj = RandomCylinder(
-            prim_path,
-            _add_offset_to_tuple(cylinder.position, self._env_offsets[env_idx]),
-            cylinder.orientation,
-            cylinder.scale,
-            name,
-            color=cylinder.color
-        )
-        self._scene.add(cylinder_obj)
-
-        # track spawned cube
-        self._obstacles.append((cylinder_obj, cylinder))
-
-        # add it to list of observable objects, if necessary
-        if cylinder.observable:
-            self._observable_obstacles.append(cylinder_obj)
-
-        # configure collision
-        if cylinder.collision:
-            # add collision material, allowing callbacks to register collisions in simulation
-            self._add_collision_material(prim_path, self._collision_material_path)
-        else:
-            cylinder_obj.set_collision_enabled(False)
-
-        return prim_path
-
-    def _spawn_random_sphere(self, sphere: RandomSphere, env_idx: int) -> str:
-        prim_path = f"/World/env{env_idx}/{sphere.name}"
-        name = f"env{env_idx}-{sphere.name}"
-
-        # create cube
-        from scripts.envs.isaac.random_objects import RandomSphere
-        sphere_obj = RandomSphere(
-            prim_path,
-            _add_offset_to_tuple(sphere.position, self._env_offsets[env_idx]),
-            sphere.orientation,
-            sphere.scale,
-            name,
-            color=sphere.color
-        )
-        self._scene.add(sphere_obj)
-
-        # track spawned cube
-        self._obstacles.append((sphere_obj, sphere))
-
-        # add it to list of observable objects, if necessary
-        if sphere.observable:
-            self._observable_obstacles.append(sphere_obj)
-
-        # configure collision
-        if sphere.collision:
-            # add collision material, allowing callbacks to register collisions in simulation
-            self._add_collision_material(prim_path, self._collision_material_path)
-        else:
-            sphere_obj.set_collision_enabled(False)
-
-        return prim_path
-
     def _spawn_sphere(self, sphere: Sphere, env_idx: int) -> str:
         prim_path = f"/World/env{env_idx}/{sphere.name}"
         name = f"env{env_idx}-{sphere.name}"
@@ -803,6 +737,137 @@ class IsaacEnv(ModularEnv):
             self._add_collision_material(prim_path, self._collision_material_path)
         else:
             cylinder_obj.set_collision_enabled(False)
+
+        return prim_path
+
+    def _spawn_random_cube(self, cube: RandomCube, env_idx: int) -> str:
+        prim_path = f"/World/env{env_idx}/{cube.name}"
+        name = f"env{env_idx}-{cube.name}"
+
+        # parse required class
+        from omni.isaac.core.objects import FixedCuboid, DynamicCuboid
+        if cube.static:
+            cube_class = FixedCuboid
+        else:
+            cube_class = DynamicCuboid
+
+        # generate random initial state
+        pos, ori, scale = cube.get_random_state()
+
+        # create cube
+        cube_obj = cube_class(
+            prim_path=prim_path,
+            position=pos + self._env_offsets[env_idx],
+            orientation=ori,
+            scale=scale,
+            name=name,
+            color=cube.color
+        )
+        self._scene.add(cube_obj)
+
+        # track spawned cube
+        self._obstacles.append((cube_obj, cube))
+
+        # track cube as randomized object
+        self._random_obstacles.append((cube_obj, cube))
+
+        # add it to list of observable objects, if necessary
+        if cube.observable:
+            self._observable_obstacles.append(cube_obj)
+
+        # configure collision
+        if cube.collision:
+            # add collision material, allowing callbacks to register collisions in simulation
+            self._add_collision_material(prim_path, self._collision_material_path)
+        else:
+            cube_obj.set_collision_enabled(False)
+
+        return prim_path
+
+    def _spawn_random_cylinder(self, cylinder: RandomCylinder, env_idx: int) -> str:
+        prim_path = f"/World/env{env_idx}/{cylinder.name}"
+        name = f"env{env_idx}-{cylinder.name}"
+
+        # parse required class
+        from omni.isaac.core.objects import FixedCylinder, DynamicCylinder
+        if cylinder.static:
+            cylinder_class = FixedCylinder
+        else:
+            cylinder_class = DynamicCylinder
+
+        # generate random initial state
+        pos, rad, height = cylinder.get_random_state()
+
+        # create cylinder
+        cylinder_obj = cylinder_class(
+            prim_path,
+            position=pos + self._env_offsets[env_idx],
+            radius=rad,
+            height=height,
+            name=name,
+            color=cylinder.color
+        )
+        self._scene.add(cylinder_obj)
+
+        # track spawned cylinder
+        self._obstacles.append((cylinder_obj, cylinder))
+
+        # track obj as randomized cylinder
+        self._random_obstacles.append((cylinder_obj, cylinder))
+
+        # add it to list of observable objects, if necessary
+        if cylinder.observable:
+            self._observable_obstacles.append(cylinder_obj)
+
+        # configure collision
+        if cylinder.collision:
+            # add collision material, allowing callbacks to register collisions in simulation
+            self._add_collision_material(prim_path, self._collision_material_path)
+        else:
+            cylinder_obj.set_collision_enabled(False)
+
+        return prim_path
+
+    def _spawn_random_sphere(self, sphere: RandomSphere, env_idx: int) -> str:
+        prim_path = f"/World/env{env_idx}/{sphere.name}"
+        name = f"env{env_idx}-{sphere.name}"
+
+        # parse required class
+        from omni.isaac.core.objects import FixedSphere, DynamicSphere
+        if sphere.static:
+            sphere_class = FixedSphere
+        else:
+            sphere_class = DynamicSphere
+
+        # generate random initial state
+        pos, rad = sphere.get_random_state()
+
+        # create sphere
+        sphere_obj = sphere_class(
+            prim_path,
+            position=pos + self._env_offsets[env_idx],
+            radius=rad,
+            name=name,
+            color=sphere.color
+        )
+        self._scene.add(sphere_obj)
+
+        # track spawned cube
+        self._obstacles.append((sphere_obj, sphere))
+
+        # track obj as randomized sphere
+        self._random_obstacles.append((sphere_obj, sphere))
+
+        # add it to list of observable objects, if necessary
+        if sphere.observable:
+            self._observable_obstacles.append(sphere_obj)
+
+        # configure collision
+        if sphere.collision:
+            # add collision material, allowing callbacks to register collisions in simulation
+            self._add_collision_material(prim_path, self._collision_material_path)
+        else:
+            sphere_obj.set_collision_enabled(False)
 
         return prim_path
 

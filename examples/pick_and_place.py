@@ -22,21 +22,21 @@ params = EnvParams(
     [Robot("robots/ur5/urdf/ur5_with_gripper.urdf", np.array([0, 0, 0.3]), observable_joints=["ee_link"], name="R1")],
     # define obstacles
     [
-        # Cube which is supposed to be move
+        # Cube which is supposed to be moved
         RandomCube(
-            position=(np.array([-2, -2, 0]), np.array([2, 2, 1.5])),
-            scale=(np.array([0.1, 0.1, 0.1]), np.array([0.01, 0.01, 0.01])),
+            position=(np.array([-1, -1, 0.1]), np.array([1, 1, 0.1])),
+            scale=(np.array([0.1, 0.1, 0.1]), np.array([0.1, 0.1, 0.1])),
             name="ToMove",
-            collision=True,
-            color=array([1, 0, 0])
+            color=array([1, 0, 0]),
+            static=False
         ),
         # Cube which defines target of movement
         RandomCube(
-            position=(np.array([-2, -2, 0]), np.array([2, 2, 1.5])),
+            position=(np.array([-1, -1, 0]), np.array([1, 1, 1.5])),
             scale=(np.array([0.1, 0.1, 0.1]), np.array([0.1, 0.1, 0.1])),
             name="GoalCube",
+            color=array([0, 1, 0]),
             collision=False,
-            color=array([0, 1, 0])
         )
     ],
     # define rewards
@@ -47,11 +47,13 @@ params = EnvParams(
         Distance("ToMove", "GoalCube", name="TargetDistance")
     ],
     # reset if max timesteps was exceeded, or once targetCube reached goal
-    [TimestepsReset(500), DistanceReset("TargetDistance", goal_tolerance, 1000)], 
+    [TimestepsReset(50), DistanceReset("TargetDistance", goal_tolerance, 1000)], 
     # overwrite default headless parameter
     headless=False,
     # overwrite default control type
-    control_type=ControlType.VELOCITY
+    control_type=ControlType.VELOCITY,
+    # todo: remove debug parameters below
+    num_envs=1
 )
 
 # create issac environment
@@ -65,5 +67,5 @@ model = TD3(
 )
 
 # start learning
-model.learn(500000)
+model.learn(5000)
 print("Simple example is complete!")
