@@ -1,4 +1,4 @@
-from typing import List, Tuple, Union
+from typing import List, Tuple, Union, DefaultDict
 from numpy import ndarray, array
 from scripts.spawnables.spawnable import Spawnable
 from abc import abstractmethod
@@ -13,6 +13,10 @@ class Obstacle(Spawnable):
 
     @abstractmethod
     def is_randomized(self):
+        pass
+
+    @abstractmethod
+    def get_constructor_params(self) -> DefaultDict:
         pass
 
 class Cube(Obstacle):
@@ -49,6 +53,9 @@ class Cube(Obstacle):
             
         self.scale = scale
 
+    def get_constructor_params(self):
+        return {"position": self.position, "orientation": self.orientation, "scale":self.scale, "color":self.color}
+
     def has_random_orientation(self):
         return type(self.orientation) is tuple
     
@@ -82,6 +89,9 @@ class Sphere(Obstacle):
         """
         super().__init__(position, color, collision, observable, static, name)
         self.radius = radius
+
+    def get_constructor_params(self):
+        return {"position": self.position, "radius": self.radius, "color":self.color}
 
     def has_random_radius(self):
         return type(self.radius) is tuple
@@ -118,6 +128,9 @@ class Cylinder(Obstacle):
         self.radius = radius
         self.height = height
 
+    def get_constructor_params(self):
+        return {"position": self.position, "radius": self.radius, "height": self.height, "color":self.color}
+    
     def has_random_radius(self):
         return type(self.radius) is tuple
     

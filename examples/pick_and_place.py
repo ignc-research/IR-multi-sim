@@ -10,29 +10,34 @@ from scripts.resets.timesteps_reset import TimestepsReset
 import numpy as np
 from stable_baselines3 import TD3, HerReplayBuffer
 
-#todo: implement other random obstacles, implement pick&place
+## pick&place params
+# success: distance of cube to target
 goal_tolerance = 0.1
+# min and max bounds of ur5 range
+bounds = (np.array([-0.5, -0.5, 0.1]), np.array([0.5, 0.5, 0.1]))
+# cube size adjusted to gripper
+scale = np.array([0.1, 0.1, 0.1])
 
 # create parameters for environment
 params = EnvParams(
     # Type of environment
     "Isaac",
-    # define robots
-    [Robot("robots/ur5/urdf/ur5_with_gripper.urdf", np.array([0, 0, 0.3]), observable_joints=["ee_link"], name="R1")],
+    # add small ground offset to robot to allow all of its joints to rotate freely
+    [Robot("robots/ur5/urdf/ur5_with_gripper.urdf", np.array([0, 0, 0.1]), observable_joints=["ee_link"], name="R1")],
     # define obstacles
     [
         # Cube which is supposed to be moved
         Cube(
-            position=(np.array([-1, -1, 0.1]), np.array([1, 1, 0.1])),
-            scale=(np.array([0.1, 0.1, 0.1]), np.array([0.1, 0.1, 0.1])),
+            position=bounds,
+            scale=scale,
             name="ToMove",
             color=array([1, 0, 0]),
             static=False
         ),
         # Cube which defines target of movement
         Cube(
-            position=(np.array([-1, -1, 0]), np.array([1, 1, 1.5])),
-            scale=(np.array([0.1, 0.1, 0.1]), np.array([0.1, 0.1, 0.1])),
+            position=bounds,
+            scale=scale,
             name="GoalCube",
             color=array([0, 1, 0]),
             collision=False,
@@ -46,13 +51,11 @@ params = EnvParams(
         Distance("ToMove", "GoalCube", name="TargetDistance")
     ],
     # reset if max timesteps was exceeded, or once targetCube reached goal
-    [TimestepsReset(50), DistanceReset("TargetDistance", goal_tolerance, 1000)], 
+    [TimestepsReset(500), DistanceReset("TargetDistance", goal_tolerance, 1000)], 
     # overwrite default headless parameter
     headless=False,
     # overwrite default control type
-    control_type=ControlType.VELOCITY,
-    # todo: remove debug parameters below
-    num_envs=1
+    control_type=ControlType.VELOCITY    
 )
 
 # create issac environment
@@ -66,5 +69,4 @@ model = TD3(
 )
 
 # start learning
-model.learn(5000)
-print("Simple example is complete!")
+model.learn(10000)

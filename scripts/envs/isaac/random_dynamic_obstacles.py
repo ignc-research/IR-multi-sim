@@ -86,32 +86,35 @@ class RandomDynamicCuboid(DynamicCuboid):
             angular_velocity=angular_velocity
         )
         
-        # save max random values
-        self.max_pos = position[1]
-        self.max_orientation = orientation[1]
+        # save min and max range
+        self.position = position
+        self.orientation = orientation
         self.scale = scale
 
     def post_reset(self) -> None:
-        # get current position and orientation as XFormPrimState
-        state = self.get_default_state()
-
         # generate random numbers to allow setting random properties efficiently
         rand_floats = np.random.random_sample(3)
 
         # generate new random position, orientation and scale (if necessary)
-        if self.max_pos is None:
-            pos = None
+        pos_min, pos_max = self.position
+        ori_min, ori_max = self.orientation
+        scale_min, scale_max = self.scale
+
+        # randomize position if necessary
+        if pos_max is None:
+            pos = pos_min
         else:
-            pos = _get_value_in_range(state.position, self.max_pos, rand_floats[0])
+            pos = _get_value_in_range(pos_min, pos_max, rand_floats[0])
         
-        if self.max_orientation is None:
-            ori = None
+        # randomize orientation if necessary
+        if ori_max is None:
+            ori = ori_min
         else:
-            ori = _get_value_in_range(state.orientation, self.max_orientation, rand_floats[1])
-        
-        # set random scale
-        if self.scale[1] is not None:
-            self.set_local_scale(_get_value_in_range(self.scale[0], self.scale[1], rand_floats[2]))
+            ori = _get_value_in_range(ori_min, ori_max, rand_floats[1])
+
+        # randomize scale if necessary
+        if scale_max is not None:
+            self.set_local_scale(_get_value_in_range(scale_min, scale_max, rand_floats[2]))
 
         # obj with rigid bodies need to be reset by internal C++ callback
         self.set_default_state(pos, ori)
@@ -172,29 +175,39 @@ class RandomDynamicSphere(DynamicSphere):
             physics_material=physics_material
         )
         
-        # save max random values
-        self.max_pos = position[1]
-        self.max_orientation = orientation[1]
+        # save min and max range
+        self.position = position
+        self.orientation = orientation
         self.scale = scale
 
     def post_reset(self) -> None:
-        # get current position and orientation as XFormPrimState
-        state = self.get_default_state()
-
         # generate random numbers to allow setting random properties efficiently
         rand_floats = np.random.random_sample(3)
 
-        # generate new random position, orientation and scale
-        pos = _get_value_in_range(state.position, self.max_pos, rand_floats[0])
-        ori = _get_value_in_range(state.orientation, self.max_orientation, rand_floats[1])
-        scale = _get_value_in_range(self.scale[0], self.scale[1], rand_floats[2])
+        # generate new random position, orientation and scale (if necessary)
+        pos_min, pos_max = self.position
+        ori_min, ori_max = self.orientation
+        scale_min, scale_max = self.scale
+
+        # randomize position if necessary
+        if pos_max is None:
+            pos = pos_min
+        else:
+            pos = _get_value_in_range(pos_min, pos_max, rand_floats[0])
         
-        # set random scale
-        self.set_local_scale(scale)
+        # randomize orientation if necessary
+        if ori_max is None:
+            ori = ori_min
+        else:
+            ori = _get_value_in_range(ori_min, ori_max, rand_floats[1])
+
+        # randomize scale if necessary
+        if scale_max is not None:
+            self.set_local_scale(_get_value_in_range(scale_min, scale_max, rand_floats[2]))
 
         # obj with rigid bodies need to be reset by internal C++ callback
         self.set_default_state(pos, ori)
-        DynamicSphere.post_reset(self)
+        DynamicCuboid.post_reset(self)
 
 class RandomDynamicCylinder(DynamicCylinder):
     def __init__(
@@ -251,26 +264,36 @@ class RandomDynamicCylinder(DynamicCylinder):
             physics_material=physics_material
         )
         
-        # save max random values
-        self.max_pos = position[1]
-        self.max_orientation = orientation[1]
+        # save min and max range
+        self.position = position
+        self.orientation = orientation
         self.scale = scale
 
     def post_reset(self) -> None:
-        # get current position and orientation as XFormPrimState
-        state = self.get_default_state()
-
         # generate random numbers to allow setting random properties efficiently
         rand_floats = np.random.random_sample(3)
 
-        # generate new random position, orientation and scale
-        pos = _get_value_in_range(state.position, self.max_pos, rand_floats[0])
-        ori = _get_value_in_range(state.orientation, self.max_orientation, rand_floats[1])
-        scale = _get_value_in_range(self.scale[0], self.scale[1], rand_floats[2])
+        # generate new random position, orientation and scale (if necessary)
+        pos_min, pos_max = self.position
+        ori_min, ori_max = self.orientation
+        scale_min, scale_max = self.scale
+
+        # randomize position if necessary
+        if pos_max is None:
+            pos = pos_min
+        else:
+            pos = _get_value_in_range(pos_min, pos_max, rand_floats[0])
         
-        # set random scale
-        self.set_local_scale(scale)
+        # randomize orientation if necessary
+        if ori_max is None:
+            ori = ori_min
+        else:
+            ori = _get_value_in_range(ori_min, ori_max, rand_floats[1])
+
+        # randomize scale if necessary
+        if scale_max is not None:
+            self.set_local_scale(_get_value_in_range(scale_min, scale_max, rand_floats[2]))
 
         # obj with rigid bodies need to be reset by internal C++ callback
         self.set_default_state(pos, ori)
-        DynamicCylinder.post_reset(self)
+        DynamicCuboid.post_reset(self)
