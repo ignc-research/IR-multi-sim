@@ -8,6 +8,8 @@ from scripts.resets.timesteps_reset import TimestepsReset
 import numpy as np
 from stable_baselines3 import TD3
 
+from scripts.envs.params.control_type import ControlType
+
 # create parameters for environment
 params = EnvParams(
     # engine
@@ -25,8 +27,9 @@ params = EnvParams(
     [DistanceReset("TargetDistance", 0, 1.5), TimestepsReset(100)],
     # overwrite default headless parameter
     headless=False,
+    control_type=ControlType.VELOCITY,
     # overwrite default step count parameter
-    step_count=(240), # 100 * robts * env for slow hardware
+    step_count=(240),
     step_size= 1./240.
 )
 
@@ -37,5 +40,5 @@ env = create_env(params)
 model = TD3("MlpPolicy", env, train_freq=1)
 
 # start learning
-model.learn(500)
+model.learn(1000)
 print("Simple example is complete!")

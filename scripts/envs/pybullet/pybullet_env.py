@@ -248,12 +248,13 @@ class PybulletEnv(ModularEnv):
             if not self.headless:
                 for robot in robots:
                     robotId, controllableJoints = robot[1], robot[5]
-                    action = [actions[envId][i] for i in controllableJoints] 
 
                     if self.control_type == ControlType.VELOCITY:
-                        pyb.setJointMotorControlArray(bodyUniqueId=robotId, jointIndices=controllableJoints, controlMode=pyb.VELOCITY_CONTROL, targetVelocity=action) 
+                        action = [actions[envId] for i in controllableJoints]
+                        pyb.setJointMotorControlArray(bodyUniqueId=robotId, jointIndices=controllableJoints, controlMode=pyb.VELOCITY_CONTROL, targetVelocities=action) 
                     
                     elif self.control_type == ControlType.POSITION:
+                        action = [actions[envId][i] for i in controllableJoints] 
                         pyb.setJointMotorControlArray(bodyUniqueId=robotId, jointIndices=controllableJoints, controlMode=pyb.POSITION_CONTROL, targetPositions=action) 
                     
                     else:
