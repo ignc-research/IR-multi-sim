@@ -13,3 +13,6 @@ _*/
 
 .venv
 .vscode
+
+# logs of runs
+/data/logs

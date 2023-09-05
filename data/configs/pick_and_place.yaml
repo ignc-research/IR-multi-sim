@@ -41,5 +41,4 @@ resets:
   two:
     max: 500
     type: "TimestepsReset"
-headless: False
 control_type: "Velocity"
