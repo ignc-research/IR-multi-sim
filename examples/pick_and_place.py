@@ -55,7 +55,7 @@ params = EnvParams(
     # overwrite default headless parameter
     headless=False,
     # overwrite default control type
-    control_type=ControlType.VELOCITY    
+    control_type=ControlType.Velocity    
 )
 
 # create issac environment

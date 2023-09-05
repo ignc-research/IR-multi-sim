@@ -315,11 +315,11 @@ class IsaacEnv(ModularEnv):
         # print("Actions:", actions)
 
         # apply actions
-        if self.control_type == ControlType.VELOCITY:
+        if self.control_type == ControlType.Velocity:
             # set joint velocities
             for i, robot in enumerate(self._robots):
                 robot.set_joint_velocities(actions[i])
-        elif self.control_type == ControlType.POSITION:
+        elif self.control_type == ControlType.Position:
             # set joint positions
             for i, robot in enumerate(self._robots):
                 robot.set_joint_positions(actions[i])

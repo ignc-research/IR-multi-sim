@@ -19,7 +19,7 @@ class EnvParams():
             headless: bool=True,
             num_envs: int=8,
             env_offset: Tuple[float, float]=(10, 10),
-            control_type: ControlType=ControlType.POSITION,
+            control_type: ControlType=ControlType.Position,
             max_velocity: int = 5
         ) -> None:
         """
