@@ -37,6 +37,8 @@ def _read_config(path: str, timesteps: int, load_model: bool):
         on_exit()
         exit(0)
 
+    # todo: use logger or wrapper:Monitor to log success rate
+
     # save model if program gets interrupted
     signal.signal(signal.SIGINT, on_interrupt)
 
