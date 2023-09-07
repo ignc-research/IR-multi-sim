@@ -42,3 +42,4 @@ resets:
     max: 500
     type: "TimestepsReset"
 control_type: "Velocity"
+verbose: 2

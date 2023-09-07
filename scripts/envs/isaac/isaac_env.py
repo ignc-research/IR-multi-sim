@@ -47,6 +47,7 @@ class IsaacEnv(ModularEnv):
         self._timesteps: List[int] = np.zeros(params.num_envs)
         self.step_count = params.step_count
         self.control_type = params.control_type
+        self.verbose = params.verbose
 
         # save the distances in the current environment
         self._distances: Dict[str, List[float]] = {}
@@ -345,6 +346,16 @@ class IsaacEnv(ModularEnv):
         # print("Rewards:", self._rewards)
         # print("Dones  :", self._dones)
         # print("Timest.:", self._timesteps)
+
+        # log rewards
+        if self.verbose > 0:
+            self.set_attr("average_rewards", np.average(self._rewards))
+
+            # log distances
+            if self.verbose > 1:
+                for name, distance in self._distances.items():
+                    self.set_attr("distance_"+name, np.average(distance))
+
 
         return self._obs, self._rewards, self._dones, self.env_data
 
