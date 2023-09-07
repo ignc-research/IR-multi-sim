@@ -62,7 +62,7 @@ class ModularEnv(VecEnv):
 
     def env_is_wrapped(self, wrapper_class: Type[gym.Wrapper], indices: VecEnvIndices = None) -> List[bool]:
         # per default, modular envs don't support wrappper classes
-        return [False for _ in self._get_indices()]
+        return [False for _ in self._get_indices(indices)]
     
     def env_method(self, method_name: str, *method_args, indices: VecEnvIndices = None, **method_kwargs) -> List[Any]:
         return [getattr(i, method_name)(*method_args, *method_kwargs) for i in self._get_indices(indices)]
