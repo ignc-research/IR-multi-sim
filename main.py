@@ -5,6 +5,7 @@ from stable_baselines3 import TD3
 from stable_baselines3.common.base_class import BaseAlgorithm
 from stable_baselines3.common.callbacks import BaseCallback
 from os.path import exists
+from pathlib import Path
 import signal
 from scripts.envs.modular_env import ModularEnv
 from typing import List
@@ -73,6 +74,10 @@ def _setup_model(path: str, reset: bool, env: ModularEnv) -> (BaseAlgorithm, str
 
 # start environment from config file
 def _read_config(path: str, timesteps: int, load_model: bool):
+    # make sure logs and model folder exist
+    Path("./data/logs").mkdir(exist_ok=True)
+    Path("./data/models").mkdir(exist_ok=True)
+    
     # parse user config
     params = parse_config(path)
 

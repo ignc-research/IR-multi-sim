@@ -25,11 +25,14 @@ rewards:
     obj1: "ToMove"
     obj2: "R1/ee_link"
     type: "Distance"
+    weight: -32
+    normalize: True
   # reward the cube which is supposed to be moved being close to the target
   TargetDistance:
     obj1: "ToMove"
     obj2: "GoalCube"
     type: "Distance"
+    normalize: True
 resets:
   # reset once target cube reached goal
   one:
@@ -39,7 +42,9 @@ resets:
     type: "DistanceReset"
   # Reset after number of timesteps
   two:
-    max: 500
+    max: 256
     type: "TimestepsReset"
 control_type: "Velocity"
 verbose: 2
+step_size: 0.00416666666
+headless: False

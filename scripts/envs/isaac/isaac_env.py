@@ -50,7 +50,9 @@ class IsaacEnv(ModularEnv):
         self.verbose = params.verbose
 
         # save the distances in the current environment
-        self._distances: Dict[str, List[float]] = {}
+        self._distance_funcions = []
+        self._distances: Dict[str, np.ndarray] = {}
+        self._distances_after_reset: Dict[str, np.ndarray] = {}
 
         # calculate env offsets
         break_index = math.ceil(math.sqrt(self.num_envs))
@@ -195,44 +197,51 @@ class IsaacEnv(ModularEnv):
 
         # extract name to allow created function to access it easily
         name = distance.name
+        weight = distance.weight
+        normalize = distance.normalize
 
-        # parse function calculating distance to all targets
-        def distance_per_env() -> np.ndarray:
+        # create function calculating distance
+        def distance_per_env() -> Tuple[str, np.ndarray]:
             # calculate distances as np array
             result = []
             for i in range(self.num_envs):
                 result.append(calc_distance(
+                    # extract x,y,z coordinates of objects
                     self._obs[i][obj1_start:obj1_start+3],
                     self._obs[i][obj2_start:obj2_start+3]
                 ))
             result = np.array(result)
 
-            # save distance for current iteration
-            self._distances[name] = result
+            return name, result
 
-            return result
+        # add to existing distance functions
+        self._distance_funcions.append(distance_per_env)
     
-        # minimize reward output
-        if distance.minimize:
-            def distance_reward():
-                return distance_per_env() * [-1 for _ in range(self.num_envs)]
-            return distance_reward
-        # maximize reward output
-        else:
-            return distance_per_env
+        def calculate_distance_reward():
+            # get current distances
+            distance = self._distances[name]
+
+            # apply weight factor
+            weighted_distance = distance * weight
+
+            # skip normalization
+            if not normalize:
+                return weighted_distance
+
+            # retrieve distences after last reset
+            beginning_distances = self._distances_after_reset[name]
+
+            # calculate variance to previous distance, avoiding division by zero
+            return np.where(beginning_distances == 0, weighted_distance, weight * distance / beginning_distances)
+
+        return calculate_distance_reward
     
     def _parse_timestep_reward(self, elapsed: ElapsedTimesteps):
+        weight = elapsed.weight
+
         # reward elapsed timesteps
         def timestep_reward():
-            return self._timesteps
-
-        # punish elapsed timesteps
-        def timestep_penalty():
-            return self._timesteps * [-1 for _ in range(self.num_envs)]
-        
-        # return rewarding or punishing function, as specified in ElapsedTimesteps
-        if elapsed.minimize:
-            return timestep_penalty
+            return self._timesteps * weight
         
         return timestep_reward
 
@@ -335,7 +344,10 @@ class IsaacEnv(ModularEnv):
         # get observations
         self._obs = self._get_observations()
 
-        # get rewards
+        # calculate current distances after observations were updated
+        self._distances = self._get_distances()
+
+        # calculate rewards after distances were updated
         self._rewards = self._get_rewards()
 
         # get dones
@@ -362,20 +374,12 @@ class IsaacEnv(ModularEnv):
     def reset(self, env_idxs: np.ndarray=None) -> VecEnvObs:
         # reset entire simulation
         if env_idxs is None:
-            # reset the world
+            # initialize sim
             self._world.reset()
 
-            # reset timestep tracking
+            # reset timesteps
             self._timesteps = np.zeros(self.num_envs)
-
-            # reset observations
-            self._obs = self._get_observations()
-
-        # reset envs manually
         else:
-            # reset timestep tracking
-            self._timesteps[env_idxs] = 0
-
             # select each environment
             for i in env_idxs:
                 # reset all obstacles to default pose
@@ -387,6 +391,15 @@ class IsaacEnv(ModularEnv):
                 for robot in self._get_robots(i):
                     robot.post_reset()
 
+            # reset timestep tracking
+            self._timesteps[env_idxs] = 0
+
+        # reset observations # todo: only recalculate necessary observations
+        self._obs = self._get_observations()
+
+        # note new distances # todo: only recalculate necessary distances
+        self._distances_after_reset = self._get_distances()
+        
         return self._obs
 
     def get_robot_dof_limits(self) -> List[Tuple[float, float]]:
@@ -469,6 +482,18 @@ class IsaacEnv(ModularEnv):
             obs.append(env_obs)
 
         return np.array(obs)
+
+    def _get_distances(self) -> Dict[str, np.ndarray]:
+        # reset current distances
+        distances = {}
+
+        for distance_fn in self._distance_funcions:
+            # calcualte current distances
+            name, distance = distance_fn()
+
+            distances[name] = distance
+
+        return distances
 
     def _get_rewards(self) -> List[float]:
         rewards = np.zeros(self.num_envs)
