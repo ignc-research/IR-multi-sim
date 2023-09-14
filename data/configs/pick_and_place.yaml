@@ -2,7 +2,7 @@ engine: "Isaac"
 robots:
   R1:
     urdf_path: "robots/ur5/urdf/ur5_with_gripper.urdf"
-    position: [0, 0, 0.1]
+    position: [0, 0, 0.3]
     observable_joints: ["ee_link"]
 obstacles:
   # cube which is supposed to be moved
