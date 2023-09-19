@@ -332,27 +332,25 @@ class IsaacEnv(ModularEnv):
             self._simulation.update()
     
     def step_wait(self) -> VecEnvStepReturn:
-        while True:
+        # get observations
+        self._obs = self._get_observations()
 
-            # get observations
-            self._obs = self._get_observations()
+        # calculate current distances after observations were updated
+        self._distances = self._get_distances()
 
-            # calculate current distances after observations were updated
-            self._distances = self._get_distances()
+        # calculate rewards after distances were updated
+        self._rewards = self._get_rewards()
 
-            # calculate rewards after distances were updated
-            self._rewards = self._get_rewards()
+        # get dones
+        # self._dones = self._get_dones()
 
-            # get dones
-            self._dones = self._get_dones()
+        # print("Obs    :", self._obs)
+        # print("Dist.  :", self._distances)
+        # print("Rewards:", self._rewards)
+        # print("Dones  :", self._dones)
+        # print("Timest.:", self._timesteps)
 
-            # print("Obs    :", self._obs)
-            print("Dist.  :", self._distances)
-            print("Rewards:", self._rewards)
-            # print("Dones  :", self._dones)
-            # print("Timest.:", self._timesteps)
-
-            self._simulation.update()
+        self._simulation.update()
 
         # log rewards
         if self.verbose > 0:
