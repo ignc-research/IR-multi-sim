@@ -47,3 +47,4 @@ resets:
 control_type: "Velocity"
 verbose: 2
 step_size: 0.00416666666
+num_envs: 32

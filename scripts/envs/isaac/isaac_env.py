@@ -192,8 +192,8 @@ class IsaacEnv(ModularEnv):
         
     def _parse_distance_reward(self, distance: Distance):
         # parse indices in observations
-        obj1_start, _ = self._parse_observable_object_range(distance.obj1)
-        obj2_start, _ = self._parse_observable_object_range(distance.obj2)
+        obj1_start = self._find_observable_object(distance.obj1)
+        obj2_start = self._find_observable_object(distance.obj2)
 
         # extract name to allow created function to access it easily
         name = distance.name
@@ -245,18 +245,6 @@ class IsaacEnv(ModularEnv):
         
         return timestep_reward
 
-    def _parse_observable_object_range(self, name: str) -> Tuple[int, int]:
-        """
-        Given the name of an observable object, tries to retrieve its beginning and end position index in the observation buffer
-        """
-        index = self._find_observable_object(name)
-
-        # calculate start index (multiply by 7: xyz for position, quaternion for rotation)
-        start = index * 7
-
-        # return start and end index
-        return start, start + 6
-
     def _find_observable_object(self, name: str) -> int:
         """
         Given the name of an observable object, tries to retrieve its index in the observations list.
@@ -265,17 +253,20 @@ class IsaacEnv(ModularEnv):
         # robots are input first into observations
         for index, robot in enumerate(self._observable_robots):
             if robot.name.endswith(name):
-                return index
+                # each robot has x,y,z coordinates, quaternion and scale
+                return index * 10
         
         # observable joints second
         for index, joint in enumerate(self._observable_robot_joints):
             if joint.name.endswith(name):
-                return index + self.observable_robots_count
+                # robot joints have x,y,z coordinates and quaternion
+                return index * 7 + self.observable_robots_count * 10
 
         # obstacles third
         for index, obstacle in enumerate(self._observable_obstacles):
             if obstacle.name.endswith(name):
-                return index + self.observable_robots_count + self.observable_robot_joint_count
+                # each obstacle has x,y,z coordinates, quaternion and scale
+                return index * 10 + self.observable_robots_count * 7 + self.observable_robot_joint_count * 10
 
         raise Exception(f"Object {name} must be observable if used for reward")
 
@@ -341,33 +332,31 @@ class IsaacEnv(ModularEnv):
             self._simulation.update()
     
     def step_wait(self) -> VecEnvStepReturn:
-        # get observations
-        self._obs = self._get_observations()
+        while True:
 
-        # calculate current distances after observations were updated
-        self._distances = self._get_distances()
+            # get observations
+            self._obs = self._get_observations()
 
-        # calculate rewards after distances were updated
-        self._rewards = self._get_rewards()
+            # calculate current distances after observations were updated
+            self._distances = self._get_distances()
 
-        # get dones
-        self._dones = self._get_dones()
+            # calculate rewards after distances were updated
+            self._rewards = self._get_rewards()
 
-        # print("Obs    :", self._obs)
-        # print("Dist.  :", self._distances["TargetDistance"])
-        # print("Rewards:", self._rewards)
-        # print("Dones  :", self._dones)
-        # print("Timest.:", self._timesteps)
+            # get dones
+            self._dones = self._get_dones()
+
+            # print("Obs    :", self._obs)
+            print("Dist.  :", self._distances)
+            print("Rewards:", self._rewards)
+            # print("Dones  :", self._dones)
+            # print("Timest.:", self._timesteps)
+
+            self._simulation.update()
 
         # log rewards
         if self.verbose > 0:
             self.set_attr("average_rewards", np.average(self._rewards))
-
-            # log distances
-            if self.verbose > 1:
-                for name, distance in self._distances.items():
-                    self.set_attr("distance_"+name, np.average(distance))
-
 
         return self._obs, self._rewards, self._dones, self.env_data
 
@@ -379,20 +368,39 @@ class IsaacEnv(ModularEnv):
 
             # reset timesteps
             self._timesteps = np.zeros(self.num_envs)
-        else:
-            # select each environment
-            for i in env_idxs:
-                # reset all obstacles to default pose
-                for geometryPrim, _ in self._get_obstacles(i):
-                    # default case: reset obstacle to default position without randomization
-                    geometryPrim.post_reset()
 
-                # reset all robots to default pose
-                for robot in self._get_robots(i):
-                    robot.post_reset()
+            # reset observations
+            self._obs = self._get_observations()
 
-            # reset timestep tracking
-            self._timesteps[env_idxs] = 0
+            # calculate new distances
+            self._distances_after_reset = self._get_distances()
+
+            # set dummy value for distances to avoid KeyError
+            if self.verbose > 1:
+                for name, _ in self._distances_after_reset.items():
+                    self.set_attr("distance_"+name, None)   
+
+            return self._obs
+        
+        # select each environment
+        for i in env_idxs:
+            # reset all obstacles to default pose
+            for geometryPrim, _ in self._get_obstacles(i):
+                # default case: reset obstacle to default position without randomization
+                geometryPrim.post_reset()
+
+            # reset all robots to default pose
+            for robot in self._get_robots(i):
+                robot.post_reset()
+
+        # reset timestep tracking
+        self._timesteps[env_idxs] = 0
+
+        # log distances of environments which were reset
+        if self.verbose > 1:
+            for name, distance in self._distances.items():
+                self.set_attr("distance_"+name, np.average(distance[env_idxs]))
+            
 
         # reset observations # todo: only recalculate necessary observations
         self._obs = self._get_observations()
