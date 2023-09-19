@@ -342,7 +342,7 @@ class IsaacEnv(ModularEnv):
         self._rewards = self._get_rewards()
 
         # get dones
-        # self._dones = self._get_dones()
+        self._dones = self._get_dones()
 
         # print("Obs    :", self._obs)
         # print("Dist.  :", self._distances)
