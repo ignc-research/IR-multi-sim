@@ -57,6 +57,18 @@ class EnvParams():
         self.max_velocity = max_velocity
         self.verbose = verbose
 
+        # extract information about obstacles
+        self.obstacle_count = len(obstacles)
+        self.observable_obstacles_count = len([o for o in obstacles if o.observable])
+
+        # extract information about robots
+        self.robot_count = len(robots)
+        self.observable_robots_count = len([r for r in robots if r.observable])
+        self.observable_robot_joint_count = sum(len(r.observable_joints) for r in robots)
+
+        # extract information about distance rewards
+        self.distance_count = len(self.get_distance_rewards())
+    
     def get_distance_rewards(self) -> List[Distance]:
         distances = []
 

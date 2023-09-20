@@ -39,15 +39,17 @@ class IsaacEnv(ModularEnv):
 
         # setup basic information about simulation
         self.num_envs = params.num_envs
-        self.robot_count = len(params.robots)
-        self.observable_robots_count = len([r for r in params.robots if r.observable])
-        self.observable_robot_joint_count = sum(len(r.observable_joints) for r in params.robots)
-        self.obstacle_count = len(params.obstacles)
-        self.observable_obstacles_count = len([o for o in params.obstacles if o.observable])
+        self.robot_count = params.robot_count
+        self.observable_robots_count = params.observable_robots_count
+        self.observable_robot_joint_count = params.observable_robot_joint_count
+        self.obstacle_count = params.obstacle_count
+        self.observable_obstacles_count = params.observable_obstacles_count
+
         self._timesteps: List[int] = np.zeros(params.num_envs)
         self.step_count = params.step_count
         self.control_type = params.control_type
         self.verbose = params.verbose
+        self.observable_objects_count = self.observable_robots_count + self.observable_robot_joint_count + self.observable_obstacles_count
 
         # save the distances in the current environment
         self._distance_funcions = []
@@ -192,8 +194,8 @@ class IsaacEnv(ModularEnv):
         
     def _parse_distance_reward(self, distance: Distance):
         # parse indices in observations
-        obj1_start = self._find_observable_object(distance.obj1)
-        obj2_start = self._find_observable_object(distance.obj2)
+        obj_start = self._find_observable_object(distance.obj)
+        goal_start = self._find_observable_object(distance.goal)
 
         # extract name to allow created function to access it easily
         name = distance.name
@@ -204,13 +206,28 @@ class IsaacEnv(ModularEnv):
         def distance_per_env() -> Tuple[str, np.ndarray]:
             # calculate distances as np array
             result = []
+            archieved_goals = np.empty(0)
+            desired_goals = np.empty(0)
+
             for i in range(self.num_envs):
-                result.append(calc_distance(
-                    # extract x,y,z coordinates of objects
-                    self._obs[i][obj1_start:obj1_start+3],
-                    self._obs[i][obj2_start:obj2_start+3]
-                ))
+                env_obs = self._obs["observation"][i]
+
+                # extract x,y,z coordinates of objects
+                obj_pos = env_obs[obj_start:obj_start+3]
+                goal_pos = env_obs[goal_start:goal_start+3]
+
+                # calculate distance
+                result.append(calc_distance(obj_pos, goal_pos))
+
+                # append goal information to obs buffer
+                archieved_goals = np.concatenate((archieved_goals, obj_pos))
+                desired_goals = np.concatenate((desired_goals, goal_pos))
+
             result = np.array(result)
+
+            # track reached and desired goals
+            self._obs["archieved_goal"] = archieved_goals
+            self._obs["desired_goal"] = desired_goals
 
             return name, result
 
@@ -433,12 +450,10 @@ class IsaacEnv(ModularEnv):
         self._simulation.close()
 
     def _get_observations(self) -> VecEnvObs:
-        obs = []
-
+        obs = np.array([])
+        
         # iterate through each env
         for env_idx in range(self.num_envs):
-            env_obs = []
-
             # get observations from all robots in environment
             robot_idx_offset = self.observable_robots_count * env_idx
             for robot_idx in range(robot_idx_offset, self.observable_robots_count + robot_idx_offset):
@@ -451,9 +466,7 @@ class IsaacEnv(ModularEnv):
                 pos -= self._env_offsets[env_idx]
 
                 # add robot pos and rotation to list of observations
-                env_obs.extend(pos)
-                env_obs.extend(rot)
-                env_obs.extend(robot.get_local_scale())
+                obs = np.concatenate((obs, pos, rot, robot.get_local_scale()))
 
             # get observations from all observable joints in environment
             joint_idx_offset = self.observable_robot_joint_count * env_idx
@@ -465,8 +478,7 @@ class IsaacEnv(ModularEnv):
                 pos, rot = joint.get_local_pose()
 
                 # add pos and rotation to list of observations
-                env_obs.extend(pos)
-                env_obs.extend(rot)
+                obs = np.concatenate((obs, pos, rot))
 
             # get observations from all obstacles in environment
             obstacle_idx_offset = self.observable_obstacles_count * env_idx
@@ -480,14 +492,16 @@ class IsaacEnv(ModularEnv):
                 pos -= self._env_offsets[env_idx]
 
                 # add obstacle pos and rotation to list of observations
-                env_obs.extend(pos)
-                env_obs.extend(rot)
-                env_obs.extend(obstacle.get_local_scale())
+                obs = np.concatenate((obs, pos, rot, obstacle.get_local_scale()))
 
-            # add observations gathered in environment to dictionary
-            obs.append(env_obs)
-
-        return np.array(obs)
+        return {
+            # reshape array: 1 list of obs for each env
+            "observation": obs.reshape(self.num_envs, -1),
+            # allow tracking goals (HER)
+            # shape: each env saves x,y,z coordinate of goal
+            "archieved_goal": np.array([]),
+            "desired_goal": np.array([])
+        }
 
     def _get_distances(self) -> Dict[str, np.ndarray]:
         # reset current distances

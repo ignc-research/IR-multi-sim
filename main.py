@@ -1,9 +1,11 @@
 from argparse import ArgumentParser
 from scripts.envs.params.config_parser import parse_config
 from scripts.envs import create_env
-from stable_baselines3 import TD3
+from sb3_contrib import TQC
+from sb3_contrib.common.wrappers import TimeFeatureWrapper
 from stable_baselines3.common.base_class import BaseAlgorithm
 from stable_baselines3.common.callbacks import BaseCallback
+from stable_baselines3 import HerReplayBuffer
 from os.path import exists
 from pathlib import Path
 import signal
@@ -50,14 +52,31 @@ def _setup_model(path: str, reset: bool, env: ModularEnv) -> (BaseAlgorithm, str
     config_name = path.split('/')[-1].replace('.yaml', '')
     model_path = "./data/models/" + config_name + ".zip"
 
+    # wrap environment
+    env = TimeFeatureWrapper(env)
+
     # try loading existing model
     if not reset and exists(model_path):
-        model = TD3.load(model_path, env=env)
+        model = TQC.load(model_path, env=env)
         model.set_parameters(model_path)
         print("Loaded existing parameters from", model_path)
     # create new model if necessary
     else:
-        model = TD3("MlpPolicy", env, train_freq=1, tensorboard_log="./data/logs/"+config_name, verbose=1)
+        model = TQC(
+            batch_size=2048,
+            buffer_size=1000000,
+            gamma=0.95,
+            learning_rate=0.001,
+            policy="MultiInputPolicy",
+            policy_kwargs=dict(net_arch=[512, 512, 512], n_critics=2),
+            replay_buffer_class=HerReplayBuffer,
+            replay_buffer_kwargs=dict( online_sampling=True, goal_selection_strategy='future', n_sampled_goal=4),
+            tau=0.05,
+            env=env,
+            tensorboard_log="./data/logs/"+config_name,
+            verbose=1,
+            learning_starts=1000
+            )
         print(f"No parameters found at {model_path}, creating new model!")
 
     # function executed if program gets interrupted
@@ -100,7 +119,7 @@ if __name__ == '__main__':
 
     # allow parsing file
     parser.add_argument('-f', '--file', help="Environment config file")
-    parser.add_argument('-t', '--timesteps', default=100000, type=int, help="Amount of timesteps to train the model")
+    parser.add_argument('-t', '--timesteps', default=1000000, type=int, help="Amount of timesteps to train the model")
     parser.add_argument('-r', '--reset', action="store_true", help="Start model training from scratch")
 
     # parse arguments

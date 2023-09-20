@@ -24,8 +24,8 @@ obstacles:
     type: "Cylinder"
 rewards:
   TargetDistance:
-    obj1: "TargetCube"
-    obj2: "R1/ee_link"
+    obj: "R1/ee_link"
+    goal: "TargetCube"
     type: "Distance"
 resets:
   # Name of reset conditions is irrelevant

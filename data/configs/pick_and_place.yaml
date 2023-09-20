@@ -22,14 +22,14 @@ obstacles:
 rewards:
   # reward the end effector being close to the object which is supposed to be moved
   EffectorDistance:
-    obj1: "ToMove"
-    obj2: "R1/ee_link"
+    obj: "R1/ee_link"
+    goal: "ToMove"
     type: "Distance"
     weight: -16
   # reward the cube which is supposed to be moved being close to the target
   TargetDistance:
-    obj1: "ToMove"
-    obj2: "GoalCube"
+    obj: "ToMove"
+    goal: "GoalCube"
     type: "Distance"
     normalize: True
 resets:
@@ -46,4 +46,4 @@ resets:
 control_type: "Velocity"
 verbose: 2
 step_size: 0.00416666666
-num_envs: 32
+num_envs: 2

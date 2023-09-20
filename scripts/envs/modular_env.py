@@ -5,8 +5,10 @@ from pathlib import Path
 from stable_baselines3.common.vec_env.base_vec_env import *
 from gym.utils import seeding
 from gym.spaces import Box
+from gym.spaces.dict import Dict as DictSpace
 from scripts.envs.params.control_type import ControlType
 from scripts.envs.params.env_params import EnvParams
+import gym
 
 
 class ModularEnv(VecEnv):
@@ -15,12 +17,21 @@ class ModularEnv(VecEnv):
         self.step_size = params.step_size  # Amount of time passing each time .step() is called
         self.env_data: List[Dict[str, Any]] = [{} for _ in range(params.num_envs)]  # Env data saved in dicts
 
-        # parse observation and action space
-        num_obs = len(self.reset()[0])
+        # parse action space
         limits = self._get_action_space(params)
-
-        obs_space = Box(np.ones(num_obs) * -np.inf, np.ones(num_obs) * np.inf)
         action_space = Box(np.array([a[0] for a in limits]), np.array([a[1] for a in limits]))
+
+        # parse observatuib space
+        num_obs = len(self.reset()["observation"][0])
+
+        # format allows to use HER buffer
+        obs_space = DictSpace({
+            # bundle environments observations
+            "observation": Box(np.ones(num_obs) * -np.inf, np.ones(num_obs) * np.inf),
+            # goals are coded in x,y,z (position)
+            "desired_goal": Box(np.ones(params.distance_count * 3) * -np.inf, np.ones(params.distance_count * 3) * np.inf),
+            "archieved_goal": Box(np.ones(params.distance_count * 3) * -np.inf, np.ones(params.distance_count * 3) * np.inf)
+            })
 
         # init base class with dynamically created action and observation space
         super().__init__(params.num_envs, obs_space, action_space)
@@ -32,7 +43,6 @@ class ModularEnv(VecEnv):
             return [(-params.max_velocity, params.max_velocity) for _ in range(len(params.robots))]
         
         raise Exception(f"Unknown control type: {params.control_type}")
-
 
     @abstractmethod
     def get_robot_dof_limits(self) -> List[Tuple[float, float]]:
@@ -61,6 +71,11 @@ class ModularEnv(VecEnv):
         pass
 
     def env_is_wrapped(self, wrapper_class: Type[gym.Wrapper], indices: VecEnvIndices = None) -> List[bool]:
+        # Import here to avoid a circular import
+        from stable_baselines3.common import env_util
+
+        env_util.is_wrapped()
+
         # per default, modular envs don't support wrappper classes
         return [False for _ in self._get_indices(indices)]
     

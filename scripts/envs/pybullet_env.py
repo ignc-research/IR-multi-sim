@@ -109,8 +109,8 @@ class PybulletEnv(ModularEnv):
 
     def _parse_distance_reward(self, distance: Distance):
         # parse indices in observations
-        obj1_start, obj1_end = self._find_observable_object(distance.obj1)
-        obj2_start, obj2_end = self._find_observable_object(distance.obj2)
+        obj1_start, obj1_end = self._find_observable_object(distance.obj)
+        obj2_start, obj2_end = self._find_observable_object(distance.goal)
 
         name = distance.name    # extract name to allow created function to access it easily
 
