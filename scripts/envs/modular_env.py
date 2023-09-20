@@ -17,12 +17,8 @@ class ModularEnv(VecEnv):
         self.step_size = params.step_size  # Amount of time passing each time .step() is called
         self.env_data: List[Dict[str, Any]] = [{} for _ in range(params.num_envs)]  # Env data saved in dicts
 
-        # parse action space
-        limits = self._get_action_space(params)
-        action_space = Box(np.array([a[0] for a in limits]), np.array([a[1] for a in limits]))
-
-        # parse observatuib space
-        num_obs = len(self.reset()["observation"][0])
+        # parse observation space
+        num_obs = self.reset()["observation"].size
 
         # format allows to use HER buffer
         obs_space = DictSpace({
@@ -32,15 +28,24 @@ class ModularEnv(VecEnv):
             "desired_goal": Box(np.ones(params.distance_count * 3) * -np.inf, np.ones(params.distance_count * 3) * np.inf),
             "archieved_goal": Box(np.ones(params.distance_count * 3) * -np.inf, np.ones(params.distance_count * 3) * np.inf)
             })
+        
+        # parse action space after obs space: Reset required to access instanciated robot information
+        limits = self._get_action_space(params)
+        action_space = Box(np.array([a[0] for a in limits]), np.array([a[1] for a in limits]))
 
         # init base class with dynamically created action and observation space
         super().__init__(params.num_envs, obs_space, action_space)
 
     def _get_action_space(self, params: EnvParams) -> List[Tuple[float, float]]:
+        # get joint limits of robots
+        dof_limits = self.get_robot_dof_limits()
+
+        # joint positions will be set precisely
         if params.control_type == ControlType.Position:
-            return self.get_robot_dof_limits()
+            return dof_limits
         if params.control_type == ControlType.Velocity:
-            return [(-params.max_velocity, params.max_velocity) for _ in range(len(params.robots))]
+            # joint limits will be controlled via velocity: Return min/max velocita * joint count
+            return [(-params.max_velocity, params.max_velocity) for _ in range(len(dof_limits))]
         
         raise Exception(f"Unknown control type: {params.control_type}")
 
