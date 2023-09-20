@@ -44,6 +44,9 @@ class IsaacEnv(ModularEnv):
         self.observable_robot_joint_count = params.observable_robot_joint_count
         self.obstacle_count = params.obstacle_count
         self.observable_obstacles_count = params.observable_obstacles_count
+        # number of floats required for observation per environment
+        #              pos,rot,scale                          pos,rot (scale equals that of robot)                               
+        self.num_obs = params.observable_robots_count * 10 + params.observable_robot_joint_count * 7 + params.observable_obstacles_count * 10
 
         self._timesteps: List[int] = np.zeros(params.num_envs)
         self.step_count = params.step_count
