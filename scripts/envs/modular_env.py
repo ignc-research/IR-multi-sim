@@ -17,7 +17,7 @@ class ModularEnv(VecEnv):
         self.env_data: List[Dict[str, Any]] = [{} for _ in range(params.num_envs)]  # Env data saved in dicts
 
         # parse observation space
-        num_obs = self.reset()["observation"].size / params.num_envs
+        num_obs = self.reset()["observation"].size // params.num_envs
 
         # format allows to use HER buffer
         obs_space = spaces.Dict({
@@ -31,9 +31,6 @@ class ModularEnv(VecEnv):
         # parse action space after obs space: Reset required to access instanciated robot information
         limits = self._get_action_space(params)
         action_space = spaces.Box(np.array([a[0] for a in limits]), np.array([a[1] for a in limits]))
-
-        print("obs_space:", num_obs, obs_space)
-        print("action_space:", len(limits), action_space)
 
         # init base class with dynamically created action and observation space
         super().__init__(params.num_envs, obs_space, action_space)
