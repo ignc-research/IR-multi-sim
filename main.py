@@ -71,7 +71,7 @@ def _setup_model(path: str, reset: bool, env: ModularEnv) -> (BaseAlgorithm, str
             policy="MultiInputPolicy",
             policy_kwargs=dict(net_arch=[512, 512, 512], n_critics=2),
             replay_buffer_class=HerReplayBuffer,
-            replay_buffer_kwargs=dict( online_sampling=True, goal_selection_strategy='future', n_sampled_goal=4),
+            replay_buffer_kwargs=dict( goal_selection_strategy='future', n_sampled_goal=4),
             tau=0.05,
             env=env,
             tensorboard_log="./data/logs/"+config_name,
