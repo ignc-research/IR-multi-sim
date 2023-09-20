@@ -330,9 +330,7 @@ class IsaacEnv(ModularEnv):
         return reset_condition
 
     def step_async(self, actions: np.ndarray) -> None:
-        # todo: remove assertion once actiosn are fixed
-        print("Actions:", actions)
-        assert actions.shape[1] == self.num_envs
+        # print("Actions:", actions)
 
         # apply actions
         if self.control_type == ControlType.Velocity:
