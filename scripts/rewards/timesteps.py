@@ -9,4 +9,5 @@ class ElapsedTimesteps(Reward):
             weight (float): Factor multiplied with number of elapsed timesteps to calculate reward
             name (str, optional): Name of the reward. Defaults to None.
         """
-        super().__init__(weight, name)
+        super().__init__(name)
+        self.weight = weight

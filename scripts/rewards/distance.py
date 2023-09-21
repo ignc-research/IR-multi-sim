@@ -2,14 +2,16 @@ import numpy as np
 from scripts.rewards.reward import Reward
 from scripts.spawnables.spawnable import Spawnable
 
-from typing import Union
+from typing import Union, Tuple
 
 
 class Distance(Reward):
-    def __init__(self, obj1: Union[Spawnable, str], obj2: Union[Spawnable, str], weight: float=-1, normalize: bool=False, name: str=None) -> None:
+    def __init__(self, obj1: Union[Spawnable, str], obj2: Union[Spawnable, str], distance_weight: float=-1, orientation_weight: float=-0.1, exponent: float=1, normalize: bool=False, name: str=None) -> None:
         """
         obj1, ob2: References to the objects whose distance shall be measured. 
-        weight: Factor the distance is multiplied with to calculate the reward
+        distance_weight: Factor the distance (space) is multiplied with to calculate the reward
+        orientation_weight: Factor the distance (orientation) is multiplied with to calculate the reward
+        exponent: Exponent applied to the final result. reward=distance^exponent
         normalize: Reward will be in range [0, factor], depending on the current position relative to the beginning position
         The reference may either be a spwanabe object (name will be extracted automatically), or a str referencing an objects name.
         Examples: 
@@ -19,7 +21,7 @@ class Distance(Reward):
         Note: All objects referenced in rewards must be observable.
         """
 
-        super().__init__(weight, name)
+        super().__init__(name)
 
         # parse name of first object
         if isinstance(obj1, Spawnable):
@@ -33,10 +35,13 @@ class Distance(Reward):
         else:
             self.obj2 = obj2
 
+        self.distance_weight = distance_weight
+        self.orientation_weight = orientation_weight
+        self.exponent = exponent
         self.normalize = normalize
 
 
-def calc_distance(p1: np.ndarray, p2: np.ndarray, o1: np.ndarray, o2: np.ndarray) -> float, float:
+def calc_distance(p1: np.ndarray, p2: np.ndarray, o1: np.ndarray, o2: np.ndarray) -> Tuple[float, float]:
     """Calculates the distance in position and orientation between two points
 
     Args:
@@ -49,8 +54,8 @@ def calc_distance(p1: np.ndarray, p2: np.ndarray, o1: np.ndarray, o2: np.ndarray
         float: distance in float
     """
     # calculate distance (space and rotation)
-    distance_space = np.linalg.norm(p1 - p2, dim=1)
-    # ISAAC GYM uses quaternions as orientation, calculate the angles between cubes and hands
-    distance_rotation = np.arccos(2 * (o1 @ o2.T).diagonal() ** 2 - 1)
+    distance_space = np.linalg.norm(p1 - p2)
+    # ISAAC GYM uses quaternions as orientation # todo: outputs floar scaling with angle, but not angle itself
+    distance_rotation = np.arccos(2 * (o1 @ o2.T) ** 2 - 1)
 
     return distance_space, distance_rotation

@@ -2,7 +2,7 @@ engine: "Isaac"
 robots:
   R1:
     urdf_path: "robots/ur5/urdf/ur5_with_gripper.urdf"
-    position: [0, 0, 0.3]
+    position: [0, 0, 0]
     observable_joints: ["ee_link"]
 obstacles:
   # cube which defines target of movement
@@ -17,20 +17,20 @@ rewards:
   EffectorDistance:
     obj1: "GoalCube"
     obj2: "R1/ee_link"
+    exponent: 2
     type: "Distance"
 resets:
   # reset once target cube reached goal
   one:
     distance: "EffectorDistance"
-    min: 0.1
-    max: 1000
+    min_distance: 0.1
     type: "DistanceReset"
   # Reset after number of timesteps
   two:
-    max: 256
+    max: 32 #256
     type: "TimestepsReset"
 control_type: "Velocity"
 verbose: 2
 step_size: 0.00416666666
-num_envs: 64
-headless: False
+num_envs: 2 # 64
+headless: False # (remove this)

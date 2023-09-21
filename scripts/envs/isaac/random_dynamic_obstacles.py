@@ -3,21 +3,7 @@ import numpy as np
 from omni.isaac.core.materials import PhysicsMaterial
 from omni.isaac.core.materials.visual_material import VisualMaterial
 from omni.isaac.core.objects import DynamicCuboid, DynamicSphere, DynamicCylinder
-
-def _get_value_in_range(min: float, max: float, range: float) -> float:
-    """Returns a value between min and max.
-        Example: Min=0, Max=10, range:0.5 -> 5
-
-    Args:
-        min (float): Min value
-        max (float): Max value
-        range (float): [0, 1]
-
-    Returns:
-        float: _description_
-    """
-
-    return min + (max - min) * range
+from scripts.envs.isaac.random_static_obstacles import get_value_in_range
 
 class RandomDynamicCuboid(DynamicCuboid):
     def __init__(
@@ -92,9 +78,6 @@ class RandomDynamicCuboid(DynamicCuboid):
         self.scale = scale
 
     def post_reset(self) -> None:
-        # generate random numbers to allow setting random properties efficiently
-        rand_floats = np.random.random_sample(3)
-
         # generate new random position, orientation and scale (if necessary)
         pos_min, pos_max = self.position
         ori_min, ori_max = self.orientation
@@ -104,17 +87,17 @@ class RandomDynamicCuboid(DynamicCuboid):
         if pos_max is None:
             pos = pos_min
         else:
-            pos = _get_value_in_range(pos_min, pos_max, rand_floats[0])
+            pos = get_value_in_range(pos_min, pos_max)
         
         # randomize orientation if necessary
         if ori_max is None:
             ori = ori_min
         else:
-            ori = _get_value_in_range(ori_min, ori_max, rand_floats[1])
+            ori = get_value_in_range(ori_min, ori_max)
 
         # randomize scale if necessary
         if scale_max is not None:
-            self.set_local_scale(_get_value_in_range(scale_min, scale_max, rand_floats[2]))
+            self.set_local_scale(get_value_in_range(scale_min, scale_max))
 
         # obj with rigid bodies need to be reset by internal C++ callback
         self.set_default_state(pos, ori)
@@ -181,9 +164,6 @@ class RandomDynamicSphere(DynamicSphere):
         self.scale = scale
 
     def post_reset(self) -> None:
-        # generate random numbers to allow setting random properties efficiently
-        rand_floats = np.random.random_sample(3)
-
         # generate new random position, orientation and scale (if necessary)
         pos_min, pos_max = self.position
         ori_min, ori_max = self.orientation
@@ -193,17 +173,17 @@ class RandomDynamicSphere(DynamicSphere):
         if pos_max is None:
             pos = pos_min
         else:
-            pos = _get_value_in_range(pos_min, pos_max, rand_floats[0])
+            pos = get_value_in_range(pos_min, pos_max)
         
         # randomize orientation if necessary
         if ori_max is None:
             ori = ori_min
         else:
-            ori = _get_value_in_range(ori_min, ori_max, rand_floats[1])
+            ori = get_value_in_range(ori_min, ori_max)
 
         # randomize scale if necessary
         if scale_max is not None:
-            self.set_local_scale(_get_value_in_range(scale_min, scale_max, rand_floats[2]))
+            self.set_local_scale(get_value_in_range(scale_min, scale_max))
 
         # obj with rigid bodies need to be reset by internal C++ callback
         self.set_default_state(pos, ori)
@@ -270,9 +250,6 @@ class RandomDynamicCylinder(DynamicCylinder):
         self.scale = scale
 
     def post_reset(self) -> None:
-        # generate random numbers to allow setting random properties efficiently
-        rand_floats = np.random.random_sample(3)
-
         # generate new random position, orientation and scale (if necessary)
         pos_min, pos_max = self.position
         ori_min, ori_max = self.orientation
@@ -282,17 +259,17 @@ class RandomDynamicCylinder(DynamicCylinder):
         if pos_max is None:
             pos = pos_min
         else:
-            pos = _get_value_in_range(pos_min, pos_max, rand_floats[0])
+            pos = get_value_in_range(pos_min, pos_max)
         
         # randomize orientation if necessary
         if ori_max is None:
             ori = ori_min
         else:
-            ori = _get_value_in_range(ori_min, ori_max, rand_floats[1])
+            ori = get_value_in_range(ori_min, ori_max)
 
         # randomize scale if necessary
         if scale_max is not None:
-            self.set_local_scale(_get_value_in_range(scale_min, scale_max, rand_floats[2]))
+            self.set_local_scale(get_value_in_range(scale_min, scale_max))
 
         # obj with rigid bodies need to be reset by internal C++ callback
         self.set_default_state(pos, ori)

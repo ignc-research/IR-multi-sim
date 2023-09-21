@@ -25,7 +25,7 @@ rewards:
     obj1: "ToMove"
     obj2: "R1/ee_link"
     type: "Distance"
-    weight: -32
+    distance_weight: -32
   # reward the cube which is supposed to be moved being close to the target
   TargetDistance:
     obj1: "ToMove"

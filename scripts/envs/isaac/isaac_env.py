@@ -197,19 +197,25 @@ class IsaacEnv(ModularEnv):
 
         # extract name to allow created function to access it easily
         name = distance.name
-        weight = distance.weight
+        distance_weight = distance.distance_weight
+        orientation_weight = distance.orientation_weight
         normalize = distance.normalize
+        exponent = distance.exponent
 
         # create function calculating distance
         def distance_per_env() -> Tuple[str, np.ndarray]:
             # calculate distances as np array
             result = []
             for i in range(self.num_envs):
-                result.append(calc_distance(
-                    # extract x,y,z coordinates of objects
-                    self._obs[i][obj1_start:obj1_start+3],
-                    self._obs[i][obj2_start:obj2_start+3]
-                ))
+                # extract x,y,z coordinates of objects
+                pos1 = self._obs[i][obj1_start:obj1_start+3]
+                pos2 = self._obs[i][obj2_start:obj2_start+3]
+
+                # extract quaternion orientation from objects
+                ori1 = self._obs[i][obj1_start+3:obj1_start+7]
+                ori2 = self._obs[i][obj2_start+3:obj2_start+7]
+
+                result.append(calc_distance(pos1, pos2, ori1, ori2))
             result = np.array(result)
 
             return name, result
@@ -217,22 +223,26 @@ class IsaacEnv(ModularEnv):
         # add to existing distance functions
         self._distance_funcions.append(distance_per_env)
     
-        def calculate_distance_reward():
+        def calculate_distance_reward() -> float:
             # get current distances
-            distance = self._distances[name]
+            distance_space, distance_orientation = self._get_distance_and_rotation(name)
 
             # apply weight factor
-            weighted_distance = distance * weight
+            weighted_space = distance_weight * distance_space
+            weighted_orientation = orientation_weight * distance_orientation
 
             # skip normalization
             if not normalize:
-                return weighted_distance
+                return (weighted_space + weighted_orientation) ** exponent
 
             # retrieve distences after last reset
-            beginning_distances = self._distances_after_reset[name]
+            begin_space, begin_orient = self._distances_after_reset[name]
 
             # calculate variance to previous distance, avoiding division by zero
-            return np.where(beginning_distances == 0, weighted_distance, weight * distance / beginning_distances)
+            normalized_space = np.where(begin_space == 0, weighted_space, distance_weight * distance_space / begin_space) 
+            normalized_orient = np.where(begin_orient == 0, weighted_orientation, distance_orientation * distance_orientation / begin_orient) 
+
+            return (normalized_space + normalized_orient) ** exponent
 
         return calculate_distance_reward
     
@@ -289,16 +299,19 @@ class IsaacEnv(ModularEnv):
     def _parse_distance_reset(self, reset: DistanceReset):
         # extract name to allot created function to access it easily
         name = reset.distance_name
-        min_value = reset.min
-        max_value = reset.max
+        distance_min, distance_max = reset.min_distance, reset.max_distance
+        max_angle = reset.max_angle
 
         # parse function
         def reset_condition() -> np.ndarray:
             # get distances of current timestep
-            d = self._distances[name]
+            distance, rotation = self._get_distance_and_rotation(name)
 
             # return true whenever the distance exceed max or min value
-            return np.where(min_value <= d, np.where(d <= max_value, False, True), True)
+            distance_reset = np.where(distance_min <= distance, np.where(distance <= distance_max, False, True), True)
+            rotation_reset = np.where(np.abs(rotation) > max_angle, True, False)
+
+            return np.logical_or(distance_reset, rotation_reset)
 
         return reset_condition
 
@@ -332,6 +345,7 @@ class IsaacEnv(ModularEnv):
             self._simulation.update()
     
     def step_wait(self) -> VecEnvStepReturn:
+        
         # get observations
         self._obs = self._get_observations()
 
@@ -419,6 +433,12 @@ class IsaacEnv(ModularEnv):
         
         return limits
     
+    def _get_distance_and_rotation(self, name: str) -> Tuple[float, float]:
+        # get current distances
+        distances = self._distances[name]
+        # return distance_space (meters), distance_orientation (angle)
+        return distances[0], distances[1]
+
     def _get_robots(self, env_idx: int):
         start_idx = env_idx * self.robot_count
 
@@ -461,7 +481,7 @@ class IsaacEnv(ModularEnv):
                 # get joint of environment
                 joint = self._observable_robot_joints[joint_idx]
 
-                # get its pose
+                # get its pose # todo: doesn't factor in parent object (robot) offset
                 pos, rot = joint.get_local_pose()
 
                 # add pos and rotation to list of observations

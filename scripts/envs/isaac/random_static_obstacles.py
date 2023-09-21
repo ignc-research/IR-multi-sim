@@ -4,7 +4,7 @@ from omni.isaac.core.materials import PhysicsMaterial
 from omni.isaac.core.materials.visual_material import VisualMaterial
 from omni.isaac.core.objects import FixedCuboid, FixedSphere, FixedCylinder
 
-def _get_value_in_range(min: float, max: float, range: float) -> float:
+def get_value_in_range(min: np.array, max: np.array) -> np.array:
     """Returns a value between min and max.
         Example: Min=0, Max=10, range:0.5 -> 5
 
@@ -17,7 +17,7 @@ def _get_value_in_range(min: float, max: float, range: float) -> float:
         float: _description_
     """
 
-    return min + (max - min) * range
+    return min + (max - min) * np.random.random_sample(min.size)
 
 class RandomFixedCuboid(FixedCuboid):
     def __init__(
@@ -80,9 +80,6 @@ class RandomFixedCuboid(FixedCuboid):
         self.scale = scale
 
     def post_reset(self) -> None:
-        # generate random numbers to allow setting random properties efficiently
-        rand_floats = np.random.random_sample(3)
-
         # generate new random position, orientation and scale (if necessary)
         pos_min, pos_max = self.position
         ori_min, ori_max = self.orientation
@@ -92,17 +89,17 @@ class RandomFixedCuboid(FixedCuboid):
         if pos_max is None:
             pos = pos_min
         else:
-            pos = _get_value_in_range(pos_min, pos_max, rand_floats[0])
+            pos = get_value_in_range(pos_min, pos_max)
         
         # randomize orientation if necessary
         if ori_max is None:
             ori = ori_min
         else:
-            ori = _get_value_in_range(ori_min, ori_max, rand_floats[1])
+            ori = get_value_in_range(ori_min, ori_max)
 
         # randomize scale if necessary
         if scale_max is not None:
-            self.set_local_scale(_get_value_in_range(scale_min, scale_max, rand_floats[2]))
+            self.set_local_scale(get_value_in_range(scale_min, scale_max))
 
         # set random position and orientation
         self.set_world_pose(pos, ori)
@@ -169,9 +166,6 @@ class RandomFixedSphere(FixedSphere):
         self.scale = scale
 
     def post_reset(self) -> None:
-        # generate random numbers to allow setting random properties efficiently
-        rand_floats = np.random.random_sample(3)
-
         # generate new random position, orientation and scale (if necessary)
         pos_min, pos_max = self.position
         ori_min, ori_max = self.orientation
@@ -181,17 +175,17 @@ class RandomFixedSphere(FixedSphere):
         if pos_max is None:
             pos = pos_min
         else:
-            pos = _get_value_in_range(pos_min, pos_max, rand_floats[0])
+            pos = get_value_in_range(pos_min, pos_max)
         
         # randomize orientation if necessary
         if ori_max is None:
             ori = ori_min
         else:
-            ori = _get_value_in_range(ori_min, ori_max, rand_floats[1])
+            ori = get_value_in_range(ori_min, ori_max)
 
         # randomize scale if necessary
         if scale_max is not None:
-            self.set_local_scale(_get_value_in_range(scale_min, scale_max, rand_floats[2]))
+            self.set_local_scale(get_value_in_range(scale_min, scale_max))
 
         # set random position and orientation
         self.set_world_pose(pos, ori)
@@ -256,9 +250,6 @@ class RandomFixedCylinder(FixedCylinder):
         self.scale = scale
 
     def post_reset(self) -> None:
-        # generate random numbers to allow setting random properties efficiently
-        rand_floats = np.random.random_sample(3)
-
         # generate new random position, orientation and scale (if necessary)
         pos_min, pos_max = self.position
         ori_min, ori_max = self.orientation
@@ -268,17 +259,17 @@ class RandomFixedCylinder(FixedCylinder):
         if pos_max is None:
             pos = pos_min
         else:
-            pos = _get_value_in_range(pos_min, pos_max, rand_floats[0])
+            pos = get_value_in_range(pos_min, pos_max)
         
         # randomize orientation if necessary
         if ori_max is None:
             ori = ori_min
         else:
-            ori = _get_value_in_range(ori_min, ori_max, rand_floats[1])
+            ori = get_value_in_range(ori_min, ori_max)
 
         # randomize scale if necessary
         if scale_max is not None:
-            self.set_local_scale(_get_value_in_range(scale_min, scale_max, rand_floats[2]))
+            self.set_local_scale(get_value_in_range(scale_min, scale_max))
 
         # set random position and orientation
         self.set_world_pose(pos, ori)
