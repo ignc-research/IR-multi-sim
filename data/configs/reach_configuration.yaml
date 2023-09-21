@@ -17,6 +17,7 @@ rewards:
   EffectorDistance:
     obj1: "GoalCube"
     obj2: "R1/ee_link"
+    distance_weight: -8
     exponent: 2
     type: "Distance"
 resets:
@@ -27,10 +28,10 @@ resets:
     type: "DistanceReset"
   # Reset after number of timesteps
   two:
-    max: 32 #256
+    max: 256
     type: "TimestepsReset"
 control_type: "Velocity"
 verbose: 2
 step_size: 0.00416666666
-num_envs: 2 # 64
-headless: False # (remove this)
+max_velocity: 20
+num_envs: 64

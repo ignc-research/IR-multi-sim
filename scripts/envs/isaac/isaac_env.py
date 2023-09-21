@@ -15,7 +15,6 @@ import numpy as np
 from stable_baselines3.common.vec_env.base_vec_env import *
 from pathlib import Path
 
-
 def _add_position_offset(pos: Union[np.ndarray, Tuple[np.ndarray, np.ndarray]], offset: np.ndarray):
     if isinstance(pos, Tuple):
         return pos[0] + offset, pos[1] + offset
@@ -126,6 +125,7 @@ class IsaacEnv(ModularEnv):
         #self._config.import_inertia_tensor = True
         self._config.fix_base = True
         self._config.make_default_prim = True
+        self._config.self_collision = True
         #self._config.create_physics_scene = True
 
     def _setup_physics(self):
@@ -327,7 +327,7 @@ class IsaacEnv(ModularEnv):
 
     def step_async(self, actions: np.ndarray) -> None:
         # print("Actions:", actions)
-
+        
         # apply actions
         if self.control_type == ControlType.Velocity:
             # set joint velocities
@@ -405,6 +405,23 @@ class IsaacEnv(ModularEnv):
             for robot in self._get_robots(i):
                 robot.post_reset()
 
+                # get joint limits
+                limits = robot.get_articulation_controller().get_joint_limits()
+                joint_count = limits.shape[0]
+
+                random_floats = np.random.random_sample(joint_count)
+                random_config = np.empty(joint_count)
+
+                # generate random joint config value for each angle
+                for i in range(joint_count):
+                    min = limits[i][0]
+                    max = limits[i][1]
+
+                    random_config[i] = min + (max - min) * random_floats[i]
+
+                # set random beginning position
+                robot.set_joint_positions(random_config)
+
         # reset timestep tracking
         self._timesteps[env_idxs] = 0
 
@@ -431,8 +448,11 @@ class IsaacEnv(ModularEnv):
             for limit in self._robots[i].get_articulation_controller().get_joint_limits():
                 limits.append(list(limit))
         
+        # save limits, allowing internal reference
+        self.robot_dof_limits = limits
+
         return limits
-    
+
     def _get_distance_and_rotation(self, name: str) -> Tuple[float, float]:
         # get current distances
         distances = self._distances[name]
@@ -572,8 +592,8 @@ class IsaacEnv(ModularEnv):
             if 'CONTACT_FOUND' in contact_type or 'CONTACT_PERSIST' in contact_type:
                 self._collisions.append((actor0, actor1))
 
-        if(len(self._collisions) > 0):
-            print(self._collisions)
+        #if(len(self._collisions) > 0):
+            #print(self._collisions)
 
     def _spawn_robot(self, robot: Robot, env_idx: int) -> str:
         """
