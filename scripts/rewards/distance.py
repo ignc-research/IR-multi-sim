@@ -36,5 +36,21 @@ class Distance(Reward):
         self.normalize = normalize
 
 
-def calc_distance(p1: np.ndarray, p2: np.ndarray):
-    return np.linalg.norm(p1 - p2)
+def calc_distance(p1: np.ndarray, p2: np.ndarray, o1: np.ndarray, o2: np.ndarray) -> float, float:
+    """Calculates the distance in position and orientation between two points
+
+    Args:
+        p1 (np.ndarray): Point in space: x,y,z coordinate
+        p2 (np.ndarray): Point in space: x,y,z coordinate
+        o1 (np.ndarray): Orientation in space, quaternion (length 4)
+        o2 (np.ndarray): Orientation in space, quaternion (length 4)
+
+    Returns:
+        float: distance in float
+    """
+    # calculate distance (space and rotation)
+    distance_space = np.linalg.norm(p1 - p2, dim=1)
+    # ISAAC GYM uses quaternions as orientation, calculate the angles between cubes and hands
+    distance_rotation = np.arccos(2 * (o1 @ o2.T).diagonal() ** 2 - 1)
+
+    return distance_space, distance_rotation

@@ -25,7 +25,7 @@ rewards:
     obj1: "ToMove"
     obj2: "R1/ee_link"
     type: "Distance"
-    weight: -16
+    weight: -32
   # reward the cube which is supposed to be moved being close to the target
   TargetDistance:
     obj1: "ToMove"
@@ -46,4 +46,4 @@ resets:
 control_type: "Velocity"
 verbose: 2
 step_size: 0.00416666666
-num_envs: 32
+num_envs: 64
