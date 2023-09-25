@@ -24,7 +24,7 @@ params = EnvParams(
     # define reset conditions
     [DistanceReset("TargetDistance", 0, 1.5), TimestepsReset(100)],
     # overwrite default headless parameter
-    headless=False,
+    headless=True,
     # overwrite default step count parameter
     step_count=(240), # 100 * robts * env for slow hardware
     step_size= 1./240.

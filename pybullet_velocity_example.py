@@ -29,7 +29,7 @@ params = EnvParams(
     headless=False,
     control_type=ControlType.VELOCITY,
     # overwrite default step count parameter
-    step_count=(240),
+    step_count=240,
     step_size= 1./240.
 )
 

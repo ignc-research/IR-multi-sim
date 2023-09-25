@@ -266,10 +266,14 @@ class PybulletEnv(ModularEnv):
             
             else:           
                 for robot in robots:
-                    robotId, controllableJoints = robot[1], robot[5]
-                    action = [[actions[envId][i]] for i in controllableJoints] 
-                    pyb.resetJointStatesMultiDof(robotId, controllableJoints, action)   
-                    pyb.performCollisionDetection()  
+                    if self.control_type == ControlType.VELOCITY:
+                        # resetJointStatesMultiDof needs angle or positions as required value
+                        pass
+                    elif self.control_type == ControlType.POSITION:
+                        robotId, controllableJoints = robot[1], robot[5]
+                        action = [[actions[envId][i]] for i in controllableJoints] 
+                        pyb.resetJointStatesMultiDof(robotId, controllableJoints, action)   
+                        pyb.performCollisionDetection()  
 
             self._on_contact_report_event()
 
@@ -462,8 +466,8 @@ class PybulletEnv(ModularEnv):
         # report collisions
         finalCollisions = [tup for tup in self._collisions if not any(val == 0 for val in tup)]
         if len(finalCollisions) > 0: 
-            print("Collisions:", finalCollisions)  # 0:plane, 1,5:robots
-        
+            # print("Collisions:", finalCollisions)  # 0:plane, 1,5:robots
+            pass
         
 
 
