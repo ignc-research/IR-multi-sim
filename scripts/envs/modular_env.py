@@ -26,9 +26,9 @@ class ModularEnv(VecEnv):
         super().__init__(params.num_envs, obs_space, action_space)
 
     def _get_action_space(self, params: EnvParams) -> List[Tuple[float, float]]:
-        if params.control_type == ControlType.POSITION:
+        if params.control_type == ControlType.Position:
             return self.get_robot_dof_limits()
-        if params.control_type == ControlType.VELOCITY:
+        if params.control_type == ControlType.Velocity:
             return [(-params.max_velocity, params.max_velocity) for _ in range(len(params.robots))]
         
         raise Exception(f"Unknown control type: {params.control_type}")
@@ -62,7 +62,7 @@ class ModularEnv(VecEnv):
 
     def env_is_wrapped(self, wrapper_class: Type[gym.Wrapper], indices: VecEnvIndices = None) -> List[bool]:
         # per default, modular envs don't support wrappper classes
-        return [False for _ in self._get_indices()]
+        return [False for _ in self._get_indices(indices)]
     
     def env_method(self, method_name: str, *method_args, indices: VecEnvIndices = None, **method_kwargs) -> List[Any]:
         return [getattr(i, method_name)(*method_args, *method_kwargs) for i in self._get_indices(indices)]

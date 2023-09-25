@@ -1,11 +1,10 @@
 import math
-from typing import List, Tuple
+from typing import List, Tuple, Union
 from scripts.envs.modular_env import ModularEnv
 from scripts.envs.params.env_params import EnvParams
 from scripts.rewards.distance import Distance, calc_distance
 from scripts.rewards.timesteps import ElapsedTimesteps
 from scripts.spawnables.obstacle import Obstacle, Cube, Sphere, Cylinder
-from scripts.spawnables.random_obstacle import RandomCube, RandomSphere, RandomCylinder
 from scripts.spawnables.robot import Robot
 from scripts.rewards.reward import Reward
 from scripts.resets.reset import Reset
@@ -16,9 +15,10 @@ import numpy as np
 from stable_baselines3.common.vec_env.base_vec_env import *
 from pathlib import Path
 
-
-def _add_offset_to_tuple(tuple: Tuple[float, float], offset: float) -> Tuple[float, float]:
-    return (tuple[0] + offset, tuple[1] + offset)
+def _add_position_offset(pos: Union[np.ndarray, Tuple[np.ndarray, np.ndarray]], offset: np.ndarray):
+    if isinstance(pos, Tuple):
+        return pos[0] + offset, pos[1] + offset
+    return pos + offset
 
 
 class IsaacEnv(ModularEnv):
@@ -46,9 +46,12 @@ class IsaacEnv(ModularEnv):
         self._timesteps: List[int] = np.zeros(params.num_envs)
         self.step_count = params.step_count
         self.control_type = params.control_type
+        self.verbose = params.verbose
 
         # save the distances in the current environment
-        self._distances: Dict[str, List[float]] = {}
+        self._distance_funcions = []
+        self._distances: Dict[str, np.ndarray] = {}
+        self._distances_after_reset: Dict[str, np.ndarray] = {}
 
         # calculate env offsets
         break_index = math.ceil(math.sqrt(self.num_envs))
@@ -101,7 +104,7 @@ class IsaacEnv(ModularEnv):
 
         # create a world, allowing to spawn objects
         from omni.isaac.core import World
-        self._world = World(physics_dt=step_size)
+        self._world = World(physics_dt=step_size) # todo: find default parameter in env_args for physics_dt=step_size
         self._scene = self._world.scene
         self._stage = self._world.stage
         
@@ -118,10 +121,12 @@ class IsaacEnv(ModularEnv):
         
         # set defaults in import config
         self._config.merge_fixed_joints = False
-        self._config.convex_decomp = False
-        self._config.import_inertia_tensor = True
+        #self._config.convex_decomp = False
+        #self._config.import_inertia_tensor = True
         self._config.fix_base = True
-        self._config.create_physics_scene = True
+        self._config.make_default_prim = True
+        self._config.self_collision = True
+        #self._config.create_physics_scene = True
 
     def _setup_physics(self):
         # setup physics
@@ -136,15 +141,15 @@ class IsaacEnv(ModularEnv):
         from omni.physx.scripts.physicsUtils import UsdPhysics, UsdShade, Gf
         scene = UsdPhysics.Scene.Define(self._stage, "/physicsScene")
         scene.CreateGravityDirectionAttr().Set(Gf.Vec3f(0.0, 0.0, -1.0))
-        scene.CreateGravityMagnitudeAttr().Set(981.0)
+        scene.CreateGravityMagnitudeAttr().Set(9.81)
 
         # Configure default floor material
         self._floor_material_path = "/floorMaterial"
         UsdShade.Material.Define(self._stage, self._floor_material_path)
         floor_material = UsdPhysics.MaterialAPI.Apply(self._stage.GetPrimAtPath(self._floor_material_path))
-        floor_material.CreateStaticFrictionAttr().Set(0.0)
-        floor_material.CreateDynamicFrictionAttr().Set(0.0)
-        floor_material.CreateRestitutionAttr().Set(1.0)
+        floor_material.CreateStaticFrictionAttr().Set(0.8)
+        floor_material.CreateDynamicFrictionAttr().Set(0.8)
+        floor_material.CreateRestitutionAttr().Set(0.1)
 
         # Configure default collision material
         self._collision_material_path = "/collisionMaterial"
@@ -152,7 +157,7 @@ class IsaacEnv(ModularEnv):
         material = UsdPhysics.MaterialAPI.Apply(self._stage.GetPrimAtPath(self._collision_material_path))
         material.CreateStaticFrictionAttr().Set(0.5)
         material.CreateDynamicFrictionAttr().Set(0.5)
-        material.CreateRestitutionAttr().Set(0.9)
+        material.CreateRestitutionAttr().Set(0.1)
         material.CreateDensityAttr().Set(0.001) 
 
         # setup ground plane
@@ -172,20 +177,7 @@ class IsaacEnv(ModularEnv):
 
             # spawn obstacles
             for obstacle in obstacles:
-                if isinstance(obstacle, Cube):
-                    self._spawn_cube(obstacle, env_idx)
-                elif isinstance(obstacle, RandomCube):
-                    self._spawn_random_cube(obstacle, env_idx)
-                elif isinstance(obstacle, RandomCylinder):
-                    self._spawn_random_cylinder(obstacle, env_idx)
-                elif isinstance(obstacle, RandomSphere):
-                    self._spawn_random_sphere(obstacle, env_idx)
-                elif isinstance(obstacle, Sphere):
-                    self._spawn_sphere(obstacle, env_idx)
-                elif isinstance(obstacle, Cylinder):
-                    self._spawn_cylinder(obstacle, env_idx)
-                else:
-                    raise f"Obstacle {type(obstacle)} not implemented"
+                self._spawn_obstacle(obstacle, env_idx)
         
     def _setup_rewards(self, rewards: List[Reward]) -> None:
         self._reward_fns = []
@@ -200,63 +192,68 @@ class IsaacEnv(ModularEnv):
         
     def _parse_distance_reward(self, distance: Distance):
         # parse indices in observations
-        obj1_start, _ = self._parse_observable_object_range(distance.obj1)
-        obj2_start, _ = self._parse_observable_object_range(distance.obj2)
+        obj1_start = self._find_observable_object(distance.obj1)
+        obj2_start = self._find_observable_object(distance.obj2)
 
         # extract name to allow created function to access it easily
         name = distance.name
+        distance_weight = distance.distance_weight
+        orientation_weight = distance.orientation_weight
+        normalize = distance.normalize
+        exponent = distance.exponent
 
-        # parse function calculating distance to all targets
-        def distance_per_env() -> np.ndarray:
+        # create function calculating distance
+        def distance_per_env() -> Tuple[str, np.ndarray]:
             # calculate distances as np array
             result = []
             for i in range(self.num_envs):
-                result.append(calc_distance(
-                    self._obs[i][obj1_start:obj1_start+3],
-                    self._obs[i][obj2_start:obj2_start+3]
-                ))
+                # extract x,y,z coordinates of objects
+                pos1 = self._obs[i][obj1_start:obj1_start+3]
+                pos2 = self._obs[i][obj2_start:obj2_start+3]
+
+                # extract quaternion orientation from objects
+                ori1 = self._obs[i][obj1_start+3:obj1_start+7]
+                ori2 = self._obs[i][obj2_start+3:obj2_start+7]
+
+                result.append(calc_distance(pos1, pos2, ori1, ori2))
             result = np.array(result)
 
-            # save distance for current iteration
-            self._distances[name] = result
+            return name, result
 
-            return result
+        # add to existing distance functions
+        self._distance_funcions.append(distance_per_env)
     
-        # minimize reward output
-        if distance.minimize:
-            def distance_reward():
-                return distance_per_env() * [-1 for _ in range(self.num_envs)]
-            return distance_reward
-        # maximize reward output
-        else:
-            return distance_per_env
+        def calculate_distance_reward() -> float:
+            # get current distances
+            distance_space, distance_orientation = self._get_distance_and_rotation(name)
+
+            # apply weight factor
+            weighted_space = distance_weight * distance_space
+            weighted_orientation = orientation_weight * distance_orientation
+
+            # skip normalization
+            if not normalize:
+                return (weighted_space + weighted_orientation) ** exponent
+
+            # retrieve distences after last reset
+            begin_space, begin_orient = self._distances_after_reset[name]
+
+            # calculate variance to previous distance, avoiding division by zero
+            normalized_space = np.where(begin_space == 0, weighted_space, distance_weight * distance_space / begin_space) 
+            normalized_orient = np.where(begin_orient == 0, weighted_orientation, distance_orientation * distance_orientation / begin_orient) 
+
+            return (normalized_space + normalized_orient) ** exponent
+
+        return calculate_distance_reward
     
     def _parse_timestep_reward(self, elapsed: ElapsedTimesteps):
+        weight = elapsed.weight
+
         # reward elapsed timesteps
         def timestep_reward():
-            return self._timesteps
-
-        # punish elapsed timesteps
-        def timestep_penalty():
-            return self._timesteps * [-1 for _ in range(self.num_envs)]
-        
-        # return rewarding or punishing function, as specified in ElapsedTimesteps
-        if elapsed.minimize:
-            return timestep_penalty
+            return self._timesteps * weight
         
         return timestep_reward
-
-    def _parse_observable_object_range(self, name: str) -> Tuple[int, int]:
-        """
-        Given the name of an observable object, tries to retrieve its beginning and end position index in the observation buffer
-        """
-        index = self._find_observable_object(name)
-
-        # calculate start index (multiply by 7: xyz for position, quaternion for rotation)
-        start = index * 7
-
-        # return start and end index
-        return start, start + 6
 
     def _find_observable_object(self, name: str) -> int:
         """
@@ -266,19 +263,22 @@ class IsaacEnv(ModularEnv):
         # robots are input first into observations
         for index, robot in enumerate(self._observable_robots):
             if robot.name.endswith(name):
-                return index
+                # each robot has x,y,z coordinates, quaternion and scale
+                return index * 10
         
         # observable joints second
         for index, joint in enumerate(self._observable_robot_joints):
             if joint.name.endswith(name):
-                return index + self.observable_robots_count
+                # robot joints have x,y,z coordinates and quaternion
+                return index * 7 + self.observable_robots_count * 10
 
         # obstacles third
         for index, obstacle in enumerate(self._observable_obstacles):
             if obstacle.name.endswith(name):
-                return index + self.observable_robots_count + self.observable_robot_joint_count
+                # each obstacle has x,y,z coordinates, quaternion and scale
+                return index * 10 + self.observable_robots_count * 7 + self.observable_robot_joint_count * 10
 
-        raise f"Object {name} must be observable if used for reward"
+        raise Exception(f"Object {name} must be observable if used for reward")
 
     def _setup_resets(self, rewards: List[Reward], resets: List[Reset]):
         # make sure that all resets referencing a distance are valid
@@ -299,16 +299,19 @@ class IsaacEnv(ModularEnv):
     def _parse_distance_reset(self, reset: DistanceReset):
         # extract name to allot created function to access it easily
         name = reset.distance_name
-        min_value = reset.min
-        max_value = reset.max
+        distance_min, distance_max = reset.min_distance, reset.max_distance
+        max_angle = reset.max_angle
 
         # parse function
         def reset_condition() -> np.ndarray:
             # get distances of current timestep
-            d = self._distances[name]
+            distance, rotation = self._get_distance_and_rotation(name)
 
             # return true whenever the distance exceed max or min value
-            return np.where(min_value <= d, np.where(d <= max_value, False, True), True)
+            distance_reset = np.where(distance_min <= distance, np.where(distance <= distance_max, False, True), True)
+            rotation_reset = np.where(np.abs(rotation) > max_angle, True, False)
+
+            return np.logical_or(distance_reset, rotation_reset)
 
         return reset_condition
 
@@ -324,66 +327,115 @@ class IsaacEnv(ModularEnv):
 
     def step_async(self, actions: np.ndarray) -> None:
         # print("Actions:", actions)
-
-        if self.control_type == ControlType.VELOCITY:
+        
+        # apply actions
+        if self.control_type == ControlType.Velocity:
             # set joint velocities
             for i, robot in enumerate(self._robots):
                 robot.set_joint_velocities(actions[i])
-        elif self.control_type == ControlType.POSITION:
+        elif self.control_type == ControlType.Position:
             # set joint positions
             for i, robot in enumerate(self._robots):
                 robot.set_joint_positions(actions[i])
         else:
             raise Exception(f"Control type {self.control_type} not implemented!")
-
+            
         # step simulation amount of times according to params
         for _ in range(self.step_count):
             self._simulation.update()
     
     def step_wait(self) -> VecEnvStepReturn:
+        
         # get observations
         self._obs = self._get_observations()
 
-        # get rewards
+        # calculate current distances after observations were updated
+        self._distances = self._get_distances()
+
+        # calculate rewards after distances were updated
         self._rewards = self._get_rewards()
 
         # get dones
         self._dones = self._get_dones()
 
         # print("Obs    :", self._obs)
-        # print("Dist.  :", self._distances["TargetDistance"])
+        # print("Dist.  :", self._distances)
         # print("Rewards:", self._rewards)
         # print("Dones  :", self._dones)
         # print("Timest.:", self._timesteps)
+
+        self._simulation.update()
+
+        # log rewards
+        if self.verbose > 0:
+            self.set_attr("average_rewards", np.average(self._rewards))
 
         return self._obs, self._rewards, self._dones, self.env_data
 
     def reset(self, env_idxs: np.ndarray=None) -> VecEnvObs:
         # reset entire simulation
         if env_idxs is None:
-            # reset the world
+            # initialize sim
             self._world.reset()
 
-            # reset timestep tracking
+            # reset timesteps
             self._timesteps = np.zeros(self.num_envs)
 
             # reset observations
             self._obs = self._get_observations()
 
-        # reset envs manually
-        else:
-            # reset timestep tracking
-            self._timesteps[env_idxs] = 0
+            # calculate new distances
+            self._distances_after_reset = self._get_distances()
 
-            # select each environment
-            for i in env_idxs:
-                # reset all obstacles to default pose
-                for geometryPrim, obstacle in self._get_obstacles(i):
-                    geometryPrim.post_reset()
+            # set dummy value for distances to avoid KeyError
+            if self.verbose > 1:
+                for name, _ in self._distances_after_reset.items():
+                    self.set_attr("distance_"+name, None)   
 
-                # reset all robots to default pose
-                for robot in self._get_robots(i):
-                    robot.post_reset()
+            return self._obs
+        
+        # select each environment
+        for i in env_idxs:
+            # reset all obstacles to default pose
+            for geometryPrim, _ in self._get_obstacles(i):
+                # default case: reset obstacle to default position without randomization
+                geometryPrim.post_reset()
+
+            # reset all robots to default pose
+            for robot in self._get_robots(i):
+                robot.post_reset()
+
+                # get joint limits
+                limits = robot.get_articulation_controller().get_joint_limits()
+                joint_count = limits.shape[0]
+
+                random_floats = np.random.random_sample(joint_count)
+                random_config = np.empty(joint_count)
+
+                # generate random joint config value for each angle
+                for i in range(joint_count):
+                    min = limits[i][0]
+                    max = limits[i][1]
+
+                    random_config[i] = min + (max - min) * random_floats[i]
+
+                # set random beginning position
+                robot.set_joint_positions(random_config)
+
+        # reset timestep tracking
+        self._timesteps[env_idxs] = 0
+
+        # log distances of environments which were reset
+        if self.verbose > 1:
+            for name, distance in self._distances.items():
+                self.set_attr("distance_"+name, np.average(distance[env_idxs]))
+            
+
+        # reset observations # todo: only recalculate necessary observations
+        self._obs = self._get_observations()
+
+        # note new distances # todo: only recalculate necessary distances
+        self._distances_after_reset = self._get_distances()
         
         return self._obs
 
@@ -396,8 +448,17 @@ class IsaacEnv(ModularEnv):
             for limit in self._robots[i].get_articulation_controller().get_joint_limits():
                 limits.append(list(limit))
         
+        # save limits, allowing internal reference
+        self.robot_dof_limits = limits
+
         return limits
-    
+
+    def _get_distance_and_rotation(self, name: str) -> Tuple[float, float]:
+        # get current distances
+        distances = self._distances[name]
+        # return distance_space (meters), distance_orientation (angle)
+        return distances[0], distances[1]
+
     def _get_robots(self, env_idx: int):
         start_idx = env_idx * self.robot_count
 
@@ -440,7 +501,7 @@ class IsaacEnv(ModularEnv):
                 # get joint of environment
                 joint = self._observable_robot_joints[joint_idx]
 
-                # get its pose
+                # get its pose # todo: doesn't factor in parent object (robot) offset
                 pos, rot = joint.get_local_pose()
 
                 # add pos and rotation to list of observations
@@ -467,6 +528,18 @@ class IsaacEnv(ModularEnv):
             obs.append(env_obs)
 
         return np.array(obs)
+
+    def _get_distances(self) -> Dict[str, np.ndarray]:
+        # reset current distances
+        distances = {}
+
+        for distance_fn in self._distance_funcions:
+            # calcualte current distances
+            name, distance = distance_fn()
+
+            distances[name] = distance
+
+        return distances
 
     def _get_rewards(self) -> List[float]:
         rewards = np.zeros(self.num_envs)
@@ -519,8 +592,8 @@ class IsaacEnv(ModularEnv):
             if 'CONTACT_FOUND' in contact_type or 'CONTACT_PERSIST' in contact_type:
                 self._collisions.append((actor0, actor1))
 
-        if(len(self._collisions) > 0):
-            print(self._collisions)
+        #if(len(self._collisions) > 0):
+            #print(self._collisions)
 
     def _spawn_robot(self, robot: Robot, env_idx: int) -> str:
         """
@@ -590,199 +663,67 @@ class IsaacEnv(ModularEnv):
 
         return path_to
 
-    def _spawn_cube(self, cube: Cube, env_idx: int) -> str:
-        prim_path = f"/World/env{env_idx}/{cube.name}"
-        name = f"env{env_idx}-{cube.name}"
+    def _spawn_obstacle(self, obstacle: Obstacle, env_idx: int) -> str:
+        prim_path = f"/World/env{env_idx}/{obstacle.name}"
+        name = f"env{env_idx}-{obstacle.name}"
 
-        # create cube
-        from omni.isaac.core.objects import FixedCuboid
-        cube_obj = FixedCuboid(
-            prim_path,
-            name,
-            cube.position + self._env_offsets[env_idx],
-            None,
-            cube.orientation,
-            cube.scale,
-            color=cube.color
-        )
-        self._scene.add(cube_obj)
+        # parse required class
+        from omni.isaac.core.objects import FixedCuboid, DynamicCuboid, FixedSphere, DynamicSphere, DynamicCylinder, FixedCylinder
+        from scripts.envs.isaac.random_dynamic_obstacles import RandomDynamicCuboid, RandomDynamicSphere, RandomDynamicCylinder
+        from scripts.envs.isaac.random_static_obstacles import RandomFixedCuboid, RandomFixedSphere, RandomFixedCylinder
 
-        # track spawned cube
-        self._obstacles.append((cube_obj, cube))
+        # select corresponding class: Obstacle type, isRandomized?, isStatic?
+        class_selector = {
+            # select cubes
+            (Cube, False, False): DynamicCuboid,
+            (Cube, False, True): FixedCuboid,
+            (Cube, True, False): RandomDynamicCuboid,
+            (Cube, True, True): RandomFixedCuboid,
+            # select spheres
+            (Sphere, False, False): DynamicSphere,
+            (Sphere, False, True): FixedSphere,
+            (Sphere, True, False): RandomDynamicSphere,
+            (Sphere, True, True): RandomFixedSphere,
+            # select cylinders
+            (Cylinder, False, False): DynamicCylinder,
+            (Cylinder, False, True): FixedCylinder,
+            (Cylinder, True, False): RandomDynamicCylinder,
+            (Cylinder, True, True): RandomFixedCylinder
+        }
+
+        # parse equivalent of selected class in Isaac
+        selected_class = class_selector.get(((type(obstacle)), obstacle.is_randomized(), obstacle.static), None)
+        
+        if selected_class is None:
+            raise Exception(f"Obstacle of type {type(obstacle)}, random={obstacle.is_randomized()}, static={obstacle.static} isn't implemented!")
+
+        # create parameter dict
+        params = obstacle.get_constructor_params()
+        params["prim_path"] = prim_path
+        params["name"] = name
+
+        # add env offset to position
+        params["position"] = _add_position_offset(params["position"], self._env_offsets[env_idx])
+
+        # create instance
+        obstacle_obj = selected_class(**params)
+
+        # add obstacle to scene
+        self._scene.add(obstacle_obj)
+
+        # track spawned obstacle
+        self._obstacles.append((obstacle_obj, obstacle))
 
         # add it to list of observable objects, if necessary
-        if cube.observable:
-            self._observable_obstacles.append(cube_obj)
+        if obstacle.observable:
+            self._observable_obstacles.append(obstacle_obj)
 
         # configure collision
-        if cube.collision:
+        if obstacle.collision:
             # add collision material, allowing callbacks to register collisions in simulation
             self._add_collision_material(prim_path, self._collision_material_path)
         else:
-            cube_obj.set_collision_enabled(False)
-
-        return prim_path
-
-    def _spawn_random_cube(self, cube: RandomCube, env_idx: int) -> str:
-        prim_path = f"/World/env{env_idx}/{cube.name}"
-        name = f"env{env_idx}-{cube.name}"
-
-        # create cube
-        from scripts.envs.isaac.random_objects import RandomCuboid
-        cube_obj = RandomCuboid(
-            prim_path,
-            _add_offset_to_tuple(cube.position, self._env_offsets[env_idx]),
-            cube.orientation,
-            cube.scale,
-            name,
-            color=cube.color
-        )
-        self._scene.add(cube_obj)
-
-        # track spawned cube
-        self._obstacles.append((cube_obj, cube))
-
-        # add it to list of observable objects, if necessary
-        if cube.observable:
-            self._observable_obstacles.append(cube_obj)
-
-        # configure collision
-        if cube.collision:
-            # add collision material, allowing callbacks to register collisions in simulation
-            self._add_collision_material(prim_path, self._collision_material_path)
-        else:
-            cube_obj.set_collision_enabled(False)
-
-        return prim_path
-
-    def _spawn_random_cylinder(self, cylinder: RandomCylinder, env_idx: int) -> str:
-        prim_path = f"/World/env{env_idx}/{cylinder.name}"
-        name = f"env{env_idx}-{cylinder.name}"
-
-        # create cube
-        from scripts.envs.isaac.random_objects import RandomCylinder
-        cylinder_obj = RandomCylinder(
-            prim_path,
-            _add_offset_to_tuple(cylinder.position, self._env_offsets[env_idx]),
-            cylinder.orientation,
-            cylinder.scale,
-            name,
-            color=cylinder.color
-        )
-        self._scene.add(cylinder_obj)
-
-        # track spawned cube
-        self._obstacles.append((cylinder_obj, cylinder))
-
-        # add it to list of observable objects, if necessary
-        if cylinder.observable:
-            self._observable_obstacles.append(cylinder_obj)
-
-        # configure collision
-        if cylinder.collision:
-            # add collision material, allowing callbacks to register collisions in simulation
-            self._add_collision_material(prim_path, self._collision_material_path)
-        else:
-            cylinder_obj.set_collision_enabled(False)
-
-        return prim_path
-
-    def _spawn_random_sphere(self, sphere: RandomSphere, env_idx: int) -> str:
-        prim_path = f"/World/env{env_idx}/{sphere.name}"
-        name = f"env{env_idx}-{sphere.name}"
-
-        # create cube
-        from scripts.envs.isaac.random_objects import RandomSphere
-        sphere_obj = RandomSphere(
-            prim_path,
-            _add_offset_to_tuple(sphere.position, self._env_offsets[env_idx]),
-            sphere.orientation,
-            sphere.scale,
-            name,
-            color=sphere.color
-        )
-        self._scene.add(sphere_obj)
-
-        # track spawned cube
-        self._obstacles.append((sphere_obj, sphere))
-
-        # add it to list of observable objects, if necessary
-        if sphere.observable:
-            self._observable_obstacles.append(sphere_obj)
-
-        # configure collision
-        if sphere.collision:
-            # add collision material, allowing callbacks to register collisions in simulation
-            self._add_collision_material(prim_path, self._collision_material_path)
-        else:
-            sphere_obj.set_collision_enabled(False)
-
-        return prim_path
-
-    def _spawn_sphere(self, sphere: Sphere, env_idx: int) -> str:
-        prim_path = f"/World/env{env_idx}/{sphere.name}"
-        name = f"env{env_idx}-{sphere.name}"
-
-        # create sphere
-        from omni.isaac.core.objects import FixedSphere
-        sphere_obj = FixedSphere(
-            prim_path,
-            name,
-            sphere.position + self._env_offsets[env_idx],
-            None,
-            sphere.orientation,
-            radius=sphere.radius,
-            color=sphere.color
-        )
-        self._scene.add(sphere_obj)
-    
-        # track spawned sphere
-        self._obstacles.append((sphere_obj, sphere))
-
-        # add it to list of observable objects, if necessary
-        if sphere.observable:
-            self._observable_obstacles.append(sphere_obj)
-
-        # configure collision
-        if sphere.collision:
-            # add collision material, allowing callbacks to register collisions in simulation
-            self._add_collision_material(prim_path, self._collision_material_path)
-        else:
-            sphere_obj.set_collision_enabled(False)
-
-        return prim_path
-    
-    def _spawn_cylinder(self, cylinder: Cylinder, env_idx:int) -> str:
-        prim_path = f"/World/env{env_idx}/{cylinder.name}"
-        name = f"env{env_idx}-{cylinder.name}"
-
-        # create cylinder
-        from omni.isaac.core.objects import FixedCylinder
-        cylinder_obj = FixedCylinder(
-            prim_path,
-            name,
-            cylinder.position + self._env_offsets[env_idx],
-            None,
-            cylinder.orientation,
-            radius=cylinder.radius,
-            height=cylinder.height,
-            color=cylinder.color
-        )
-        self._scene.add(cylinder_obj)
-    
-        # track spawned cylinder
-        self._obstacles.append((cylinder_obj, cylinder))
-
-        # add it to list of observable objects, if necessary
-        if cylinder.observable:
-            self._observable_obstacles.append(cylinder_obj)
-
-        # configure collision
-        if cylinder.collision:
-            # add collision material, allowing callbacks to register collisions in simulation
-            self._add_collision_material(prim_path, self._collision_material_path)
-        else:
-            cylinder_obj.set_collision_enabled(False)
+            obstacle_obj.set_collision_enabled(False)
 
         return prim_path
 

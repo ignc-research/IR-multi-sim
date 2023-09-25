@@ -13,4 +13,8 @@ _*/
 
 .venv
 .vscode
+
+# logs of runs
+/data/logs
+
 pyvenv.cfg

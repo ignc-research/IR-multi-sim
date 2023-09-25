@@ -2,6 +2,6 @@ from enum import Enum
 
 class ControlType(Enum):
     # Control robots by setting joint velocities
-    VELOCITY = 1,
+    Velocity = "Velocity"
     # Control robots by directly setting joint positions
-    POSITION = 2
+    Position = "Position"
