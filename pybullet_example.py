@@ -24,9 +24,9 @@ params = EnvParams(
     # define reset conditions
     [DistanceReset("TargetDistance", 0, 1.5), TimestepsReset(100)],
     # overwrite default headless parameter
-    headless=True,
+    headless=False,
     # overwrite default step count parameter
-    step_count=(240), # 100 * robts * env for slow hardware
+    step_count=240, # 100 * robts * env for slow hardware
     step_size= 1./240.
 )
 
@@ -37,5 +37,5 @@ env = create_env(params)
 model = TD3("MlpPolicy", env, train_freq=1)
 
 # start learning
-model.learn(500)
+model.learn(100)
 print("Simple example is complete!")

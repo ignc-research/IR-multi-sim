@@ -244,37 +244,30 @@ class PybulletEnv(ModularEnv):
     def step_async(self, actions: np.ndarray) -> None:
         for envId in range(self.num_envs):
             robots = self._getRobots(envId)
+ 
+            # perform action for each robot in the current environment
+            for robot in robots:
+                robotId, controllableJoints = robot[1], robot[5]
 
-            if not self.headless:
-                for robot in robots:
-                    robotId, controllableJoints = robot[1], robot[5]
+                if self.control_type == ControlType.VELOCITY:
+                    action = [actions[envId] for i in controllableJoints]
+                    pyb.setJointMotorControlArray(bodyUniqueId=robotId, jointIndices=controllableJoints, controlMode=pyb.VELOCITY_CONTROL, targetVelocities=action) 
+                
+                elif self.control_type == ControlType.POSITION:
+                    action = [actions[envId][i] for i in controllableJoints] 
+                    pyb.setJointMotorControlArray(bodyUniqueId=robotId, jointIndices=controllableJoints, controlMode=pyb.POSITION_CONTROL, targetPositions=action) 
+                
+                else:
+                    raise Exception(f"Control type {self.control_type} not implemented!")
 
-                    if self.control_type == ControlType.VELOCITY:
-                        action = [actions[envId] for i in controllableJoints]
-                        pyb.setJointMotorControlArray(bodyUniqueId=robotId, jointIndices=controllableJoints, controlMode=pyb.VELOCITY_CONTROL, targetVelocities=action) 
-                    
-                    elif self.control_type == ControlType.POSITION:
-                        action = [actions[envId][i] for i in controllableJoints] 
-                        pyb.setJointMotorControlArray(bodyUniqueId=robotId, jointIndices=controllableJoints, controlMode=pyb.POSITION_CONTROL, targetPositions=action) 
-                    
-                    else:
-                        raise Exception(f"Control type {self.control_type} not implemented!")
-
-                # step simulation amount of times according to params
-                for _ in range(self.step_count):
-                    pyb.stepSimulation()  
+            # step simulation amount of times according to params
+            for _ in range(self.step_count):
+                pyb.stepSimulation()  
             
-            else:           
-                for robot in robots:
-                    if self.control_type == ControlType.VELOCITY:
-                        # resetJointStatesMultiDof needs angle or positions as required value
-                        pass
-                    elif self.control_type == ControlType.POSITION:
-                        robotId, controllableJoints = robot[1], robot[5]
-                        action = [[actions[envId][i]] for i in controllableJoints] 
-                        pyb.resetJointStatesMultiDof(robotId, controllableJoints, action)   
-                        pyb.performCollisionDetection()  
-
+            if self.headless:
+                pyb.performCollisionDetection()  
+            
+           # get Collisions
             self._on_contact_report_event()
 
     

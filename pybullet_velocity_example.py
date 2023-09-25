@@ -40,5 +40,5 @@ env = create_env(params)
 model = TD3("MlpPolicy", env, train_freq=1)
 
 # start learning
-model.learn(1000)
+model.learn(100)
 print("Simple example is complete!")
