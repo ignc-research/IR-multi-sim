@@ -7,12 +7,7 @@ class Reward(ABC):
     Examples: Distance, -elapsed steps
     """
 
-    def __init__(self, minimize: bool, name: str=None) -> None:
-        """
-        minimize: true if metric is supposed to be minimized, otherwise false
-        """
-        self.minimize = minimize
-
+    def __init__(self, name: str=None) -> None:
         # set default name
         if name is None:
             global _rewards
@@ -20,4 +15,3 @@ class Reward(ABC):
             _rewards += 1
         self.name = name
 
-        # todo: implement weight of reward (multiplier)
