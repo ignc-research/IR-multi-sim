@@ -456,8 +456,9 @@ class IsaacEnv(ModularEnv):
     def _get_distance_and_rotation(self, name: str) -> Tuple[float, float]:
         # get current distances
         distances = self._distances[name]
+
         # return distance_space (meters), distance_orientation (angle)
-        return distances[0], distances[1]
+        return distances[:, 0], distances[:, 1]
 
     def _get_robots(self, env_idx: int):
         start_idx = env_idx * self.robot_count
@@ -494,6 +495,7 @@ class IsaacEnv(ModularEnv):
                 env_obs.extend(pos)
                 env_obs.extend(rot)
                 env_obs.extend(robot.get_local_scale())
+                robot.get
 
             # get observations from all observable joints in environment
             joint_idx_offset = self.observable_robot_joint_count * env_idx

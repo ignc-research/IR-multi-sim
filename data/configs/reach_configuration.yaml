@@ -18,7 +18,7 @@ rewards:
     obj1: "GoalCube"
     obj2: "R1/ee_link"
     distance_weight: -8
-    exponent: 2
+    exponent: 3
     type: "Distance"
 resets:
   # reset once target cube reached goal
