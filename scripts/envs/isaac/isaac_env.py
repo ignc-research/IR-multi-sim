@@ -48,10 +48,16 @@ class IsaacEnv(ModularEnv):
         self.control_type = params.control_type
         self.verbose = params.verbose
 
+        # calculate which attributes are tracked for how many objects per env
+        self._scale_tracked = self.observable_robots_count + self.observable_obstacles_count
+        self._position_tracked = self._scale_tracked + self.observable_robot_joint_count
+        self._rotation_tracked = self._position_tracked
+
         # save the distances in the current environment
         self._distance_funcions = []
         self._distances: Dict[str, np.ndarray] = {}
         self._distances_after_reset: Dict[str, np.ndarray] = {}
+        self.num_distances = params.num_distances
 
         # calculate env offsets
         break_index = math.ceil(math.sqrt(self.num_envs))
@@ -192,8 +198,12 @@ class IsaacEnv(ModularEnv):
         
     def _parse_distance_reward(self, distance: Distance):
         # parse indices in observations
-        obj1_start = self._find_observable_object(distance.obj1)
-        obj2_start = self._find_observable_object(distance.obj2)
+        pos1_idx = self._find_observable_object_indices(distance.obj1, 3)
+        pos2_idx = self._find_observable_object_indices(distance.obj2, 3)
+
+        rot1_idx = self._find_observable_object_indices(distance.obj1, 4)
+        rot2_idx = self._find_observable_object_indices(distance.obj2, 4)
+
 
         # extract name to allow created function to access it easily
         name = distance.name
@@ -207,13 +217,16 @@ class IsaacEnv(ModularEnv):
             # calculate distances as np array
             result = []
             for i in range(self.num_envs):
+                positions = self._obs["Positions"][i]
+                rotations = self._obs["Rotations"][i]
+
                 # extract x,y,z coordinates of objects
-                pos1 = self._obs[i][obj1_start:obj1_start+3]
-                pos2 = self._obs[i][obj2_start:obj2_start+3]
+                pos1 = positions[pos1_idx[0]:pos1_idx[1]]
+                pos2 = positions[pos2_idx[0]:pos2_idx[1]]
 
                 # extract quaternion orientation from objects
-                ori1 = self._obs[i][obj1_start+3:obj1_start+7]
-                ori2 = self._obs[i][obj2_start+3:obj2_start+7]
+                ori1 = rotations[rot1_idx[0]:rot1_idx[1]]
+                ori2 = rotations[rot2_idx[0]:rot2_idx[1]]
 
                 result.append(calc_distance(pos1, pos2, ori1, ori2))
             result = np.array(result)
@@ -255,6 +268,18 @@ class IsaacEnv(ModularEnv):
         
         return timestep_reward
 
+    def _find_observable_object_indices(self, name: str, obs_size: int) -> Tuple[int, int]:
+        """Given the name of an observable object, tries to retrieve the beginning and end index of its observation buffer.
+
+        Args:
+            name (str): Name of the object
+            obs_size (int): Size of the observation. Example: Location, encoded in x,y,z coordinates, has a size of 3
+        """
+        index = self._find_observable_object(name)
+
+        start_index = index * obs_size
+        return start_index, start_index + obs_size
+
     def _find_observable_object(self, name: str) -> int:
         """
         Given the name of an observable object, tries to retrieve its index in the observations list.
@@ -264,19 +289,19 @@ class IsaacEnv(ModularEnv):
         for index, robot in enumerate(self._observable_robots):
             if robot.name.endswith(name):
                 # each robot has x,y,z coordinates, quaternion and scale
-                return index * 10
+                return index
         
         # observable joints second
         for index, joint in enumerate(self._observable_robot_joints):
             if joint.name.endswith(name):
                 # robot joints have x,y,z coordinates and quaternion
-                return index * 7 + self.observable_robots_count * 10
+                return index + self.observable_robots_count
 
         # obstacles third
         for index, obstacle in enumerate(self._observable_obstacles):
             if obstacle.name.endswith(name):
                 # each obstacle has x,y,z coordinates, quaternion and scale
-                return index * 10 + self.observable_robots_count * 7 + self.observable_robot_joint_count * 10
+                return index + self.observable_robots_count + self.observable_robot_joint_count
 
         raise Exception(f"Object {name} must be observable if used for reward")
 
@@ -364,8 +389,6 @@ class IsaacEnv(ModularEnv):
         # print("Dones  :", self._dones)
         # print("Timest.:", self._timesteps)
 
-        self._simulation.update()
-
         # log rewards
         if self.verbose > 0:
             self.set_attr("average_rewards", np.average(self._rewards))
@@ -447,9 +470,6 @@ class IsaacEnv(ModularEnv):
         for i in range(self.robot_count):
             for limit in self._robots[i].get_articulation_controller().get_joint_limits():
                 limits.append(list(limit))
-        
-        # save limits, allowing internal reference
-        self.robot_dof_limits = limits
 
         return limits
 
@@ -474,11 +494,14 @@ class IsaacEnv(ModularEnv):
         self._simulation.close()
 
     def _get_observations(self) -> VecEnvObs:
-        obs = []
-
+        # create empty arrays, allowing obs to be appended
+        positions = np.array([])
+        rotations = np.array([])
+        scales = np.array([])
+        joint_positions = np.array([])
+        
         # iterate through each env
         for env_idx in range(self.num_envs):
-            env_obs = []
 
             # get observations from all robots in environment
             robot_idx_offset = self.observable_robots_count * env_idx
@@ -492,10 +515,10 @@ class IsaacEnv(ModularEnv):
                 pos -= self._env_offsets[env_idx]
 
                 # add robot pos and rotation to list of observations
-                env_obs.extend(pos)
-                env_obs.extend(rot)
-                env_obs.extend(robot.get_local_scale())
-                robot.get
+                positions = np.append(positions, pos)
+                rotations = np.append(rotations, rot)
+                scales = np.append(scales, robot.get_local_scale())
+                joint_positions = np.append(joint_positions, robot.get_joint_positions())
 
             # get observations from all observable joints in environment
             joint_idx_offset = self.observable_robot_joint_count * env_idx
@@ -507,8 +530,8 @@ class IsaacEnv(ModularEnv):
                 pos, rot = joint.get_local_pose()
 
                 # add pos and rotation to list of observations
-                env_obs.extend(pos)
-                env_obs.extend(rot)
+                positions = np.append(positions, pos)
+                rotations = np.append(rotations, rot)
 
             # get observations from all obstacles in environment
             obstacle_idx_offset = self.observable_obstacles_count * env_idx
@@ -522,14 +545,23 @@ class IsaacEnv(ModularEnv):
                 pos -= self._env_offsets[env_idx]
 
                 # add obstacle pos and rotation to list of observations
-                env_obs.extend(pos)
-                env_obs.extend(rot)
-                env_obs.extend(obstacle.get_local_scale())
+                positions = np.append(positions, pos)
+                rotations = np.append(rotations, rot)
+                scales = np.append(scales, obstacle.get_local_scale())
 
-            # add observations gathered in environment to dictionary
-            obs.append(env_obs)
+        # reshape obs
+        positions = positions.reshape(self.num_envs, -1)
+        rotations = rotations.reshape(self.num_envs, -1)
+        scales = scales.reshape(self.num_envs, -1)
+        joint_positions = joint_positions.reshape(self.num_envs, -1)
 
-        return np.array(obs)
+        return {
+            "Positions": positions,
+            "Rotations": rotations,
+            "Scales": scales,
+            "JointPositions": joint_positions,
+            "Observation": np.hstack((positions, rotations, scales, joint_positions))
+        }
 
     def _get_distances(self) -> Dict[str, np.ndarray]:
         # reset current distances

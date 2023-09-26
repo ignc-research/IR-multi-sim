@@ -57,6 +57,9 @@ class EnvParams():
         self.max_velocity = max_velocity
         self.verbose = verbose
 
+        # computed properties
+        self.num_distances = len(self.get_distance_rewards())
+
     def get_distance_rewards(self) -> List[Distance]:
         distances = []
 
