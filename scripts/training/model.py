@@ -18,7 +18,7 @@ def setup_model(path: str, reset: bool, env: ModularEnv) -> (BaseAlgorithm, str)
 
     # create new model if necessary
     else:
-        model = TD3("MultiInputPolicy", train_freq=(1, "step"), env=env, tensorboard_log="./data/logs/"+config_name, verbose=1)
+        model = TD3("MultiInputPolicy", train_freq=(32, "step"), env=env, tensorboard_log="./data/logs/"+config_name, verbose=1)
         print(f"No parameters found at {model_path}, creating new model!")
 
     # function executed if program gets interrupted
