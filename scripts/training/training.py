@@ -18,7 +18,7 @@ def train(path: str, timesteps: int, load_model: bool):
     env = create_env(params)
 
     # load or create model
-    model, model_path = setup_model(path, load_model, env)
+    model, model_path = setup_model(path, load_model, env, params)
 
     # learn for desired amount of timesteps
     model.learn(timesteps, callback=parse_callback(params.verbose, params.get_distance_names()))

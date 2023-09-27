@@ -6,7 +6,7 @@ from typing import Union, Tuple
 
 
 class Distance(Reward):
-    def __init__(self, obj1: Union[Spawnable, str], obj2: Union[Spawnable, str], distance_weight: float=-1, orientation_weight: float=-0.1, exponent: float=1, name: str=None) -> None:
+    def __init__(self, obj: Union[Spawnable, str], target: Union[Spawnable, str], distance_weight: float=-1, orientation_weight: float=-0.1, exponent: float=1, name: str=None) -> None:
         """
         obj1, ob2: References to the objects whose distance shall be measured. 
         distance_weight: Factor the distance (space) is multiplied with to calculate the reward
@@ -24,16 +24,16 @@ class Distance(Reward):
         super().__init__(name)
 
         # parse name of first object
-        if isinstance(obj1, Spawnable):
-            self.obj1 = obj1.name
+        if isinstance(obj, Spawnable):
+            self.obj = obj.name
         else:
-            self.obj1 = obj1
+            self.obj = obj
 
         # parse name of second object
-        if isinstance(obj2, Spawnable):
-            self.obj2 = obj2.name
+        if isinstance(target, Spawnable):
+            self.target = target.name
         else:
-            self.obj2 = obj2
+            self.target = target
 
         self.distance_weight = distance_weight
         self.orientation_weight = orientation_weight

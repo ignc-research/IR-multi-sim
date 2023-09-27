@@ -198,11 +198,11 @@ class IsaacEnv(ModularEnv):
         
     def _parse_distance_reward(self, distance: Distance):
         # parse indices in observations
-        pos1_idx = self._find_observable_object_indices(distance.obj1, 3)
-        pos2_idx = self._find_observable_object_indices(distance.obj2, 3)
+        posO_idx = self._find_observable_object_indices(distance.obj, 3)
+        posT_idx = self._find_observable_object_indices(distance.target, 3)
 
-        rot1_idx = self._find_observable_object_indices(distance.obj1, 4)
-        rot2_idx = self._find_observable_object_indices(distance.obj2, 4)
+        rotO_idx = self._find_observable_object_indices(distance.obj, 4)
+        rotT_idx = self._find_observable_object_indices(distance.target, 4)
 
 
         # extract name to allow created function to access it easily
@@ -220,14 +220,18 @@ class IsaacEnv(ModularEnv):
                 rotations = self._obs["Rotations"][i]
 
                 # extract x,y,z coordinates of objects
-                pos1 = positions[pos1_idx[0]:pos1_idx[1]]
-                pos2 = positions[pos2_idx[0]:pos2_idx[1]]
+                pos_obj = positions[posO_idx[0]:posO_idx[1]]
+                pos_target = positions[posT_idx[0]:posT_idx[1]]
 
                 # extract quaternion orientation from objects
-                ori1 = rotations[rot1_idx[0]:rot1_idx[1]]
-                ori2 = rotations[rot2_idx[0]:rot2_idx[1]]
+                ori_obj = rotations[rotO_idx[0]:rotO_idx[1]]
+                ori_target = rotations[rotT_idx[0]:rotT_idx[1]]
 
-                result.append(calc_distance(pos1, pos2, ori1, ori2))
+                # note desired and archived goal for HER replay buffer
+                self._obs["desired_goal"] = np.concatenate((self._obs["desired_goal"], pos_target, ori_target))
+                self._obs["achieved_goal"] = np.concatenate((self._obs["achieved_goal"], pos_obj, ori_obj))
+                
+                result.append(calc_distance(pos_obj, pos_target, ori_obj, ori_target))
             result = np.array(result)
 
             return name, result
@@ -247,7 +251,7 @@ class IsaacEnv(ModularEnv):
             return (distance_space * distance_weight) + (distance_orientation * orientation_weight)
 
         return calculate_distance_reward
-    
+
     def _parse_timestep_reward(self, elapsed: ElapsedTimesteps):
         weight = elapsed.weight
 
@@ -378,7 +382,7 @@ class IsaacEnv(ModularEnv):
         # print("Dist.  :", self._distances)
         # print("Rewards:", self._rewards)
         # print("Dones  :", self._dones)
-        # print("Timest.:", self._timesteps)
+        print("Timest.:", self._timesteps)
 
         # log rewards
         if self.verbose > 0:
@@ -553,7 +557,10 @@ class IsaacEnv(ModularEnv):
             "Positions": positions,
             "Rotations": rotations,
             "Scales": scales,
-            "JointPositions": joint_positions
+            "JointPositions": joint_positions,
+            # will be populated in self._get_distances()
+            "desired_goal": np.array([]),
+            "achieved_goal": np.array([])
         }
 
     def _get_distances(self) -> Dict[str, np.ndarray]:
@@ -569,7 +576,40 @@ class IsaacEnv(ModularEnv):
             # save distance as observation for current tick
             self._obs[f"Distance({name})"] = distance
 
+        # make sure goal arrays are in the correct shape: These arrays are pupuladted by calling dustance_fn()
+        self._obs["desired_goal"] = self._obs["desired_goal"].reshape(self.num_envs, -1)
+        self._obs["achieved_goal"] = self._obs["achieved_goal"].reshape(self.num_envs, -1)
+
         return distances
+
+    def compute_reward(
+        self, achieved_goal: Union[int, np.ndarray], desired_goal: Union[int, np.ndarray], _info: Optional[Dict[str, Any]]
+    ) -> np.float32:
+        """Used by replay buffers, compute the current reward given other information
+        """
+
+        
+
+        print(achieved_goal.shape)
+        print(desired_goal.shape)
+        print(len(_info))
+        exit(0)
+
+        # As we are using a vectorized version, we need to keep track of the `batch_size`
+        if isinstance(achieved_goal, int):
+            batch_size = 1
+        elif self.image_obs_space:
+            batch_size = achieved_goal.shape[0] if len(achieved_goal.shape) > 3 else 1
+        else:
+            batch_size = achieved_goal.shape[0] if len(achieved_goal.shape) > 1 else 1
+
+        desired_goal = self.convert_to_bit_vector(desired_goal, batch_size)
+        achieved_goal = self.convert_to_bit_vector(achieved_goal, batch_size)
+
+        # Deceptive reward: it is positive only when the goal is achieved
+        # Here we are using a vectorized version
+        distance = np.linalg.norm(achieved_goal - desired_goal, axis=-1)
+        return -(distance > 0).astype(np.float32)
 
     def _get_rewards(self) -> List[float]:
         rewards = np.zeros(self.num_envs)

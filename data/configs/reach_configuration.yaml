@@ -15,8 +15,8 @@ obstacles:
 rewards:
   # reward the end effector being close to the object which is supposed to be moved
   EffectorDistance:
-    obj1: "GoalCube"
-    obj2: "R1/ee_link"
+    obj: "R1/ee_link"
+    target: "GoalCube"
     distance_weight: -64
     exponent: 2
     type: "Distance"
@@ -28,10 +28,10 @@ resets:
     type: "DistanceReset"
   # Reset after number of timesteps
   two:
-    max: 256
+    max: 64
     type: "TimestepsReset"
 control_type: "Velocity"
 verbose: 2
 step_size: 0.00416666666
 max_velocity: 20
-num_envs: 32
+# num_envs: 32

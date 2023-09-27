@@ -75,12 +75,22 @@ class ModularEnv(VecEnv):
     @abstractmethod
     def close(self) -> None:
         pass
+    
+    @abstractmethod
+    def compute_reward(
+        self, achieved_goal: Union[int, np.ndarray], desired_goal: Union[int, np.ndarray], _info: Optional[Dict[str, Any]]
+    ) -> np.float32:
+        pass
 
     def env_is_wrapped(self, wrapper_class: Type[gym.Wrapper], indices: VecEnvIndices = None) -> List[bool]:
         # per default, modular envs don't support wrappper classes
         return [False for _ in self._get_indices(indices)]
     
     def env_method(self, method_name: str, *method_args, indices: VecEnvIndices = None, **method_kwargs) -> List[Any]:
+        # todo: do a clean implementation of this
+        if method_name == "compute_reward":
+            return self.compute_reward(*method_args, *method_kwargs)
+
         return [getattr(i, method_name)(*method_args, *method_kwargs) for i in self._get_indices(indices)]
     
     def get_attr(self, attr_name: str, indices: VecEnvIndices = None) -> List[Any]:
@@ -100,3 +110,5 @@ class ModularEnv(VecEnv):
         Note: self.asset_path needs to be set in super class before calling this function.
         """
         return Path(self.asset_path).joinpath(urdf_path)
+    
+    

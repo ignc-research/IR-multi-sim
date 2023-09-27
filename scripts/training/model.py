@@ -1,11 +1,12 @@
-from stable_baselines3 import TD3
+from stable_baselines3 import TD3, HerReplayBuffer
 from stable_baselines3.common.base_class import BaseAlgorithm
 from os.path import exists
 import signal
 from scripts.envs.modular_env import ModularEnv
+from scripts.envs.params.env_params import EnvParams
 
 
-def setup_model(path: str, reset: bool, env: ModularEnv) -> (BaseAlgorithm, str):
+def setup_model(path: str, reset: bool, env: ModularEnv, params: EnvParams) -> (BaseAlgorithm, str):
     # parse model path
     config_name = path.split('/')[-1].replace('.yaml', '')
     model_path = "./data/models/" + config_name + ".zip"
@@ -24,7 +25,13 @@ def setup_model(path: str, reset: bool, env: ModularEnv) -> (BaseAlgorithm, str)
             env=env,
             tensorboard_log="./data/logs/"+config_name,
             verbose=1,
-            batch_size=2048
+            batch_size=2048,
+            replay_buffer_class=HerReplayBuffer,
+            replay_buffer_kwargs=dict(
+                n_sampled_goal=4,
+                goal_selection_strategy="future",
+                buffer_size=1000000
+            )
         )
 
         print(f"No parameters found at {model_path}, creating new model!")
