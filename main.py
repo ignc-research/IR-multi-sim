@@ -1,7 +1,6 @@
 from argparse import ArgumentParser
 from scripts.training.training import train
 
-
 if __name__ == '__main__':
     parser = ArgumentParser("IR-Multi-Sim", description="Train complex training instructions for machine learning environments with a simple interface")
 
