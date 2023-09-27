@@ -5,3 +5,5 @@ class ControlType(Enum):
     Velocity = "Velocity"
     # Control robots by directly setting joint positions
     Position = "Position"
+    # Control robots by setting their current targets
+    PositionTarget = "PositionTarget"

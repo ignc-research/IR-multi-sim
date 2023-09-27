@@ -351,6 +351,9 @@ class IsaacEnv(ModularEnv):
             # set joint positions
             for i, robot in enumerate(self._robots):
                 robot.set_joint_positions(actions[i])
+        elif self.control_type == ControlType.PositionTarget:
+            for i, robot in enumerate(self._robots):
+                robot._articulation_view.set_joint_position_targets(actions[i])
         else:
             raise Exception(f"Control type {self.control_type} not implemented!")
             
@@ -562,6 +565,9 @@ class IsaacEnv(ModularEnv):
             name, distance = distance_fn()
 
             distances[name] = distance
+
+            # save distance as observation for current tick
+            self._obs[f"Distance({name})"] = distance
 
         return distances
 

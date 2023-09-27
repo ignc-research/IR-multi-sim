@@ -30,14 +30,22 @@ class ModularEnv(VecEnv):
         # if "JointPositions" in obs_dict.keys():
             #obs_dict["JointPositions"] = action_space
 
+        obs_space = spaces.Dict(obs_dict)
+
+        # output inferred action and observation space
+        print("Action space:\n", action_space)
+        print("Observation space:\n", obs_space)
+
         # init base class with dynamically created action and observation space
-        super().__init__(params.num_envs, spaces.Dict(obs_dict), action_space)
+        super().__init__(params.num_envs, obs_space, action_space)
 
     def _get_action_space(self, params: EnvParams) -> List[Tuple[float, float]]:
+        limits = self.get_robot_dof_limits()
+
         if params.control_type == ControlType.Position:
-            return self.get_robot_dof_limits()
+            return limits
         if params.control_type == ControlType.Velocity:
-            return [(-params.max_velocity, params.max_velocity) for _ in range(len(params.robots))]
+            return [(-params.max_velocity, params.max_velocity) for _ in range(len(limits))]
         
         raise Exception(f"Unknown control type: {params.control_type}")
 
