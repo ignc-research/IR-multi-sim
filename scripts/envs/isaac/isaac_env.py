@@ -559,8 +559,7 @@ class IsaacEnv(ModularEnv):
             "Positions": positions,
             "Rotations": rotations,
             "Scales": scales,
-            "JointPositions": joint_positions,
-            "Observation": np.hstack((positions, rotations, scales, joint_positions))
+            "JointPositions": joint_positions
         }
 
     def _get_distances(self) -> Dict[str, np.ndarray]:
