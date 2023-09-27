@@ -17,7 +17,7 @@ rewards:
   EffectorDistance:
     obj1: "GoalCube"
     obj2: "R1/ee_link"
-    distance_weight: -8
+    distance_weight: -64
     exponent: 3
     type: "Distance"
 resets:
@@ -34,4 +34,4 @@ control_type: "Velocity"
 verbose: 2
 step_size: 0.00416666666
 max_velocity: 20
-num_envs: 64
+num_envs: 32
