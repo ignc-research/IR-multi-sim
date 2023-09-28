@@ -25,7 +25,7 @@ resets:
   one:
     distance: "EffectorDistance"
     min_distance: 0.1
-    reward: 20
+    reward: 5
     type: "DistanceReset"
   # Reset after number of timesteps
   two:
@@ -35,6 +35,3 @@ control_type: "Velocity"
 verbose: 2
 step_size: 0.00416666666
 max_velocity: 20
-
-num_envs: 2
-headless: False

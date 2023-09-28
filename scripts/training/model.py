@@ -24,7 +24,8 @@ def setup_model(path: str, reset: bool, env: ModularEnv) -> (BaseAlgorithm, str)
             env=env,
             tensorboard_log="./data/logs/"+config_name,
             verbose=1,
-            batch_size=2048
+            batch_size=2048,
+            learning_rate=0.0001
         )
 
         print(f"No parameters found at {model_path}, creating new model!")

@@ -33,6 +33,5 @@ resets:
     type: "TimestepsReset"
 verbose: 2
 step_size: 0.00416666666
-headless: False
 control_type: PositionTarget
 step_count: 16

@@ -1,0 +1,36 @@
+engine: "Isaac"
+robots:
+  R1:
+    urdf_path: "robots/ur5/urdf/ur5_with_gripper.urdf"
+    position: [0, 0, 0]
+    observable_joints: ["ee_link"]
+obstacles:
+  # cube which defines target of movement
+  GoalCube:
+    position: [[-0.5, -0.5, 0.1], [0.5, 0.5, 0.1]]
+    color: [0, 1, 0]
+    scale: [0.1, 0.1, 0.1]
+    collision: False
+    type: "Cube"
+rewards:
+  # reward the end effector being close to the object which is supposed to be moved
+  EffectorDistance:
+    obj1: "GoalCube"
+    obj2: "R1/ee_link"
+    distance_weight: -64
+    exponent: 2
+    type: "Distance"
+resets:
+  # reset once target cube reached goal
+  one:
+    distance: "EffectorDistance"
+    min_distance: 0.2
+    reward: 20
+    type: "DistanceReset"
+  # Reset after number of timesteps
+  two:
+    max: 1
+    type: "TimestepsReset"
+verbose: 2
+step_size: 0.00416666666
+step_count: 16
