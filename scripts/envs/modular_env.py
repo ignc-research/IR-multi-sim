@@ -30,7 +30,7 @@ class ModularEnv(VecEnv):
         if params.control_type == ControlType.Position:
             return self.get_robot_dof_limits()
         if params.control_type == ControlType.Velocity:
-            return [(-params.max_velocity, params.max_velocity) for _ in range(len(params.robots))]
+            return [(-params.max_velocity, params.max_velocity) for _ in range(len(self.get_robot_dof_limits()))]
         
         raise Exception(f"Unknown control type: {params.control_type}")
 

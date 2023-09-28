@@ -326,6 +326,7 @@ class IsaacEnv(ModularEnv):
         name = reset.distance_name
         distance_min, distance_max = reset.min_distance, reset.max_distance
         max_angle = reset.max_angle
+        reward = reset.reward
 
         # parse function
         def reset_condition() -> np.ndarray:
@@ -336,17 +337,27 @@ class IsaacEnv(ModularEnv):
             distance_reset = np.where(distance_min <= distance, np.where(distance <= distance_max, False, True), True)
             rotation_reset = np.where(np.abs(rotation) > max_angle, True, False)
 
-            return np.logical_or(distance_reset, rotation_reset)
+            resets = np.logical_or(distance_reset, rotation_reset)
+
+            # aply reward for each triggered reset condition
+            self._rewards += resets * reward
+
+            return resets
 
         return reset_condition
 
     def _parse_timesteps_reset(self, reset: TimestepsReset):
         max_value = reset.max
+        reward = reset.reward
 
         # parse function
         def reset_condition() -> np.ndarray:
             # return true whenever the current timespets exceed the max value
-            return np.where(self._timesteps < max_value, False, True)
+            resets = np.where(self._timesteps < max_value, False, True)
+
+            self._rewards += reward * resets
+
+            return resets
 
         return reset_condition
 
