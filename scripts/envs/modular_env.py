@@ -19,22 +19,9 @@ class ModularEnv(VecEnv):
         sample_obs = self.reset()
         limits = self._get_action_space(params)
 
-        # parse action space: Joint limits
+        # create observation space from first reset obs sample
+        obs_space = spaces.Dict({name: spaces.Box(np.ones(obs.size // params.num_envs) * -np.inf, np.ones(obs.size // params.num_envs) * np.inf) for name, obs in sample_obs.items()})
         action_space = spaces.Box(np.array([a[0] for a in limits]), np.array([a[1] for a in limits]))
-
-        # create dict with spaces, allowing it to be modified be being turned into observation space
-        obs_dict = {name: spaces.Box(np.ones(obs.size // params.num_envs) * -np.inf, np.ones(obs.size // params.num_envs) * np.inf) for name, obs in sample_obs.items()}
-
-        # range of current joint positions may be depicted more accuratly
-        # todo: why does this reduce the expected obs space of joint positions to 1?
-        # if "JointPositions" in obs_dict.keys():
-            #obs_dict["JointPositions"] = action_space
-
-        obs_space = spaces.Dict(obs_dict)
-
-        # output inferred action and observation space
-        print("Action space:\n", action_space)
-        print("Observation space:\n", obs_space)
 
         # init base class with dynamically created action and observation space
         super().__init__(params.num_envs, obs_space, action_space)

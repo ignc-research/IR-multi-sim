@@ -20,7 +20,7 @@ def setup_model(path: str, reset: bool, env: ModularEnv) -> (BaseAlgorithm, str)
     else:
         model = TD3(
             "MultiInputPolicy",
-            train_freq=(128, "step"),
+            train_freq=(1, "step"),
             env=env,
             tensorboard_log="./data/logs/"+config_name,
             verbose=1,
