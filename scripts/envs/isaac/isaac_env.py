@@ -241,21 +241,21 @@ class IsaacEnv(ModularEnv):
             distance_space, distance_orientation = self._get_distance_and_rotation(name)
 
             # apply weight factor
-            weighted_space = distance_weight * distance_space
-            weighted_orientation = orientation_weight * distance_orientation
+            weighted_space = distance_weight * (distance_space ** exponent)
+            weighted_orientation = orientation_weight * (distance_orientation ** exponent)
 
             # skip normalization
             if not normalize:
-                return (weighted_space + weighted_orientation) ** exponent
+                return weighted_space + weighted_orientation
 
             # retrieve distences after last reset
             begin_space, begin_orient = self._distances_after_reset[name]
 
             # calculate variance to previous distance, avoiding division by zero
-            normalized_space = np.where(begin_space == 0, weighted_space, distance_weight * distance_space / begin_space) 
-            normalized_orient = np.where(begin_orient == 0, weighted_orientation, distance_orientation * distance_orientation / begin_orient) 
+            normalized_space = np.where(begin_space == 0, weighted_space, distance_weight * (distance_space ** exponent) / begin_space) 
+            normalized_orient = np.where(begin_orient == 0, weighted_orientation, distance_orientation * (distance_orientation ** exponent) / begin_orient) 
 
-            return (normalized_space + normalized_orient) ** exponent
+            return normalized_space + normalized_orient
 
         return calculate_distance_reward
     

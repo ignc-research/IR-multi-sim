@@ -28,11 +28,11 @@ resets:
     type: "DistanceReset"
   # Reset after number of timesteps
   two:
-    max: 256
+    max: 128
     type: "TimestepsReset"
 control_type: "Velocity"
 verbose: 2
-step_size: 0.00416666666
+step_size: 0.015
 max_velocity: 20
 
 num_envs: 2
