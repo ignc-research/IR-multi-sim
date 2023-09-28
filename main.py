@@ -7,7 +7,7 @@ if __name__ == '__main__':
 
     # allow parsing file
     parser.add_argument('-f', '--file', help="Environment config file")
-    parser.add_argument('-t', '--timesteps', default=100000, type=int, help="Amount of timesteps to train the model")
+    parser.add_argument('-t', '--timesteps', default=1000000, type=int, help="Amount of timesteps to train the model")
     parser.add_argument('-r', '--reset', action="store_true", help="Start model training from scratch")
 
     # parse arguments

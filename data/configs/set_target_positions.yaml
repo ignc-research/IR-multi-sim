@@ -33,6 +33,6 @@ resets:
     type: "TimestepsReset"
 control_type: "PositionTarget"
 verbose: 2
-step_size: 0.01
-step_count: 256
+step_size: 0.04
+step_count: 64
 num_envs: 32
