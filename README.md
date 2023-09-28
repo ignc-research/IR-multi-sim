@@ -18,7 +18,7 @@ Define your environment with simple classes: Robot, Obstacle, Reward and Reset. 
 Robots, robot joints and obstacles can be marked as observable, meaning that their relative position, orientation and scale will be included in the observations of the machine learning model.
 
 ## Robots
-Robots need to be defined in an [urdf fiile](http://wiki.ros.org/urdf). The file needs to be saved in the "./data/robots" directory.
+Robots need to be defined in an [urdf file](http://wiki.ros.org/urdf). The file needs to be saved in the "./data/robots" directory.
 
 Example:
 ``` python
@@ -84,13 +84,12 @@ distance_reset = DistanceReset(
 )
 ```
 
-## Full example
-This full example demonstrated how to easily create an environment constructed from previously explained parameters.
-The files content can  be found in the [example.py](example.py) file.
-In this example, the robot will try to touch the target cube with its end effector.
-
 # Supported Engines
 - [IsaacSim](https://developer.nvidia.com/isaac-sim)
 - [Pybullet](https://pybullet.org/wordpress/)
 
 ## Planned Support
+- 
+
+# Inspiration
+- [Gymnasium](https://robotics.farama.org/envs/fetch/pick_and_place/#action-space)
