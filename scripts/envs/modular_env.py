@@ -27,7 +27,7 @@ class ModularEnv(VecEnv):
         super().__init__(params.num_envs, obs_space, action_space)
 
     def _get_action_space(self, params: EnvParams) -> List[Tuple[float, float]]:
-        if params.control_type == ControlType.Position:
+        if params.control_type in [ControlType.Position, ControlType.PositionTarget]:
             return self.get_robot_dof_limits()
         if params.control_type == ControlType.Velocity:
             return [(-params.max_velocity, params.max_velocity) for _ in range(len(self.get_robot_dof_limits()))]

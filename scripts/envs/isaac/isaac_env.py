@@ -364,6 +364,7 @@ class IsaacEnv(ModularEnv):
     def step_async(self, actions: np.ndarray) -> None:
         # print("Actions:", actions)
         
+        # todo: this works only for one robot
         # apply actions
         if self.control_type == ControlType.Velocity:
             # set joint velocities
@@ -373,6 +374,10 @@ class IsaacEnv(ModularEnv):
             # set joint positions
             for i, robot in enumerate(self._robots):
                 robot.set_joint_positions(actions[i])
+        elif self.control_type == ControlType.PositionTarget:
+            # set joint positions
+            for i, robot in enumerate(self._robots):
+                robot._articulation_view.set_joint_position_targets(actions[i])
         else:
             raise Exception(f"Control type {self.control_type} not implemented!")
             
