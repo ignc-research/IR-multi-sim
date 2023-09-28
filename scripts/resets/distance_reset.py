@@ -4,7 +4,9 @@ from typing import Union, Tuple
 from numpy import inf
 
 class DistanceReset(Reset):
-    def __init__(self, distance: Union[Distance, str], min_distance:float = -inf, max_distance: float=inf, max_angle: float=180) -> None:
+    def __init__(self, distance: Union[Distance, str], min_distance:float = -inf, max_distance: float=inf, max_angle: float=180, reward: float=0) -> None:
+        super().__init__(reward)
+
         # save the name of the distance
         if isinstance(distance, Distance):
             self.distance_name = distance.name

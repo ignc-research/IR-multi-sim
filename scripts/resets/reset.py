@@ -1,7 +1,10 @@
 from abc import ABC
 
 class Reset(ABC):
-    """
-    Examples: Elapsed timesteps, distance above or below threshhold
-    """
-    pass
+    def __init__(self, reward: float=0) -> None:
+        """All types of resets. Elapsed timesteps, distance above or below threshhold
+
+        Args:
+            reward (float): Reward given when the reset condition is triggered
+        """
+        self.reward = reward

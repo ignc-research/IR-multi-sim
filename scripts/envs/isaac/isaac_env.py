@@ -315,6 +315,7 @@ class IsaacEnv(ModularEnv):
         name = reset.distance_name
         distance_min, distance_max = reset.min_distance, reset.max_distance
         max_angle = reset.max_angle
+        reward = reset.reward
 
         # parse function
         def reset_condition() -> np.ndarray:
@@ -322,8 +323,14 @@ class IsaacEnv(ModularEnv):
             distance, rotation = self._get_distance_and_rotation(name)
 
             # return true whenever the distance exceed max or min value
-            distance_reset = np.where(distance_min <= distance, np.where(distance <= distance_max, False, True), True)
+            distance_reset = np.where(distance < distance_min, True, np.where(distance_max < distance, True, False))
             rotation_reset = np.where(np.abs(rotation) > max_angle, True, False)
+
+            # calcualte envs to reset
+            resets =  np.logical_or(distance_reset, rotation_reset)
+
+            # add rewards for resets, if any
+            self._rewards += resets * reward
 
             return np.logical_or(distance_reset, rotation_reset)
 
@@ -331,11 +338,17 @@ class IsaacEnv(ModularEnv):
 
     def _parse_timesteps_reset(self, reset: TimestepsReset):
         max_value = reset.max
+        reward = reset.reward
 
         # parse function
         def reset_condition() -> np.ndarray:
+            resets = np.where(self._timesteps < max_value, False, True)
+
+            # add rewards for resets, if any
+            self._rewards += resets * reward
+
             # return true whenever the current timespets exceed the max value
-            return np.where(self._timesteps < max_value, False, True)
+            return resets
 
         return reset_condition
 
@@ -362,6 +375,7 @@ class IsaacEnv(ModularEnv):
             self._simulation.update()
     
     def step_wait(self) -> VecEnvStepReturn:
+    
         # get observations
         self._obs = self._get_observations()
 

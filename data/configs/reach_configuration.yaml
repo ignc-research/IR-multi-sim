@@ -24,7 +24,8 @@ resets:
   # reset once target cube reached goal
   one:
     distance: "EffectorDistance"
-    min_distance: 0.1
+    min_distance: 0.2
+    reward: 20
     type: "DistanceReset"
   # Reset after number of timesteps
   two:
