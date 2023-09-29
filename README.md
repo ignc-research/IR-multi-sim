@@ -111,4 +111,4 @@ Reach the target cube spawned randomly by appling force to the joints.
 ## Set target positions
 Reach the target cube spawned randomly by setting joint position targets, and seeing if the predicted configuration reaches the target.
 
-![Set target positions](./data/documentation/set_target_pos.png)
+![Set target positions](./data/documentation/set_target_pos1M.png)
