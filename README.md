@@ -14,6 +14,13 @@ Install the pybullet_requirements.txt to use the PyBullet engine. You can test t
 # Usage
 Define your environment with simple classes: Robot, Obstacle, Reward and Reset. The environment will automatically be created in the specified engine. Observation and Action space will be automatically parsed depending on the robots and obstacles spawned in the environment.
 
+## Configutarion Files
+All of MultiSims functionality can be accesssed with configuration files. When running the main.py file, simply specify any of the example configuration files at "./data/files", or create your own!
+
+```shell
+python main.py -f ./data/configs/example_min.yaml
+```
+
 ## Observability
 Robots, robot joints and obstacles can be marked as observable, meaning that their relative position, orientation and scale will be included in the observations of the machine learning model.
 
@@ -86,11 +93,22 @@ distance_reset = DistanceReset(
 
 ## Full example
 This full example demonstrated how to easily create an environment constructed from previously explained parameters.
-The files content can  be found in the [example.py](example.py) file.
-In this example, the robot will try to touch the target cube with its end effector.
+The example configuration files can be found under "./data/configs".
 
 # Supported Engines
 - [IsaacSim](https://developer.nvidia.com/isaac-sim)
 - [Pybullet](https://pybullet.org/wordpress/)
 
 ## Planned Support
+- ?
+
+# Existing models
+## Reach configuration
+Reach the target cube spawned randomly by appling force to the joints.
+
+![Reach configuration](./data/documentation/reach_config2M.png)
+
+## Set target positions
+Reach the target cube spawned randomly by setting joint position targets, and seeing if the predicted configuration reaches the target.
+
+![Set target positions](./data/documentation/set_target_pos1M.png)
