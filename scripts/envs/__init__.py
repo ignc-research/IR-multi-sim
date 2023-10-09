@@ -9,7 +9,7 @@ except ModuleNotFoundError as e:
         def __init__(self, params: EnvParams) -> None:
             raise e
 
-from scripts.envs.pybullet.pybullet_env import PybulletEnv
+from scripts.envs.pybullet.environment import PybulletEnv
 
 def create_env(params: EnvParams) -> ModularEnv:
     name = params.engine
