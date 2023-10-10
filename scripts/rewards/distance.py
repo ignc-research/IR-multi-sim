@@ -64,9 +64,6 @@ def calc_distance(p1: np.ndarray, p2: np.ndarray, o1: np.ndarray, o2: np.ndarray
     """
     # calculate distance (space and rotation)
     distance_space = np.linalg.norm(p1 - p2)
-    # ISAAC GYM uses quaternions as orientation # todo: outputs floar scaling with angle, but not angle itself
-    #distance_rotation = np.arccos(2 * (o1 @ o2.T) ** 2 - 1)
-    distance_rotation = 0.0
-    #print("Orientation: ", o1, o2, distance_rotation, distance_space)
-
+    #ISAAC GYM uses quaternions as orientation # todo: outputs floar scaling with angle, but not angle itself  
+    distance_rotation = np.arccos(2 * (o1 @ o2.T) ** 2 - 1)
     return distance_space, distance_rotation

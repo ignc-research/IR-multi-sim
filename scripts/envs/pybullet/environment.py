@@ -148,7 +148,7 @@ class PybulletEnv(ModularEnv):
                 pos2 = self._obs["Positions"][i][obj2Pos[0]:obj2Pos[1]]
                 
                 # extract quaternion orientation from objects
-                rot1 = self._obs["Rotations"][i][obj2Rot[0]:obj2Rot[1]]
+                rot1 = self._obs["Rotations"][i][obj1Rot[0]:obj1Rot[1]]
                 rot2 = self._obs["Rotations"][i][obj2Rot[0]:obj2Rot[1]]
 
                 result.append(calc_distance(pos1, pos2, rot1, rot2))
