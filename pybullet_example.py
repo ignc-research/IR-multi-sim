@@ -52,5 +52,5 @@ env = create_env(params)
 model = TD3("MultiInputPolicy", train_freq=1, env=env)
 
 # start learning
-model.learn(10000)
+model.learn(1000)
 print("Simple example is complete!")

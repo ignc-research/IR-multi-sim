@@ -30,8 +30,8 @@ resets:
   # Name of reset conditions is irrelevant
   one:
     distance: "TargetDistance"
-    min: 0
-    max: 1.5
+    min_distance: 0
+    max_distance: 1.5
     type: "DistanceReset"
   # Name of reset conditions is irrelevant
   two:
