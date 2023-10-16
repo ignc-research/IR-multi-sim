@@ -36,8 +36,8 @@ resets:
   # reset once target cube reached goal
   one:
     distance: "TargetDistance"
-    min: 0.1
-    max: 1000
+    min_distance: 0.1
+    max_distance: 1000
     type: "DistanceReset"
   # Reset after number of timesteps
   two:

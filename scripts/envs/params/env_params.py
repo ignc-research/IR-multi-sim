@@ -18,7 +18,7 @@ class EnvParams():
             step_size: float=0.01,
             step_count: int=1,
             headless: bool=True,
-            num_envs: int=8,
+            num_envs: int=1,
             env_offset: Tuple[float, float]=(10, 10),
             control_type: ControlType=ControlType.Position,
             max_velocity: int = 5,

@@ -4,7 +4,7 @@ import numpy as np
 from pathlib import Path
 from stable_baselines3.common.vec_env.base_vec_env import *
 from gym.utils import seeding
-import gym.spaces
+import gym.spaces as spaces
 from scripts.envs.params.control_type import ControlType
 from scripts.envs.params.env_params import EnvParams
 

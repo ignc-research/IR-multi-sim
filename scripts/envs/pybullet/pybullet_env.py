@@ -3,8 +3,10 @@ from scripts.envs.params.env_params import EnvParams
 from scripts.envs.params.control_type import ControlType
 
 from scripts.spawnables.obstacle import Obstacle, Cube, Sphere, Cylinder
-
 from scripts.spawnables.robot import Robot
+
+from scripts.envs.pybullet.robot import PyRobot
+from scripts.envs.pybullet.obstacle import PyObstacle, PyCube, PySphere, PyCylinder
 
 from scripts.rewards.reward import Reward
 from scripts.rewards.distance import Distance, calc_distance
@@ -37,15 +39,18 @@ class PybulletEnv(ModularEnv):
         self.observable_obstacles_count = len([o for o in params.obstacles if o.observable])
         self._timesteps: List[int] = np.zeros(params.num_envs)
         self.step_count = params.step_count
-        self.step_size = params.step_size
         self.control_type = params.control_type
         self.verbose = params.verbose
-        self.initState = None
+
+        # for the reset
+        self._initRobots = params.robots
+        self._initObstacles = params.obstacles
 
         # save the distances in the current environment
         self._distance_funcions = []
         self._distances: Dict[str, np.ndarray] = {}
         self._distances_after_reset: Dict[str, np.ndarray] = {}
+        self.num_distances = params.num_distances
 
         # calculate env offsets
         break_index = math.ceil(math.sqrt(self.num_envs))
@@ -55,20 +60,13 @@ class PybulletEnv(ModularEnv):
         ))
 
         # setup PyBullet simulation environment and interfaces
-        disp = pyb.DIRECT if params.headless else pyb.GUI
-        pyb.connect(disp)
-        pyb.setTimeStep(self.step_size)
-        pyb.setPhysicsEngineParameter(numSubSteps=1)
-        pyb.setGravity(0, 0, -9.8) 
-        pyb.setRealTimeSimulation(0)
-        pyb.resetSimulation()
-        pyb.loadURDF(self.asset_path  + "workspace/plane.urdf", [0,0,-0.01])    # load ground plane
+        self._setup_simulation(params.headless, params.step_size)
 
         ### allow tracking spawned objects ###
-        self._robots: List = []               # Tupel: (name, robotId, jointNames, joints, observableJoints, controllableJoint, initialPos)
-        self._observable_robots: List = []    # Tupel: (name, robotId, jointNames, joints, observableJoints, controllableJoint, initialPos)
-        self._obstacles: List = []              # Tupel: (name:str, obstacleID:int, position:array, rotation:list)
-        self._observable_obstacles: List = []   # Tupel: (name:str, obstacleID:int, position:array, rotation:list)
+        self._robots: Dict[int, List[PyRobot]] = {}
+        self._observable_robots: Dict[int, List[PyRobot]] = {}
+        self._obstacles: Dict[int, List[PyObstacle]] = {}
+        self._observable_obstacles: Dict[int, List[PyObstacle]] = {}
 
         # setup rl environment
         self._setup_environments(params.robots, params.obstacles)
@@ -78,29 +76,39 @@ class PybulletEnv(ModularEnv):
         # init bace class last, allowing it to automatically determine action and observation space
         super().__init__(params)
 
-    
+
+    def _setup_simulation(self, headless: bool, step_size: float):
+        disp = pyb.DIRECT if headless else pyb.GUI
+        pyb.connect(disp)
+        pyb.setTimeStep(step_size)
+        pyb.setPhysicsEngineParameter(numSubSteps=1)
+        pyb.setGravity(0, 0, -9.8) 
+        pyb.setRealTimeSimulation(0)
+       
+
     def _setup_environments(self, robots: List[Robot], obstacles: List[Obstacle]) -> None:
+        # remove all objects from the simulation
+        pyb.resetSimulation()                                                  
+       
+        # initialize dictionaries
+        self._robots = {i: [] for i in range(self.num_envs)}
+        self._observable_robots  = {i: [] for i in range(self.num_envs)}
+        self._obstacles = {i: [] for i in range(self.num_envs)}
+        self._observable_obstacles= {i: [] for i in range(self.num_envs)}
+
+        # load ground plane
+        pyb.loadURDF(self.asset_path  + "workspace/plane.urdf", [0,0,-0.01])         
+
         # spawn objects for each environment
         for env_idx in range(self.num_envs):    
-            
             # spawn robots
             for robot in robots:
                 self._spawn_robot(robot, env_idx)
 
             # spawn obstacles
             for obstacle in obstacles:
-                if isinstance(obstacle, Cube):
-                    self._spawn_cube(obstacle, env_idx)
-                elif isinstance(obstacle, Sphere):
-                    self._spawn_sphere(obstacle, env_idx)
-                elif isinstance(obstacle, Cylinder):
-                    self._spawn_cylinder(obstacle, env_idx)
-                else:
-                    raise f"Obstacle {type(obstacle)} not implemented"
-        
-        # save start configuration for fast reset
-        self.initState = pyb.saveState()
-
+                self._spawn_obstacle(obstacle, env_idx)    
+ 
 
     def _setup_rewards(self, rewards: List[Reward]) -> None:
         self._reward_fns = []
@@ -115,11 +123,15 @@ class PybulletEnv(ModularEnv):
 
 
     def _parse_distance_reward(self, distance: Distance):
-        # parse indices in observations
-        obj1_start = self._find_observable_object(distance.obj1)
-        obj2_start = self._find_observable_object(distance.obj2)
+        # get start and  end indicies for positions (x,y,z)
+        obj1Pos = self._find_observable_object(distance.obj1,3)
+        obj2Pos = self._find_observable_object(distance.obj2,3)
+        
+        # get start and  end indicies for angles (a,b,c,d)
+        obj1Rot = self._find_observable_object(distance.obj1,4)
+        obj2Rot = self._find_observable_object(distance.obj2,4)
 
-        # extract name to allow created function to access it easily
+        # extract name to allow created function to access it easily 
         name = distance.name    
         distance_weight = distance.distance_weight
         orientation_weight = distance.orientation_weight
@@ -128,21 +140,19 @@ class PybulletEnv(ModularEnv):
 
         # parse function calculating distance
         def distance_per_env() -> Tuple[str, np.ndarray]:
-            # calculate distances as np array
             result = []
-            for i in range(self.num_envs):
+
+            for i in range(self.num_envs):                
                 # extract x,y,z coordinates of objects
-                pos1 = self._obs[i][obj1_start:obj1_start+3]
-                pos2 = self._obs[i][obj2_start:obj2_start+3]
-
+                pos1 = self._obs["Positions"][i][obj1Pos[0]:obj1Pos[1]]
+                pos2 = self._obs["Positions"][i][obj2Pos[0]:obj2Pos[1]]
+                
                 # extract quaternion orientation from objects
-                ori1 = self._obs[i][obj1_start+3:obj1_start+7]
-                ori2 = self._obs[i][obj2_start+3:obj2_start+7]
+                rot1 = self._obs["Rotations"][i][obj1Rot[0]:obj1Rot[1]]
+                rot2 = self._obs["Rotations"][i][obj2Rot[0]:obj2Rot[1]]
 
-                result.append(calc_distance(pos1, pos2, ori1, ori2))
+                result.append(calc_distance(pos1, pos2, rot1, rot2))
             result = np.array(result)
-
-            print("\nResult:", name, result)
 
             return name, result
     
@@ -174,41 +184,43 @@ class PybulletEnv(ModularEnv):
     
     
     def _parse_timestep_reward(self, elapsed: ElapsedTimesteps):
-        weight = elapsed.weight
-
-        # reward elapsed timesteps
+        """
+        Reward elapsed timesteps according to the weight factor
+        """
         def timestep_reward():
-            return self._timesteps * weight
+            return self._timesteps * elapsed.weight
         
         return timestep_reward
 
 
-    def _find_observable_object(self, name: str) -> int:
+    def _find_observable_object(self, name: str, obsSize: int) -> int:
         """
-        Given the name of an observable object, tries to retrieve its index in the observations list.
-        Example: When two robots are observable and the position of the second robots is being queried, returns index 1.
+        Given the name of an observable object, tries to retrieve its index in the observations list. Since all 
+        environments contain the same observable objects, we only iterate over the 1st environment. 
+
+        Example: When two robots are observable and the position of the second robots is being queried, returns 
+        start index and end index depending of the objectsize e.g. for (x,y,z) the size is 3
         """
-        # robots are input first into observations
-        for index, robot in enumerate(self._observable_robots):
-            if robot[0].endswith(name):               
-                # first 3 entries are the pos values, the next 4 rot values
-                startPos = index*7
-                return startPos
- 
-        obsRobotsAndJoints = self._getObservableJoints(0)
-        for _, joints in obsRobotsAndJoints:
-            for index, joint in enumerate(joints):
-                if name.endswith(joint[1]):
-                    # * 7 because we have 3pos, 4rot entries per robot/joint
-                    startPos = index*7 + self.observable_robots_count*7
-                    return startPos
+        index = 0 
 
-        # obstacles third
-        for index, obstacle in enumerate(self._observable_obstacles):
-            if obstacle[0].endswith(name):
-                startPos = index*7 + self.observable_robots_count*7 + self.observable_robot_joint_count*7
-                return startPos
-
+        # iterate over all robots and their joints 
+        for robot in self._observable_robots[0]:
+            if robot.name.endswith(name):
+                return index * obsSize, (index * obsSize) + obsSize
+            index += 1
+            
+            for jointName in robot.observableJointNames:
+                if name.endswith(jointName):
+                    return index * obsSize, (index * obsSize) + obsSize
+                index += 1
+                
+        # iterate over all obstacles
+        for obstacle in self._observable_obstacles[0]:
+            if obstacle.name.endswith(name):
+                return index * obsSize, (index * obsSize) + obsSize
+            index += 1
+        
+        # if objext not found raise an error
         raise f"Object {name} must be observable if used for reward"
 
 
@@ -221,7 +233,6 @@ class PybulletEnv(ModularEnv):
             if isinstance(reset, DistanceReset):
                 # make sure that the referenced distance exists
                 assert reset.distance_name in distance_names, f"DistanceReset {reset} references distance {reset.distance}, which doesn't exists in rewards!"
-                
                 self._reset_fns.append(self._parse_distance_reset(reset))
             elif isinstance(reset, TimestepsReset):
                 self._reset_fns.append(self._parse_timesteps_reset(reset))
@@ -256,25 +267,34 @@ class PybulletEnv(ModularEnv):
         def reset_condition() -> np.ndarray:
             # return true whenever the current timespets exceed the max value
             return np.where(self._timesteps < max_value, False, True)
-
+        
         return reset_condition
 
 
     def step_async(self, actions: np.ndarray) -> None:
+        """
+        This function perfomrs certain actions for each roboter in an environments. It iterates over each environment 
+        and moves the joints of all robots according to the action type and values. Then it performs a collion detection
+        and shwos all collision in the console.
+        """
         for envId in range(self.num_envs):
-            robots = self._getRobots(envId)
- 
-            # perform action for each robot in the current environment
-            for robot in robots:
-                robotId, controllableJoints = robot[1], robot[5]
+            #print(f"Robots: {[item.id for item in self._robots[envId]]}", f"Obstacles: {[item.id for item in self._obstacles[envId]]}")
+
+            # get all robots from an environment and perform actions
+            for robot in self._robots[envId]:
 
                 if self.control_type == ControlType.Velocity:
-                    action = [actions[envId] for i in controllableJoints]
-                    pyb.setJointMotorControlArray(bodyUniqueId=robotId, jointIndices=controllableJoints, controlMode=pyb.VELOCITY_CONTROL, targetVelocities=action) 
+                    action = [actions[envId][i] for i in robot.controllableJoints]
+                    pyb.setJointMotorControlArray(bodyUniqueId=robot.id, jointIndices=robot.controllableJoints, 
+                                                  controlMode=pyb.VELOCITY_CONTROL, targetVelocities=action) 
                 
                 elif self.control_type == ControlType.Position:
-                    action = [actions[envId][i] for i in controllableJoints] 
-                    pyb.setJointMotorControlArray(bodyUniqueId=robotId, jointIndices=controllableJoints, controlMode=pyb.POSITION_CONTROL, targetPositions=action) 
+                    #print("Before action: ", pyb.getBasePositionAndOrientation(robot.id))
+                    action = [actions[envId][i] for i in robot.controllableJoints] 
+                    #print("Action: ", action)
+                    pyb.setJointMotorControlArray(bodyUniqueId=robot.id, jointIndices=robot.controllableJoints, 
+                                                  controlMode=pyb.POSITION_CONTROL, targetPositions=action) 
+                    #print("After action: ", pyb.getBasePositionAndOrientation(robot.id))
                 
                 else:
                     raise Exception(f"Control type {self.control_type} not implemented!")
@@ -285,9 +305,11 @@ class PybulletEnv(ModularEnv):
             
             if self.headless:
                 pyb.performCollisionDetection()  
-            
+        
+        
+        #print(f"Sim state: NumBodies: {pyb.getNumBodies()}", f"Names: {pyb.getBodyInfo(0)}, {pyb.getBodyInfo(1)},{pyb.getBodyInfo(2)}" )
            # get Collisions
-            self._on_contact_report_event()
+           #self._on_contact_report_event()
 
     
     def step_wait(self) -> VecEnvStepReturn:
@@ -296,7 +318,7 @@ class PybulletEnv(ModularEnv):
         self._rewards = self._get_rewards()     # get rewards
         self._dones = self._get_dones()         # get dones
 
-        #print("Obs    :", self._obs)
+        #print("Obs    :", self._obs["Positions"])
         #print("Dist.  :", self._distances)
         #print("Rewards:", self._rewards)
         #print("Dones  :", self._dones)
@@ -310,19 +332,17 @@ class PybulletEnv(ModularEnv):
 
 
     def reset(self, env_idxs: np.ndarray=None) -> VecEnvObs:
-        #pyb.configureDebugVisualizer(pyb.COV_ENABLE_GUI,  int(False))
-
         # reset entire simulation
         if env_idxs is None:
-            pyb.restoreState(self.initState)                    # load inital state of env
-            self._timesteps = np.zeros(self.num_envs)           # reset timestep tracking
-            self._obs = self._get_observations()                # reset observations 
-            self._distances_after_reset = self._get_distances() # calculate new distances
+            self._setup_environments(self._initRobots, self._initObstacles) # build environment new                
+            self._timesteps = np.zeros(self.num_envs)                       # reset timestep tracking
+            self._obs = self._get_observations()                            # reset observations 
+            self._distances_after_reset = self._get_distances()             # calculate new distances
 
             # set dummy value for distances to avoid KeyError
             if self.verbose > 1:
                 for name, _ in self._distances_after_reset.items():
-                    self.set_attr("distance_"+name, None)   
+                    self.set_attr("distance_" + name, None)   
         
         # reset envs manually
         else:
@@ -330,17 +350,11 @@ class PybulletEnv(ModularEnv):
            
             # select each environment
             for i in env_idxs:
-                
-                # reset all obstacles to default pose
-                for _, id, pos, rot in self._getObstacles(i):
-                    pyb.resetBasePositionAndOrientation(id, pos, rot)
-                
-                # reset all robot joints to default pose
-                for joint in self._getControllableJoints(i):
-                    robotId, jointIds, initPos = joint[0], joint[1], joint[2]
-                    pos = [[elem] for elem in initPos]      # multiDof function takes list of lists for targetpos
-                    pyb.resetJointStatesMultiDof(robotId, jointIds, pos)     
-
+                # reset all robots and all obstacles 
+                for robot in self._robots[i]:
+                    robot.reset()
+                for obstacle in self._obstacles[i]:
+                    obstacle.reset()
 
             # log distances of environments which were reset
             if self.verbose > 1:
@@ -353,112 +367,78 @@ class PybulletEnv(ModularEnv):
             # note new distances # todo: only recalculate necessary distances
             self._distances_after_reset = self._get_distances()
 
-        #pyb.configureDebugVisualizer(pyb.COV_ENABLE_GUI, int(True))
-
         return self._obs
-    
 
     def get_robot_dof_limits(self) -> List[Tuple[float, float]]:
+        """
+        Extract the joint boundaries from each robot in the first environment, since the other environments contain 
+        exactly the same robots. 
+        """
         limits = [] # init array
-
-        # only get dof limits from robots of first environment
-        for robot in self._getRobots(0):
-            robotId, joints = robot[1], robot[3]
-
-            for joint in joints:
-                lower, upper = pyb.getJointInfo(robotId, joint)[8:10]
-                limits.append((lower, upper))
+        for robot in self._robots[0]:
+            limits += robot.limits
         return limits
+
+
+    def _get_observations(self) -> VecEnvObs:
+        # create empty arrays, allowing obs to be appended
+        positions = np.array([])
+        rotations = np.array([])
+        scales = np.array([])
+        joint_positions = np.array([])
+
+        # iterate through each environment
+        for env_idx in range(self.num_envs):
+
+            # get observations from all robots and their joints in the environment
+            for robot in self._observable_robots[env_idx]:
+                pos, rot, scale = robot.getPose()
+
+                # add robot pos, rotation and scale to list of observations
+                positions = np.append(positions, pos)
+                rotations = np.append(rotations, rot)
+                scales = np.append(scales, scale)
+                joint_positions = np.append(joint_positions, 0) # TODO:
+
+                # get observations from all observable joints from the robot
+                jointsPos, jointsRot = robot.getObservableJointsPose()           
+
+                # add pos and rotation to list of observations
+                positions = np.append(positions, jointsPos)
+                rotations = np.append(rotations, jointsRot)
+
+            # get observations from all obstacles in environment
+            for obstacle in self._observable_obstacles[env_idx]:
+                pos, rot, scale = obstacle.getPose()   # get its pose  
+
+                # add obstacle pos, rotation and scale to list of observations
+                positions = np.append(positions, pos)
+                rotations = np.append(rotations, rot)
+                scales = np.append(scales, scale)
+
+        # reshape observations
+        positions = positions.reshape(self.num_envs, -1)
+        rotations = rotations.reshape(self.num_envs, -1)
+        scales = scales.reshape(self.num_envs, -1)
+        joint_positions = joint_positions.reshape(self.num_envs, -1)
+
+        return {
+            "Positions": positions,
+            "Rotations": rotations,
+            "Scales": scales,
+            "JointPositions": joint_positions
+        }
     
 
     def _get_distance_and_rotation(self, name: str) -> Tuple[float, float]:
-        distances = self._distances[name]   # get current distances
+        """
+          return current distance_space (meters), distance_orientation (angle)
+        """
+        # get current distances
+        distances = self._distances[name]
+
         # return distance_space (meters), distance_orientation (angle)
-        return distances[0], distances[1]
-    
-    def _getObstacles(self, env_idx: int):
-        start_idx = env_idx * self.obstacle_count
-        return [self._obstacles[i] for i in range(start_idx, start_idx + self.obstacle_count)]
-    
-    def _getObservalbeObstacles(self, env_idx: int):
-        start_idx = env_idx * self.observable_obstacles_count
-        return [self._observable_obstacles[i] for i in range(start_idx, start_idx + self.observable_obstacles_count)]
-
-    def _getRobots(self, env_idx: int):
-        start_idx = env_idx * self.robot_count
-        return [self._robots[i] for i in range(start_idx, start_idx + self.robot_count)]
- 
-    def _getObservableRobots(self, env_idx: int):
-        start_idx = env_idx * self.observable_robots_count
-        return [self._observable_robots[i] for i in range(start_idx, start_idx + self.observable_robots_count)]
- 
-    def _getJoints(self, env_idx: int):
-        # return tupels(robotId,jointIds)
-        robots = self._getRobots(env_idx) 
-        res = []
-        for robot in robots:
-           res += (robot[1], robot[3])      
-        return res
-
-    def _getObservableJoints(self, env_idx: int):
-        # return tupels(robotIds,jointIds)
-        robots = self._getRobots(env_idx)          
-        res = []
-        for robot in robots:
-           res.append((robot[1], robot[4]))
-        return res
-    
-    def _getControllableJoints(self, env_idx: int):
-        # return tupels(robotId,jointIds, initPos)
-        robots = self._getRobots(env_idx)         
-        res = []
-        for robot in robots:
-           robotId, controllJoints = robot[1], robot[5]
-           initPos = [robot[6][i] for i in controllJoints]
-           res.append((robotId, controllJoints, initPos))
-        return res
-
-    def _get_observations(self) -> VecEnvObs:
-        obs = []
-
-         # iterate through each environment
-        for env_idx in range(self.num_envs):
-            env_obs = []
-    
-            # get observations from all robots in environment
-            robots = self._getObservableRobots(env_idx)
-            for robot in robots:
-                pos, rot = pyb.getBasePositionAndOrientation(robot[1])    # get its pose
-                pos -= self._env_offsets[env_idx]                         # apply env offset
-
-                # add robot pos and rotation to list of observations
-                env_obs.extend(pos)
-                env_obs.extend(rot)
-
-            # get observations from all observable joints in environment
-            robotAndJoints = self._getObservableJoints(env_idx)
-            for robotId, joints in robotAndJoints:
-                for joint in joints:
-                    pos, rot = pyb.getLinkState(robotId, joint[0])[:2]     # get its pose 
-                    pos -= self._env_offsets[env_idx]                       # apply env offset
-
-                    # add pos and rotation to list of observations
-                    env_obs.extend(pos)
-                    env_obs.extend(rot)
-
-            # get observations from all obstacles in environment
-            obstacles = self._getObservalbeObstacles(env_idx)
-            for obstacle in obstacles:
-                pos, rot = pyb.getBasePositionAndOrientation(obstacle[1])   # get its pose  
-                pos -= self._env_offsets[env_idx]                           # apply env offset        
-
-                # add obstacle pos and rotation to list of observations
-                env_obs.extend(pos)
-                env_obs.extend(rot)
-
-            # add observations gathered in environment to dictionary
-            obs.append(env_obs)
-        return np.array(obs)
+        return distances[:, 0], distances[:, 1]
 
 
     def _get_distances(self) -> Dict[str, np.ndarray]:
@@ -472,13 +452,12 @@ class PybulletEnv(ModularEnv):
 
 
     def _get_rewards(self) -> List[float]:
+        """
+        Get the rewards for all environments of the simulation that are added to the rewards list
+        """
         rewards = np.zeros(self.num_envs)
-        print("rewards:", rewards)
-
         for fn in self._reward_fns:
-            curr = fn()
-            print("Curr", curr)
-            rewards += curr
+            rewards += fn()
 
         return rewards
 
@@ -500,13 +479,12 @@ class PybulletEnv(ModularEnv):
 
 
     def _on_contact_report_event(self) -> None:
-        # get collisions
-        contactPoints = pyb.getContactPoints() 
-        
-        # do nothing if there are no collisions
-        if len(contactPoints) <= 0:
-            return
-         
+        """
+        Reports all contacts a robot has while moving.
+        """   
+        contactPoints = pyb.getContactPoints()  # get collisions
+        if not contactPoints: return # skip if there are no collisions
+
         # extract all colisions
         self._collisions = [] 
         for point in contactPoints:
@@ -516,112 +494,54 @@ class PybulletEnv(ModularEnv):
 
         # report collisions
         finalCollisions = [tup for tup in self._collisions if not any(val == 0 for val in tup)]
-        if len(finalCollisions) > 0: 
-            # print("Collisions:", finalCollisions)  # 0:plane, 1,5:robots
-            pass
+        if finalCollisions: print("Collisions:", finalCollisions)   # 0:plane, 1,5:robots
+
 
     def close(self) -> None:
+        """ 
+        Shut down the simulation 
+        """
         pyb.disconnect()
         
 
-
-    ################################
-    ### Create spawnable objects ###
-    ################################
     def _spawn_robot(self, robot: Robot, env_idx: int) -> str:
-        position = (robot.position + self._env_offsets[env_idx]).tolist()
-        rotation = robot.orientation.tolist()
+        """ 
+        Spawn a robot object into the environment and safe it in a dictionary with its environment id 
+        """
         urdf_path = self.asset_path + str(robot.urdf_path)
-        name = robot.name if robot.name else "robot_" + str(len(self._robots))
+        newRobot = PyRobot(urdf_path, robot.observable_joints, robot.name, self._env_offsets[env_idx], robot.position, 
+                           robot.orientation, robot.collision, robot.observable)
 
-        robotId = pyb.loadURDF(urdf_path, basePosition=position, baseOrientation=rotation, useFixedBase=True)
-        
-        # Track robot joints
-        joints = []
-        observableJoints = []
-        controllableJoints = []
-        jointNames = []
-        initPos = [] 
-
-        for i in range(pyb.getNumJoints(robotId)):
-            info = pyb.getJointInfo(robotId, i) 
-
-            jointName = info[12].decode('UTF-8')                # string name of the joint
-            controllable = info[2]                              # moveable joints for executing a action
-            jointAngle = pyb.getJointState(robotId, i)[0]       # initial angle for reset
-
-            joints.append(i)
-            jointNames.append(name + "/" + jointName)
-            initPos.append(jointAngle)
-            
-            if controllable != 4:
-                controllableJoints.append(i)                    # no fixed joint
-            
-            if jointName in robot.observable_joints:
-                observableJoints.append((i, jointName))         # for speed up 
-
-        # Track spawned robot
-        self._robots.append((name, robotId, jointNames, joints, observableJoints, controllableJoints,initPos))       
+        # track spawned robot
+        self._robots[env_idx].append(newRobot)          
         
         if robot.observable:
-            self._observable_robots.append((name, robotId, jointNames, joints, observableJoints, controllableJoints, initPos))   
+            self._observable_robots[env_idx].append(newRobot)       
 
-        return name
+        return newRobot.name
 
 
-    def _spawn_cube(self, cube: Cube, env_idx: int) -> str:
-        position = (cube.position + self._env_offsets[env_idx]).tolist()
-        rotation = cube.orientation.tolist()
-        name = cube.name if cube.name else "cube_" + str(len(self._obstacles))
-
-        cube_id = pyb.createMultiBody(
-            baseMass=.0,
-            baseVisualShapeIndex=pyb.createVisualShape(shapeType=pyb.GEOM_BOX, halfExtents=[x/2 for x in cube.scale], rgbaColor=cube.color),
-            baseCollisionShapeIndex=pyb.createCollisionShape(shapeType=pyb.GEOM_BOX, halfExtents=[x/2 for x in cube.scale]) if cube.collision else -1,
-            basePosition=position,
-            baseOrientation=rotation)
+    def _spawn_obstacle(self, obstacle: Obstacle, env_idx: int) -> str:
+        """ 
+        Spawn a obstacle object into the environment and safe it in a dictionary with its environment id 
+        """
+        newObject = None
+        if isinstance(obstacle, Cube):
+            newObject = PyCube(obstacle.name, self._env_offsets[env_idx], obstacle.position, obstacle.orientation, 
+                               obstacle.scale, obstacle.static, obstacle.collision, obstacle.color)
+        elif isinstance(obstacle, Sphere):
+            newObject = PySphere(obstacle.name, self._env_offsets[env_idx], obstacle.position, obstacle.orientation, 
+                                 obstacle.radius, obstacle.static, obstacle.collision, obstacle.color)
+        elif isinstance(obstacle, Cylinder):
+            newObject = PyCylinder(obstacle.name, self._env_offsets[env_idx], obstacle.position, obstacle.orientation,
+                                   obstacle.radius, obstacle.height, obstacle.static, obstacle.collision, obstacle.color)
+        else:
+            raise f"Obstacle {type(obstacle)} not implemented"
         
-        # track spawned cube
-        self._obstacles.append((name, cube_id, position, rotation))  
+        # track spawned object
+        self._obstacles[env_idx].append(newObject)
         
-        if cube.observable:
-            self._observable_obstacles.append((name, cube_id, position, rotation))   
-        return name
+        if obstacle.observable:
+            self._observable_obstacles[env_idx].append(newObject) 
 
-
-    def _spawn_sphere(self, sphere: Sphere, env_idx: int) -> str:
-        position = (sphere.position + self._env_offsets[env_idx]).tolist()
-        name = sphere.name if sphere.name else "sphere_id_" + str(len(self._obstacles))
-        rotation = [0.0, 0.0, 0.0, 1.0]
-
-        sphere_id = pyb.createMultiBody(
-            baseMass=.0,
-            baseVisualShapeIndex=pyb.createVisualShape(shapeType=pyb.GEOM_SPHERE, radius=sphere.radius, rgbaColor=sphere.color),
-            baseCollisionShapeIndex=pyb.createCollisionShape(shapeType=pyb.GEOM_SPHERE, radius=sphere.radius) if sphere.collision else -1,
-            basePosition=position)
-        
-        # track spawned sphere
-        self._obstacles.append((name, sphere_id, position, rotation)) 
-
-        if sphere.observable:
-             self._observable_obstacles.append((name, sphere_id, position, rotation)) 
-        return name
-    
-
-    def _spawn_cylinder(self, cylinder: Cylinder, env_idx:int) -> str:
-        position = (cylinder.position + self._env_offsets[env_idx]).tolist()
-        rotation = [0.0, 0.0, 0.0, 1.0]
-        name = cylinder.name if cylinder.name else "cylinder_id_" + str(len(self._obstacles))
-        
-        cylinder_id = pyb.createMultiBody(
-            baseMass=.0,
-            baseVisualShapeIndex=pyb.createVisualShape(shapeType=pyb.GEOM_CYLINDER, radius=cylinder.radius, length=cylinder.height, rgbaColor=cylinder.color),
-            baseCollisionShapeIndex=pyb.createCollisionShape(shapeType=pyb.GEOM_CYLINDER, radius=cylinder.radius, height=cylinder.height) if cylinder.collision else -1,
-            basePosition=position, baseOrientation=rotation)
-
-        # track spawned cylinder
-        self._obstacles.append((name, cylinder_id, position, rotation))  
-
-        if cylinder.observable:
-            self._observable_obstacles.append((name, cylinder_id, position, rotation))  
-        return name
+        return newObject.name
