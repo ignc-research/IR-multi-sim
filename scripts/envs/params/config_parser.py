@@ -3,6 +3,7 @@ from scripts.envs.params.env_params import EnvParams
 import yaml
 from scripts.spawnables.robot import Robot
 from scripts.spawnables.obstacle import *
+from scripts.spawnables.urdf import Urdf
 from scripts.rewards.reward import Reward
 from scripts.rewards.distance import Distance
 from scripts.resets.reset import Reset
@@ -19,7 +20,8 @@ def parse_config(path: str) -> EnvParams:
 
         # parse required parameters
         content["robots"] = [_parse_robot(params) for params in _parse_params(content["robots"])]
-        content["obstacles"] = [_parse_obstacle(params) for params in _parse_params(content["obstacles"])]
+        content["urdfs"] = [_parse_urdf(params) for params in _parse_params(content["urdfs"])]
+        content["obstacles"] = [_parse_obstacle(params) for params in _parse_params(content["obstacles"])] 
         content["rewards"] = [_parse_reward(params) for params in _parse_params(content["rewards"])]
 
         # parsing name is not required since reset conditions have no name
@@ -46,6 +48,9 @@ def _parse_params(config: dict) -> List[dict]:
 
 def _parse_robot(params: dict) -> Robot:
     return Robot(**params)
+
+def _parse_urdf(params: dict) -> Urdf:
+    return Urdf(**params)
 
 def _parse_obstacle(params: dict) -> Obstacle:
     selector = {

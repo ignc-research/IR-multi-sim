@@ -6,6 +6,7 @@ from scripts.rewards.distance import Distance, calc_distance
 from scripts.rewards.timesteps import ElapsedTimesteps
 from scripts.spawnables.obstacle import Obstacle, Cube, Sphere, Cylinder
 from scripts.spawnables.robot import Robot
+from scripts.spawnables.urdf import Urdf
 from scripts.rewards.reward import Reward
 from scripts.resets.reset import Reset
 from scripts.resets.distance_reset import DistanceReset
@@ -83,7 +84,7 @@ class IsaacEnv(ModularEnv):
         self._observable_obstacles: List[GeometryPrim] = []
 
         # setup rl environment
-        self._setup_environments(params.robots, params.obstacles)
+        self._setup_environments(params.robots, params.obstacles, params.urdfs)
         self._setup_rewards(params.rewards)
         self._setup_resets(params.rewards, params.resets)
 
@@ -173,9 +174,13 @@ class IsaacEnv(ModularEnv):
         # add collision to ground plane
         self._add_collision_material(ground_prim_path, self._floor_material_path)
 
-    def _setup_environments(self, robots: List[Robot], obstacles: List[Obstacle]) -> None:
+    def _setup_environments(self, robots: List[Robot], obstacles: List[Obstacle], urdfs: List[Urdf]) -> None:
         # spawn objects for each environment
-        for env_idx in range(self.num_envs):    
+        for env_idx in range(self.num_envs):   
+            # spawn urdfs
+            for urdf in urdfs:
+                self._spawn_urdf(urdf, env_idx) 
+
             # spawn robots
             for robot in robots:
                 # import robot from urdf
@@ -643,6 +648,32 @@ class IsaacEnv(ModularEnv):
 
         #if(len(self._collisions) > 0):
             #print(self._collisions)
+
+    def _spawn_urdf(self, urdf: Urdf, env_idx: int)-> str:
+        """
+        Loads in a URDF file into the world at position and orientation.
+        """
+        abs_path = str(self._get_absolute_asset_path(urdf.urdf_path))
+
+        # import URDF to temporary scene
+        from omni.kit.commands import execute
+        success, prim_path = execute(
+            "URDFParseAndImportFile", 
+            urdf_path=abs_path, 
+            import_config=self._config
+        )
+
+        # make sure import succeeded
+        assert success, "Failed urdf import of: " + abs_path
+
+        # move urdf to desired location
+        from omni.isaac.core.articulations import Articulation
+        obj = Articulation(prim_path, f"env{env_idx}-{urdf.name}", urdf.position + self._env_offsets[env_idx], orientation=urdf.orientation)
+        self._scene.add(obj)
+
+        # add reference to urdf scene to current stage
+        return prim_path
+        
 
     def _spawn_robot(self, robot: Robot, env_idx: int) -> str:
         """

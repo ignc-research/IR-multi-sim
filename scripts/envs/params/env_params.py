@@ -1,6 +1,7 @@
 from typing import List, Tuple
 from scripts.spawnables.robot import Robot
 from scripts.spawnables.obstacle import Obstacle
+from scripts.spawnables.urdf import Urdf
 from scripts.rewards.reward import Reward
 from scripts.rewards.distance import Distance
 from scripts.resets.reset import Reset
@@ -12,6 +13,7 @@ class EnvParams():
             engine: str,
             robots: List[Robot],
             obstacles: List[Obstacle],
+            urdfs: List[Urdf],
             rewards: List[Reward],
             resets: List[Reset],
             asset_path: str="./data",
@@ -28,6 +30,7 @@ class EnvParams():
         engine: Type of engine used to simulate environment.
         robots: Robots simulated in each environment.
         obstacles: Obstacles simulated in each environment.
+        urdfs: Urdf Objects simulated in each environment.
         rewards: Environment rewards given depending on states of robots and obstacles.
         resets: Environment resets given depending on states of robots and obstacles.
         asset_path: Path to local files, e.g. urdf files of robots.
@@ -45,6 +48,8 @@ class EnvParams():
 
         self.robots = robots
         self.obstacles = obstacles
+        self.urdfs = urdfs
+
         self.rewards = rewards
         self.resets = resets
         self.asset_path = asset_path

@@ -37,3 +37,4 @@ resets:
   two:
     max: 100
     type: "TimestepsReset"
+headless: False

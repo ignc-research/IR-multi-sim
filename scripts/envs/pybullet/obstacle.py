@@ -35,11 +35,9 @@ class PyObstacle(ABC):
     # create random position if there is a range given as argument
     def _getPosition(self) -> List[float]:
         if isinstance(self._initPos, tuple):
-            self.randomJoints = True
             min, max = self._initPos
             return (random.uniform(min, max) + self.offset).tolist()
         else:
-            self.randomJoints = False
             return (self._initPos + self.offset).tolist()
 
     # create random orientation if there is a range given as argument

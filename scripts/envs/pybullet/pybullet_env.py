@@ -4,9 +4,11 @@ from scripts.envs.params.control_type import ControlType
 
 from scripts.spawnables.obstacle import Obstacle, Cube, Sphere, Cylinder
 from scripts.spawnables.robot import Robot
+from scripts.spawnables.urdf import Urdf
 
 from scripts.envs.pybullet.robot import PyRobot
-from scripts.envs.pybullet.obstacle import PyObstacle, PyCube, PySphere, PyCylinder
+from scripts.envs.pybullet.obstacle import *
+from scripts.envs.pybullet.urdf import *
 
 from scripts.rewards.reward import Reward
 from scripts.rewards.distance import Distance, calc_distance
@@ -45,6 +47,7 @@ class PybulletEnv(ModularEnv):
         # for the reset
         self._initRobots = params.robots
         self._initObstacles = params.obstacles
+        self._initUrdfs = params.urdfs
 
         # save the distances in the current environment
         self._distance_funcions = []
@@ -69,7 +72,7 @@ class PybulletEnv(ModularEnv):
         self._observable_obstacles: Dict[int, List[PyObstacle]] = {}
 
         # setup rl environment
-        self._setup_environments(params.robots, params.obstacles)
+        self._setup_environments(params.robots, params.obstacles, params.urdfs)
         self._setup_rewards(params.rewards)
         self._setup_resets(params.rewards, params.resets)
 
@@ -86,10 +89,7 @@ class PybulletEnv(ModularEnv):
         pyb.setRealTimeSimulation(0)
        
 
-    def _setup_environments(self, robots: List[Robot], obstacles: List[Obstacle]) -> None:
-        # remove all objects from the simulation
-        pyb.resetSimulation()                                                  
-       
+    def _setup_environments(self, robots: List[Robot], obstacles: List[Obstacle], urdfs: List[Urdf]) -> None:                                           
         # initialize dictionaries
         self._robots = {i: [] for i in range(self.num_envs)}
         self._observable_robots  = {i: [] for i in range(self.num_envs)}
@@ -97,17 +97,20 @@ class PybulletEnv(ModularEnv):
         self._observable_obstacles= {i: [] for i in range(self.num_envs)}
 
         # load ground plane
-        pyb.loadURDF(self.asset_path  + "workspace/plane.urdf", [0,0,-0.01])         
+        pyb.loadURDF(self.asset_path  + "workspace/plane.urdf", [0,0,-1e-3])         
 
         # spawn objects for each environment
-        for env_idx in range(self.num_envs):    
+        for env_idx in range(self.num_envs):  
+            # spawn urdfs
+            for urdf in urdfs:
+                self._spawn_urdf(urdf, env_idx)      
             # spawn robots
             for robot in robots:
                 self._spawn_robot(robot, env_idx)
 
             # spawn obstacles
             for obstacle in obstacles:
-                self._spawn_obstacle(obstacle, env_idx)    
+                self._spawn_obstacle(obstacle, env_idx)  
  
 
     def _setup_rewards(self, rewards: List[Reward]) -> None:
@@ -334,7 +337,8 @@ class PybulletEnv(ModularEnv):
     def reset(self, env_idxs: np.ndarray=None) -> VecEnvObs:
         # reset entire simulation
         if env_idxs is None:
-            self._setup_environments(self._initRobots, self._initObstacles) # build environment new                
+            pyb.resetSimulation()  
+            self._setup_environments(self._initRobots, self._initObstacles, self._initUrdfs) # build environment new                
             self._timesteps = np.zeros(self.num_envs)                       # reset timestep tracking
             self._obs = self._get_observations()                            # reset observations 
             self._distances_after_reset = self._get_distances()             # calculate new distances
@@ -510,7 +514,7 @@ class PybulletEnv(ModularEnv):
         """
         urdf_path = self.asset_path + str(robot.urdf_path)
         newRobot = PyRobot(urdf_path, robot.observable_joints, robot.name, self._env_offsets[env_idx], robot.position, 
-                           robot.orientation, robot.collision, robot.observable)
+                           robot.orientation[::-1], robot.collision, robot.observable)
 
         # track spawned robot
         self._robots[env_idx].append(newRobot)          
@@ -519,6 +523,18 @@ class PybulletEnv(ModularEnv):
             self._observable_robots[env_idx].append(newRobot)       
 
         return newRobot.name
+    
+    def _spawn_urdf(self, urdf: PyUrdf, env_idx: int) -> str:
+        """ 
+        Spawn an urdf object into the environment and safe it in a dictionary with its environment id 
+        """
+        urdf_path = self.asset_path + str(urdf.urdf_path)
+        if urdf.type == "Table":
+            newTable = PyTable(urdf_path, urdf.name, self._env_offsets[env_idx], urdf.position, urdf.orientation[::-1], 
+                               urdf.collision, urdf.observable, urdf.static)
+            return newTable.name
+        else:
+            raise f"URDF {urdf.type} not implemented"
 
 
     def _spawn_obstacle(self, obstacle: Obstacle, env_idx: int) -> str:
@@ -526,14 +542,15 @@ class PybulletEnv(ModularEnv):
         Spawn a obstacle object into the environment and safe it in a dictionary with its environment id 
         """
         newObject = None
+        orientation = obstacle.orientation[::-1]
         if isinstance(obstacle, Cube):
-            newObject = PyCube(obstacle.name, self._env_offsets[env_idx], obstacle.position, obstacle.orientation, 
+            newObject = PyCube(obstacle.name, self._env_offsets[env_idx], obstacle.position, orientation, 
                                obstacle.scale, obstacle.static, obstacle.collision, obstacle.color)
         elif isinstance(obstacle, Sphere):
-            newObject = PySphere(obstacle.name, self._env_offsets[env_idx], obstacle.position, obstacle.orientation, 
+            newObject = PySphere(obstacle.name, self._env_offsets[env_idx], obstacle.position, orientation, 
                                  obstacle.radius, obstacle.static, obstacle.collision, obstacle.color)
         elif isinstance(obstacle, Cylinder):
-            newObject = PyCylinder(obstacle.name, self._env_offsets[env_idx], obstacle.position, obstacle.orientation,
+            newObject = PyCylinder(obstacle.name, self._env_offsets[env_idx], obstacle.position, orientation,
                                    obstacle.radius, obstacle.height, obstacle.static, obstacle.collision, obstacle.color)
         else:
             raise f"Obstacle {type(obstacle)} not implemented"

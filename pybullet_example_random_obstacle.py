@@ -27,7 +27,7 @@ params = EnvParams(
     [
         Cube(name="TargetCube",
             position=(np.array([0.1, 0.1, 0.1]), np.array([1.0, 1.0, 1.0])),
-            orientation =np.array([0.0, 0.0, 0.0, 1.0]), 
+            orientation = np.array([1, 0, 0, 0]), 
             color=array([0, 1, 0]), 
             scale=(np.array([0.1, 0.1, 0.1]), np.array([0.5, 0.5, 0.5])),
             collision=False),

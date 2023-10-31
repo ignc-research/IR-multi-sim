@@ -24,7 +24,7 @@ params = EnvParams(
     # define obstacles
     [Cube(name="TargetCube",
           position = np.array([0.4, 0.4, 1]), 
-          orientation = np.array([0.0, 0.0, 0.0, 1.0]), 
+          orientation = np.array([1, 0, 0, 0]), 
           color=array([0, 1, 0]), 
           scale=[0.1, 0.1, 0.1], 
           collision=False)],
