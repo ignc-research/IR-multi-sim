@@ -22,7 +22,7 @@ class Urdf(Spawnable):
         orientation: Beginning orientation of robot, as a quaternion.
         urdf_path: Relative urdf file path from project root.
         collision: True if the robot is supposed to collide with surroundings.
-        name: Name of the robot. Defaults to None.
+        name: Name of the urdf. Defaults to None.
         """
         super().__init__(position, color, collision, observable, name)
         

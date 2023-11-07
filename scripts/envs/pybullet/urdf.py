@@ -29,7 +29,7 @@ class PyTable(PyUrdf):
         
         super().__init__(urdf_path)
         
-         # set default name
+        # set default name
         if name is None:
             global _spawnedTables
             name = f"table_{_spawnedTables+1}"
@@ -47,7 +47,7 @@ class PyTable(PyUrdf):
         self.limit_upper = limit_upper
 
         # create pybullet instance of table
-        self.id = pyb.loadURDF(urdf_path, basePosition=self.position, baseOrientation=self.orientation, 
+        self.id = pyb.loadURDF(urdf_path, basePosition=(self.position + self.offset).tolist(), baseOrientation=self.orientation, 
                                useFixedBase=True, globalScaling=self.scale)
         
         def getValidTablePos(self) -> List[float]:

@@ -55,22 +55,33 @@ class PyRobot(ABC):
         self.observableJointNames = []
         self.limits = []
         self.initialJoints = []
+        self.maxVelocity = []
+        self.maxForce = []
+        self.lower = np.array([])
+        self.upper = np.array([])
                     
         for i in range(pyb.getNumJoints(self.id)):
             info = pyb.getJointInfo(self.id, i) 
 
-            jointName = info[12].decode('UTF-8')                # string name of the joint
-            controllable = info[2]                              # moveable joints for executing a action
+            jointName = info[12].decode('UTF-8')                # string name of joint
+            controllable = False if info[2] == 4 else True      # 4 == fixed joint
             lower, upper = info[8:10]                           # limits (min,max) of each controllable joint
             jointAngle = pyb.getJointState(self.id, i)[0]       # initial angle for resets
+            maxVel = info[11]
+            maxF = info[10]
 
             self.limits.append((lower,upper))
             self.jointIds.append(i)
             self.jointNames.append(name + "/" + jointName)
             self.initialJoints.append(jointAngle)
+
             
-            if controllable != 4:
-                self.controllableJoints.append(i)       # no fixed joint
+            if controllable:
+                self.controllableJoints.append(i) 
+                self.lower = np.append(self.lower, lower)
+                self.upper = np.append(self.upper, upper)
+                self.maxVelocity.append(maxVel)
+                self.maxForce.append(maxF)
                 
             
             if jointName in observableJoints:
@@ -105,7 +116,17 @@ class PyRobot(ABC):
             rotations = append(rotations, rot)
             
         return positions, rotations
-
+    
+    # return angles of all controllable robot joints
+    def getJointAngles(self) -> List[float]:
+        angles = array([])
+    
+        for joint in self.controllableJoints:
+            angle = pyb.getJointState(self.id, joint)[0] 
+            angles = append(angles, angle)
+        
+        return angles
+    
     # creates new random position for the robot joints
     def reset(self) -> None:
         # reset robot

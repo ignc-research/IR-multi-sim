@@ -1,3 +1,4 @@
+
 from scripts.envs.modular_env import ModularEnv
 from scripts.envs.params.env_params import EnvParams
 from scripts.envs.params.control_type import ControlType
@@ -8,15 +9,17 @@ from scripts.spawnables.urdf import Urdf
 
 from scripts.envs.pybullet.robot import PyRobot
 from scripts.envs.pybullet.obstacle import *
-from scripts.envs.pybullet.urdf import *
+from scripts.envs.pybullet.urdf import PyUrdf, PyTable
 
 from scripts.rewards.reward import Reward
 from scripts.rewards.distance import Distance, calc_distance
 from scripts.rewards.timesteps import ElapsedTimesteps
+from scripts.rewards.collision import DetectedCollision
 
 from scripts.resets.reset import Reset
 from scripts.resets.distance_reset import DistanceReset
 from scripts.resets.timesteps_reset import TimestepsReset
+from scripts.resets.collision_reset import CollisionReset
 
 from stable_baselines3.common.vec_env.base_vec_env import *
 from pathlib import Path
@@ -25,6 +28,7 @@ from typing import List, Tuple
 import pybullet as pyb
 import numpy as np
 import math
+import time 
 
 class PybulletEnv(ModularEnv):
     def __init__(self, params: EnvParams) -> None:
@@ -43,6 +47,8 @@ class PybulletEnv(ModularEnv):
         self.step_count = params.step_count
         self.control_type = params.control_type
         self.verbose = params.verbose
+        self.stepSize = params.step_size
+        self.displayDelay = self.stepSize *  self.robot_count
 
         # for the reset
         self._initRobots = params.robots
@@ -84,9 +90,9 @@ class PybulletEnv(ModularEnv):
         disp = pyb.DIRECT if headless else pyb.GUI
         pyb.connect(disp)
         pyb.setTimeStep(step_size)
-        pyb.setPhysicsEngineParameter(numSubSteps=1)
         pyb.setGravity(0, 0, -9.8) 
-        pyb.setRealTimeSimulation(0)
+        #pyb.setPhysicsEngineParameter(numSubSteps=1)
+        #pyb.setRealTimeSimulation(0)
        
 
     def _setup_environments(self, robots: List[Robot], obstacles: List[Obstacle], urdfs: List[Urdf]) -> None:                                           
@@ -121,6 +127,8 @@ class PybulletEnv(ModularEnv):
                 self._reward_fns.append(self._parse_distance_reward(reward))
             elif isinstance(reward, ElapsedTimesteps):
                 self._reward_fns.append(self._parse_timestep_reward(reward))
+            elif isinstance(reward, DetectedCollision):
+                self._reward_fns.append(self._parse_collision_reward(reward))
             else:
                 raise f"Reward {type(reward)} not implemented!"
 
@@ -155,8 +163,8 @@ class PybulletEnv(ModularEnv):
                 rot2 = self._obs["Rotations"][i][obj2Rot[0]:obj2Rot[1]]
 
                 result.append(calc_distance(pos1, pos2, rot1, rot2))
+            
             result = np.array(result)
-
             return name, result
     
         # add to existing distance functions
@@ -194,8 +202,35 @@ class PybulletEnv(ModularEnv):
             return self._timesteps * elapsed.weight
         
         return timestep_reward
+    
+    
+    def _parse_collision_reward(self, collisionObj: DetectedCollision):
+        """
+        Punish collisions according to the weight factor
+        """
+        objName = collisionObj.obj
+        weight = collisionObj.weight
+        
+        def calculate_collision_reward() -> float:
+            # get all collision
+            _collisions = self._get_collisions()
 
+            result = []
+            for envId in range(self.num_envs):
+                coll = 0
+                for robot in self._robots[envId]:
+                    # only check collision for specified robot
+                    if objName == robot.name:
+                        if any(robot.id in tup for tup in _collisions):
+                            coll = 1
+                result.append(coll) 
 
+            result = np.array(result) * weight
+            return result
+        
+        return calculate_collision_reward
+    
+    
     def _find_observable_object(self, name: str, obsSize: int) -> int:
         """
         Given the name of an observable object, tries to retrieve its index in the observations list. Since all 
@@ -239,6 +274,8 @@ class PybulletEnv(ModularEnv):
                 self._reset_fns.append(self._parse_distance_reset(reset))
             elif isinstance(reset, TimestepsReset):
                 self._reset_fns.append(self._parse_timesteps_reset(reset))
+            elif isinstance(reset, CollisionReset):
+                self._reset_fns.append(self._parse_collision_reset(reset))
             else:
                 raise f"Reset {type(reset)} not implemented!"
 
@@ -273,6 +310,90 @@ class PybulletEnv(ModularEnv):
         
         return reset_condition
 
+    def _parse_collision_reset(self, reset: CollisionReset):
+        max_value = reset.max
+        objName = reset.obj
+        
+        # parse function
+        def reset_condition() -> np.ndarray:
+            _collisions = self._get_collisions()        # get all collision
+            unique_collisions = list(set(_collisions))  # remove duplicated collision
+            
+
+            result = []
+            for envId in range(self.num_envs):
+                coll = 0
+                for robot in self._robots[envId]:
+                    # only check collision for specified robot
+                    if objName == robot.name:
+                        if any(robot.id in tup for tup in unique_collisions):
+                            coll += 1
+                result.append(coll) 
+            result = np.array(result)
+
+            # return true whenever more than max_value collisions occured
+            return np.where(result < max_value, False, True)
+        
+        return reset_condition
+
+
+    def _move_robot_via_velocity(self, robot: PyRobot, action: np.ndarray) -> None: 
+        ''' 
+        control via joint velocities
+        if we use physics sim, the engine can deal with those on its own
+        if we don't, we run simple algebra to get the new joint angles for this step and then apply them
+        '''
+        newVel = action * robot.maxVelocity                 # transform action (-1 to 1) to desired new joint angles
+
+        if self.headless:
+            jointDelta = newVel * self.stepSize             # compute delta for this sim step size
+            newJoint = jointDelta + robot.getJointAngles()  # add delta to current joint angles
+            pybAngle = [[value] for value in newJoint]      # transform format for pybullet
+
+            # execute movement
+            pyb.resetJointStatesMultiDof(bodyUniqueId=robot.id, jointIndices=robot.controllableJoints, 
+                                         targetValues=pybAngle)
+        else: 
+            # use engine to apply velocities to robot
+            pyb.setJointMotorControlArray(bodyUniqueId=robot.id, jointIndices=robot.controllableJoints,
+                                          controlMode=pyb.VELOCITY_CONTROL, targetVelocities=newVel)
+
+
+    def _move_robot_via_position(self, robot: PyRobot, action: np.ndarray) -> None: 
+        ''' 
+        control via joint angles
+        actions are the new desired joint angles themselves
+        '''
+        # transform action (-1 to 1) to desired new joint angles
+        joints_range = robot.upper - robot.lower
+        desiredAngles = action * (joints_range / 2) + (robot.lower + robot.upper) / 2
+
+        # if we don't use physics sim, which will only perform step towards desired new joints, we have to
+        # clamp new joint angles such that they move with at most the maximum velocity within the next sim step
+        if self.headless:
+            # compute maximum step we do in that direction
+            jointDelta = desiredAngles - robot.getJointAngles()
+            jointDist = np.linalg.norm(jointDelta)
+            jointDist = jointDist if jointDist != 0 else 1
+            jointDelta = jointDelta / jointDist
+            step_times_velocity = np.min(robot.maxVelocity) * self.stepSize
+            if jointDist > step_times_velocity:
+                joint_mul = step_times_velocity
+            else:
+                joint_mul = jointDist
+            jointDelta = jointDelta * joint_mul
+           
+            desiredAngles = jointDelta + robot.getJointAngles()  # compute joint angles we can actually go to
+            pybAngle = [[value] for value in desiredAngles]      # transform format for pybullet
+
+            # execute movement
+            pyb.resetJointStatesMultiDof(bodyUniqueId=robot.id, jointIndices=robot.controllableJoints, targetValues=pybAngle)
+
+        else: 
+            # set joint tragets for simulation
+            pyb.setJointMotorControlArray(bodyUniqueId=robot.id, jointIndices=robot.controllableJoints, 
+                                          controlMode=pyb.POSITION_CONTROL, targetPositions=desiredAngles)
+    
 
     def step_async(self, actions: np.ndarray) -> None:
         """
@@ -280,52 +401,47 @@ class PybulletEnv(ModularEnv):
         and moves the joints of all robots according to the action type and values. Then it performs a collion detection
         and shwos all collision in the console.
         """
+        # get all robots from an environment and perform actions
         for envId in range(self.num_envs):
-            #print(f"Robots: {[item.id for item in self._robots[envId]]}", f"Obstacles: {[item.id for item in self._obstacles[envId]]}")
-
-            # get all robots from an environment and perform actions
             for robot in self._robots[envId]:
-
+                action = actions[envId][robot.controllableJoints]   # filter actions for controllable joint
+                
                 if self.control_type == ControlType.Velocity:
-                    action = [actions[envId][i] for i in robot.controllableJoints]
-                    pyb.setJointMotorControlArray(bodyUniqueId=robot.id, jointIndices=robot.controllableJoints, 
-                                                  controlMode=pyb.VELOCITY_CONTROL, targetVelocities=action) 
+                    self._move_robot_via_velocity(robot, action) 
                 
                 elif self.control_type == ControlType.Position:
-                    #print("Before action: ", pyb.getBasePositionAndOrientation(robot.id))
-                    action = [actions[envId][i] for i in robot.controllableJoints] 
-                    #print("Action: ", action)
-                    pyb.setJointMotorControlArray(bodyUniqueId=robot.id, jointIndices=robot.controllableJoints, 
-                                                  controlMode=pyb.POSITION_CONTROL, targetPositions=action) 
-                    #print("After action: ", pyb.getBasePositionAndOrientation(robot.id))
+                    self._move_robot_via_position(robot, action)           
                 
                 else:
                     raise Exception(f"Control type {self.control_type} not implemented!")
-
-            # step simulation amount of times according to params
-            for _ in range(self.step_count):
-                pyb.stepSimulation()  
-            
-            if self.headless:
-                pyb.performCollisionDetection()  
-        
-        
+    	
+        # step simulation amount of times according to params
+        for _ in range(self.step_count):
+            pyb.stepSimulation()  
+            time.sleep(self.displayDelay)
+                
+        # update the collision model if necessary
+        if self.headless:
+            pyb.performCollisionDetection()           
+          
         #print(f"Sim state: NumBodies: {pyb.getNumBodies()}", f"Names: {pyb.getBodyInfo(0)}, {pyb.getBodyInfo(1)},{pyb.getBodyInfo(2)}" )
-           # get Collisions
-           #self._on_contact_report_event()
+        # get Collisions
+        #self._on_contact_report_event()
 
     
     def step_wait(self) -> VecEnvStepReturn:
         self._obs = self._get_observations()    # get observations
         self._distances = self._get_distances() # get distances after observations were updated
+        self._collisions = self._get_collisions() 
         self._rewards = self._get_rewards()     # get rewards
         self._dones = self._get_dones()         # get dones
-
-        #print("Obs    :", self._obs["Positions"])
+ 
+        #print("\nObs    :", self._obs["Positions"])
         #print("Dist.  :", self._distances)
-        #print("Rewards:", self._rewards)
-        #print("Dones  :", self._dones)
-        #print("Timest.:", self._timesteps)
+        #print("Collisions:", self._collisions)
+        print("Rewards:", self._rewards, end="; ")
+        print("Timest.:", self._timesteps, end="; ")
+        print("Dones  :", self._dones)
 
         # log rewards
         if self.verbose > 0:
@@ -480,7 +596,23 @@ class PybulletEnv(ModularEnv):
         if reset_idx.size > 0:
             self.reset(reset_idx)
         return dones
+    
+    def _get_collisions(self) -> List[bool]:
+        """
+        Returns a List containing all collision of all environments 
+        """   
+        _contactPoints = pyb.getContactPoints()  # get collisions
 
+        if not _contactPoints: return [] # no contacts made
+
+        # extract all colisions
+        _collisions = [] 
+        for point in _contactPoints:
+            # pyb may have contacts with separation dist greater zero    
+            if point[8] <= 0: 
+                _collisions.append((point[1], point[2]))
+
+        return _collisions
 
     def _on_contact_report_event(self) -> None:
         """
@@ -497,8 +629,13 @@ class PybulletEnv(ModularEnv):
                 self._collisions.append((point[1], point[2]))
 
         # report collisions
-        finalCollisions = [tup for tup in self._collisions if not any(val == 0 for val in tup)]
-        if finalCollisions: print("Collisions:", finalCollisions)   # 0:plane, 1,5:robots
+        finalCollisions = [tup for tup in self._collisions if not any(val == 0 for val in tup)]        
+        if finalCollisions: 
+            print("Collisions:", finalCollisions)   # 0:plane, 1:table, 5:robots
+            for coll in finalCollisions:
+                print(f'Collision from {pyb.getBodyInfo(coll[0])[1]} with {pyb.getBodyInfo(coll[1])[1]}')
+            import time
+            time.sleep(4)
 
 
     def close(self) -> None:
@@ -524,7 +661,7 @@ class PybulletEnv(ModularEnv):
 
         return newRobot.name
     
-    def _spawn_urdf(self, urdf: PyUrdf, env_idx: int) -> str:
+    def _spawn_urdf(self, urdf: Urdf, env_idx: int) -> str:
         """ 
         Spawn an urdf object into the environment and safe it in a dictionary with its environment id 
         """

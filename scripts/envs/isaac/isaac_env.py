@@ -647,7 +647,7 @@ class IsaacEnv(ModularEnv):
                 self._collisions.append((actor0, actor1))
 
         #if(len(self._collisions) > 0):
-            #print(self._collisions)
+        #    print(self._collisions)
 
     def _spawn_urdf(self, urdf: Urdf, env_idx: int)-> str:
         """

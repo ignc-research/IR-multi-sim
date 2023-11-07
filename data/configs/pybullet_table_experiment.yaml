@@ -13,11 +13,21 @@ urdfs:
     orientation: [1, 0, 0, 0]
 obstacles:
   TargetCube:
-    position: [[-0.65, -0.4, 0.63], [0.65, 0.4, 1]]
-    color: [0, 1, 0]
-    scale: [0.1, 0.1, 0.1]
+    position: [[-0.65, -0.4, 0.64], [0.65, 0.4, 1]]
     collision: False
     type: "Cube"
+  Sphere:
+    position: [0.4, 0.3, 0.8]
+    collision: True
+    type: "Sphere"
+  Sphere2:
+    position: [0.4, -0.3, 0.9]
+    collision: True
+    type: "Sphere"
+  Cylinder:
+    position: [-0.45, 0.4, 0.7]
+    collision: True
+    type: "Cylinder"
 rewards:
   TargetDistance:
     obj1: "TargetCube"
@@ -38,7 +48,7 @@ resets:
 # optional parameters
 asset_path: "./data"
 step_size: 0.00416666666
-step_count: 1
+step_count: 120
 headless: False
-num_envs: 1
+num_envs: 4
 env_offset: [10, 10]

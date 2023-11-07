@@ -18,6 +18,9 @@ obstacles:
     scale: [0.1, 0.1, 0.1]
     collision: False
     type: "Cube"
+  Sphere:
+    position: [0.5, 0.5, 0.8]
+    type: "Sphere"
 rewards:
   TargetDistance:
     obj1: "TargetCube"

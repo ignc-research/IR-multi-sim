@@ -1,6 +1,6 @@
 from typing import List, Tuple, Union
 from abc import ABC, abstractmethod
-from numpy import array, ndarray, random
+from numpy import array, ndarray, random, append
 import pybullet as pyb
 
 _spawnedCubes = 0
@@ -85,7 +85,7 @@ class PyCube(PyObstacle):
         # create pybullet object 
         self.id = pyb.createMultiBody(
             baseMass=0.0,
-            baseVisualShapeIndex=pyb.createVisualShape(shapeType=pyb.GEOM_BOX,halfExtents=[x/2 for x in self.scale], rgbaColor=self.color),
+            baseVisualShapeIndex=pyb.createVisualShape(shapeType=pyb.GEOM_BOX,halfExtents=[x/2 for x in self.scale], rgbaColor=append(self.color,1)),
             baseCollisionShapeIndex=pyb.createCollisionShape(shapeType=pyb.GEOM_BOX, halfExtents=[x/2 for x in self.scale]) if self.collision else -1,
             basePosition=self.position,
             baseOrientation=self.orientation
@@ -108,7 +108,7 @@ class PyCube(PyObstacle):
         pyb.removeBody(self.id) 
         self.id = pyb.createMultiBody(
             baseMass=0.0,
-            baseVisualShapeIndex=pyb.createVisualShape(shapeType=pyb.GEOM_BOX,halfExtents=[x/2 for x in self._getScale()], rgbaColor=self.color),
+            baseVisualShapeIndex=pyb.createVisualShape(shapeType=pyb.GEOM_BOX,halfExtents=[x/2 for x in self._getScale()], rgbaColor=append(self.color,1)),
             baseCollisionShapeIndex=pyb.createCollisionShape(shapeType=pyb.GEOM_BOX, halfExtents=[x/2 for x in self._getScale()]) if self.collision else -1,
             basePosition=self._getPosition(),
             baseOrientation=self._getOrientation()
@@ -143,7 +143,7 @@ class PySphere(PyObstacle):
         # create pybullet object 
         self.id = pyb.createMultiBody(
             baseMass=0.0,
-            baseVisualShapeIndex=pyb.createVisualShape(shapeType=pyb.GEOM_SPHERE, radius=self.radius, rgbaColor=self.color),
+            baseVisualShapeIndex=pyb.createVisualShape(shapeType=pyb.GEOM_SPHERE, radius=self.radius, rgbaColor=append(self.color,1)),
             baseCollisionShapeIndex=pyb.createCollisionShape(shapeType=pyb.GEOM_SPHERE, radius=self.radius) if self.collision else -1,
             basePosition=self.position,
             baseOrientation=self.orientation
@@ -166,7 +166,7 @@ class PySphere(PyObstacle):
         pyb.removeBody(self.id) 
         self.id = pyb.createMultiBody(
             baseMass=0.0,
-            baseVisualShapeIndex=pyb.createVisualShape(shapeType=pyb.GEOM_SPHERE, radius=self._getRadius(), rgbaColor=self.color),
+            baseVisualShapeIndex=pyb.createVisualShape(shapeType=pyb.GEOM_SPHERE, radius=self._getRadius(), rgbaColor=append(self.color,1)),
             baseCollisionShapeIndex=pyb.createCollisionShape(shapeType=pyb.GEOM_SPHERE, radius=self._getRadius()) if self.collision else -1,
             basePosition=self._getPosition(),
             baseOrientation=self._getOrientation()
@@ -204,7 +204,7 @@ class PyCylinder(PyObstacle):
         # create pybullet object 
         self.id = pyb.createMultiBody(
             baseMass=0.0,
-            baseVisualShapeIndex=pyb.createVisualShape(shapeType=pyb.GEOM_CYLINDER, radius=self.radius, length=self.height, rgbaColor=self.color),
+            baseVisualShapeIndex=pyb.createVisualShape(shapeType=pyb.GEOM_CYLINDER, radius=self.radius, length=self.height, rgbaColor=append(self.color,1)),
             baseCollisionShapeIndex=pyb.createCollisionShape(shapeType=pyb.GEOM_CYLINDER, radius=self.radius, height=self.height) if self.collision else -1, 
             basePosition=self.position,
             baseOrientation=self.orientation
@@ -237,7 +237,7 @@ class PyCylinder(PyObstacle):
         self.id = pyb.createMultiBody(
             baseMass=0.0,
             baseVisualShapeIndex=pyb.createVisualShape(shapeType=pyb.GEOM_CYLINDER, radius=self._getRadius(), 
-                                                       length=self._getHeight(), rgbaColor=self.color),
+                                                       length=self._getHeight(), rgbaColor=append(self.color,1)),
             baseCollisionShapeIndex=pyb.createCollisionShape(shapeType=pyb.GEOM_CYLINDER, radius=self._getRadius(), 
                                                              height=self._getHeight()) if self.collision else -1, 
             basePosition=self._getPosition(),

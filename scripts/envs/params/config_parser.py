@@ -20,9 +20,13 @@ def parse_config(path: str) -> EnvParams:
 
         # parse required parameters
         content["robots"] = [_parse_robot(params) for params in _parse_params(content["robots"])]
-        content["urdfs"] = [_parse_urdf(params) for params in _parse_params(content["urdfs"])]
         content["obstacles"] = [_parse_obstacle(params) for params in _parse_params(content["obstacles"])] 
         content["rewards"] = [_parse_reward(params) for params in _parse_params(content["rewards"])]
+
+        try: 
+            content["urdfs"] = [_parse_urdf(params) for params in _parse_params(content["urdfs"])]
+        except:
+            content["urdfs"] = []
 
         # parsing name is not required since reset conditions have no name
         content["resets"] = [_parse_reset(params) for params in content["resets"].values()]
