@@ -31,6 +31,7 @@ class PyRobot(ABC):
         self.offset = offset
         self.collision = collision
         self.observable = observable
+        self.urdf_path = urdf_path
 
         # save initial position and orientation
         self._initPos = position
@@ -127,28 +128,25 @@ class PyRobot(ABC):
         
         return angles
     
-    # creates new random position for the robot joints
+    # deletes and recreates robot with new random config
     def reset(self) -> None:
+        #pyb.removeBody(self.id) 
+        #self.id = pyb.loadURDF(self.urdf_path, basePosition=self._getPosition(), baseOrientation=self._getOrientation(), 
+        #                       useFixedBase=True, globalScaling=self.scale)
+        
         # reset robot
         pyb.resetBasePositionAndOrientation(bodyUniqueId=self.id,
                                             posObj=self._getPosition(),
                                             ornObj=self._getOrientation())
-        
-        # reset robot joints
+
+        # if robot has random position, move joints into random config
         if self.randomJoints:
             valid = False
             while not valid:
                 tmpPos = self._getJointPositions()
                 for i, joint in enumerate(self.jointIds):
-                    pyb.resetJointState(bodyUniqueId=self.id, jointIndex=joint, targetValue=tmpPos[i])     
-                valid = self._checkValidJointConfig()
-        else:
-            tmpPos = self._getJointPositions()
-            for i, joint in enumerate(self.jointIds):
-                pyb.resetJointState(bodyUniqueId=self.id, jointIndex=joint, targetValue=tmpPos[i]) 
-        
-
-        
+                    pyb.resetJointState(bodyUniqueId=self.id, jointIndex=joint, targetValue=tmpPos[i]) 
+                    valid = self._checkValidJointConfig()     
 
     # create random position if there is a range given as argument
     def _getPosition(self) -> List[float]:       
@@ -174,6 +172,9 @@ class PyRobot(ABC):
             return self.initialJoints
         
     def _checkValidJointConfig(self) -> bool:
+        return True
+    
+        # TODO
         pyb.performCollisionDetection() 
         contactPoints = pyb.getContactPoints()  # get collisions
         if not contactPoints: return True # skip if there are no collisions

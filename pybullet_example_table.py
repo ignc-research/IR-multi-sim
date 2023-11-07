@@ -49,10 +49,10 @@ params = EnvParams(
     ],
     
     # define runtime settings
-    headless=True,
+    headless=False,
     step_count=1,
     step_size= 0.00416666666,
-    num_envs=1,
+    num_envs=4,
     env_offset=[4,4],
 
     # define controlltype of the robot joints
