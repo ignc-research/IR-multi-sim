@@ -4,7 +4,7 @@ from scripts.rewards.reward import Reward
 from scripts.spawnables.spawnable import Spawnable
 
 
-class DetectedCollision(Reward):
+class Collision(Reward):
     def __init__(self, obj: Union[Spawnable, str], weight: float=-1, name: str = None) -> None:
         """Rewards or punished the model for collisions made
 

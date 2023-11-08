@@ -6,9 +6,11 @@ from scripts.spawnables.obstacle import *
 from scripts.spawnables.urdf import Urdf
 from scripts.rewards.reward import Reward
 from scripts.rewards.distance import Distance
+from scripts.rewards.collision import Collision
 from scripts.resets.reset import Reset
 from scripts.resets.distance_reset import DistanceReset
 from scripts.resets.timesteps_reset import TimestepsReset
+from scripts.resets.collision_reset import CollisionReset
 from scripts.envs.params.control_type import ControlType
 
 
@@ -94,7 +96,8 @@ def _parse_list_as_tuple(params: dict, key: str):
 
 def _parse_reward(params: dict) -> Reward:
     selector = {
-        "Distance": Distance
+        "Distance": Distance,
+        "Collision": Collision,
     }
 
     # extract required type
@@ -113,7 +116,8 @@ def _parse_reward(params: dict) -> Reward:
 def _parse_reset(params: dict) -> Reset:
     selector = {
         "DistanceReset": DistanceReset,
-        "TimestepsReset": TimestepsReset
+        "TimestepsReset": TimestepsReset,
+        "CollisionReset": CollisionReset
     }
 
     # extract required type

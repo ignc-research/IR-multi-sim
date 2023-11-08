@@ -4,7 +4,7 @@ from scripts.spawnables.obstacle import *
 from scripts.spawnables.robot import Robot
 from scripts.spawnables.urdf import Urdf
 from scripts.rewards.distance import Distance
-from scripts.rewards.collision import DetectedCollision
+from scripts.rewards.collision import Collision
 from scripts.resets.distance_reset import DistanceReset
 from scripts.resets.timesteps_reset import TimestepsReset
 from scripts.resets.collision_reset import CollisionReset
@@ -39,13 +39,13 @@ params = EnvParams(
     # define rewards
     [
         Distance("TargetCube", "R1/ee_link", name="TargetDistance"),
-        DetectedCollision("R1", weight=-5, name="CollisionDetection")
+        Collision("R1", weight=-5, name="CollisionDetection")
     ],
     
     # define reset conditions
     [
         DistanceReset("TargetDistance", 0, 1.5), TimestepsReset(100),
-        CollisionReset("R1", 1)
+        CollisionReset("R1", 10)
     ],
     
     # define runtime settings

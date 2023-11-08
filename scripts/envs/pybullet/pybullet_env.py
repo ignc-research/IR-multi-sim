@@ -14,7 +14,7 @@ from scripts.envs.pybullet.urdf import PyUrdf, PyTable
 from scripts.rewards.reward import Reward
 from scripts.rewards.distance import Distance, calc_distance
 from scripts.rewards.timesteps import ElapsedTimesteps
-from scripts.rewards.collision import DetectedCollision
+from scripts.rewards.collision import Collision
 
 from scripts.resets.reset import Reset
 from scripts.resets.distance_reset import DistanceReset
@@ -22,13 +22,14 @@ from scripts.resets.timesteps_reset import TimestepsReset
 from scripts.resets.collision_reset import CollisionReset
 
 from stable_baselines3.common.vec_env.base_vec_env import *
-from pathlib import Path
 from typing import List, Tuple
-
-import pybullet as pyb
+from pathlib import Path
 import numpy as np
 import math
 import time 
+
+import pybullet as pyb
+
 
 class PybulletEnv(ModularEnv):
     def __init__(self, params: EnvParams) -> None:
@@ -44,6 +45,7 @@ class PybulletEnv(ModularEnv):
         self.obstacle_count = len(params.obstacles)
         self.observable_obstacles_count = len([o for o in params.obstacles if o.observable])
         self._timesteps: List[int] = np.zeros(params.num_envs)
+        self._collisionsCount: List[int] = np.zeros(params.num_envs)
         self.step_count = params.step_count
         self.control_type = params.control_type
         self.verbose = params.verbose
@@ -127,7 +129,7 @@ class PybulletEnv(ModularEnv):
                 self._reward_fns.append(self._parse_distance_reward(reward))
             elif isinstance(reward, ElapsedTimesteps):
                 self._reward_fns.append(self._parse_timestep_reward(reward))
-            elif isinstance(reward, DetectedCollision):
+            elif isinstance(reward, Collision):
                 self._reward_fns.append(self._parse_collision_reward(reward))
             else:
                 raise f"Reward {type(reward)} not implemented!"
@@ -204,24 +206,22 @@ class PybulletEnv(ModularEnv):
         return timestep_reward
     
     
-    def _parse_collision_reward(self, collisionObj: DetectedCollision):
+    def _parse_collision_reward(self, collisionObj: Collision):
         """
-        Punish collisions according to the weight factor
+        Punish collisions from collisionObj with any other collidable object according to the weight factor
         """
         objName = collisionObj.obj
         weight = collisionObj.weight
         
         def calculate_collision_reward() -> float:
             # get all collision
-            _collisions = self._get_collisions()
-
             result = []
             for envId in range(self.num_envs):
                 coll = 0
                 for robot in self._robots[envId]:
                     # only check collision for specified robot
                     if objName == robot.name:
-                        if any(robot.id in tup for tup in _collisions):
+                        if any(robot.id in tup for tup in self._collisions):
                             coll = 1
                 result.append(coll) 
 
@@ -316,23 +316,17 @@ class PybulletEnv(ModularEnv):
         
         # parse function
         def reset_condition() -> np.ndarray:
-            _collisions = self._get_collisions()        # get all collision
-            unique_collisions = list(set(_collisions))  # remove duplicated collision
-            
+            unique_collisions = list(set(self._collisions))  # remove duplicated collision            
 
-            result = []
             for envId in range(self.num_envs):
-                coll = 0
                 for robot in self._robots[envId]:
                     # only check collision for specified robot
                     if objName == robot.name:
                         if any(robot.id in tup for tup in unique_collisions):
-                            coll += 1
-                result.append(coll) 
-            result = np.array(result)
+                            self._collisionsCount[envId] += 1
 
             # return true whenever more than max_value collisions occured
-            return np.where(result < max_value, False, True)
+            return np.where(self._collisionsCount < max_value, False, True)
         
         return reset_condition
 
@@ -418,7 +412,7 @@ class PybulletEnv(ModularEnv):
         # step simulation amount of times according to params
         for _ in range(self.step_count):
             pyb.stepSimulation()  
-            time.sleep(self.displayDelay)
+            #time.sleep(self.displayDelay)
                 
         # update the collision model if necessary
         if self.headless:
@@ -439,9 +433,11 @@ class PybulletEnv(ModularEnv):
         #print("\nObs    :", self._obs["Positions"])
         #print("Dist.  :", self._distances)
         #print("Collisions:", self._collisions)
-        print("Rewards:", self._rewards, end="; ")
-        print("Timest.:", self._timesteps, end="; ")
-        print("Dones  :", self._dones)
+        #print("Rewards:", self._rewards, end="; ")
+        #print("Timest.:", self._timesteps, end="; ")
+        #print("Coll.:", self._collisionsCount, end="; ")
+        #print("Dones  :", self._dones)
+        
 
         # log rewards
         if self.verbose > 0:
@@ -456,6 +452,7 @@ class PybulletEnv(ModularEnv):
             pyb.resetSimulation()  
             self._setup_environments(self._initRobots, self._initObstacles, self._initUrdfs) # build environment new                
             self._timesteps = np.zeros(self.num_envs)                       # reset timestep tracking
+            self._collisionsCount = np.zeros(self.num_envs)                 # reset collisions count tracking
             self._obs = self._get_observations()                            # reset observations 
             self._distances_after_reset = self._get_distances()             # calculate new distances
 
@@ -466,7 +463,8 @@ class PybulletEnv(ModularEnv):
         
         # reset envs manually
         else:
-            self._timesteps[env_idxs] = 0    # reset timestep tracking
+            self._timesteps[env_idxs] = 0           # reset timestep tracking
+            self._collisionsCount[env_idxs] = 0     # reset collisions count tracking
            
             # select each environment
             for i in env_idxs:

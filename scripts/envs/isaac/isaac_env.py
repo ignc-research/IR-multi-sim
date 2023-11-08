@@ -1,20 +1,27 @@
-import math
-from typing import List, Tuple, Union
 from scripts.envs.modular_env import ModularEnv
 from scripts.envs.params.env_params import EnvParams
-from scripts.rewards.distance import Distance, calc_distance
-from scripts.rewards.timesteps import ElapsedTimesteps
+from scripts.envs.params.control_type import ControlType
+
 from scripts.spawnables.obstacle import Obstacle, Cube, Sphere, Cylinder
 from scripts.spawnables.robot import Robot
 from scripts.spawnables.urdf import Urdf
+
 from scripts.rewards.reward import Reward
+from scripts.rewards.distance import Distance, calc_distance
+from scripts.rewards.timesteps import ElapsedTimesteps
+from scripts.rewards.collision import Collision
+
 from scripts.resets.reset import Reset
 from scripts.resets.distance_reset import DistanceReset
 from scripts.resets.timesteps_reset import TimestepsReset
-from scripts.envs.params.control_type import ControlType
-import numpy as np
+from scripts.resets.collision_reset import CollisionReset
+
 from stable_baselines3.common.vec_env.base_vec_env import *
+from typing import List, Tuple, Union
 from pathlib import Path
+import numpy as np
+import math
+
 
 def _add_position_offset(pos: Union[np.ndarray, Tuple[np.ndarray, np.ndarray]], offset: np.ndarray):
     if isinstance(pos, Tuple):
@@ -45,6 +52,7 @@ class IsaacEnv(ModularEnv):
         self.obstacle_count = len(params.obstacles)
         self.observable_obstacles_count = len([o for o in params.obstacles if o.observable])
         self._timesteps: List[int] = np.zeros(params.num_envs)
+        self._collisionsCount: List[int] = np.zeros(params.num_envs)
         self.step_count = params.step_count
         self.control_type = params.control_type
         self.verbose = params.verbose
@@ -77,6 +85,9 @@ class IsaacEnv(ModularEnv):
         self._robots: List[Articulation] = []
         self._observable_robots: List[Articulation] = []
         self._observable_robot_joints: List[Articulation] = []
+
+        # for collision detection save mapping from primpath to robot environment
+        self.prim_to_robot = {}
         
         from omni.isaac.core.prims.geometry_prim import GeometryPrim
         self._obstacles: List[Tuple[GeometryPrim, Obstacle]] = []
@@ -198,6 +209,8 @@ class IsaacEnv(ModularEnv):
                 self._reward_fns.append(self._parse_distance_reward(reward))
             elif isinstance(reward, ElapsedTimesteps):
                 self._reward_fns.append(self._parse_timestep_reward(reward))
+            elif isinstance(reward, Collision):
+                self._reward_fns.append(self._parse_collision_reward(reward))
             else:
                 raise Exception(f"Reward {type(reward)} not implemented!")
         
@@ -272,6 +285,27 @@ class IsaacEnv(ModularEnv):
             return self._timesteps * weight
         
         return timestep_reward
+    
+    def _parse_collision_reward(self, collisionObj: Collision):
+        """
+        Punish collisions from collisionObj with any other collidable object according to the weight factor
+        """
+        objName = collisionObj.obj
+        weight = collisionObj.weight
+        
+        def calculate_collision_reward() -> float:
+            result = np.zeros(self.num_envs)
+            
+            # iterate over all collision
+            for actor1, _ in self._collisions:
+                name, env = self._get_env_from_robot_prim_path(actor1)
+                # only check collision for specified robot
+                if objName == name:
+                    result[env] = 1
+
+            return result * weight
+        
+        return calculate_collision_reward
 
     def _find_observable_object_indices(self, name: str, obs_size: int) -> Tuple[int, int]:
         """Given the name of an observable object, tries to retrieve the beginning and end index of its observation buffer.
@@ -323,6 +357,8 @@ class IsaacEnv(ModularEnv):
                 self._reset_fns.append(self._parse_distance_reset(reset))
             elif isinstance(reset, TimestepsReset):
                 self._reset_fns.append(self._parse_timesteps_reset(reset))
+            elif isinstance(reset, CollisionReset):
+                self._reset_fns.append(self._parse_collision_reset(reset))
             else:
                 raise f"Reset {type(reset)} not implemented!"
 
@@ -365,6 +401,29 @@ class IsaacEnv(ModularEnv):
             return resets
 
         return reset_condition
+    
+    def _parse_collision_reset(self, reset: CollisionReset):
+        max_value = reset.max
+        objName = reset.obj
+
+        # parse function
+        def reset_condition() -> np.ndarray:
+            # only punish one collision per env per iteration
+            envPunished = [False] * self.num_envs
+
+            # iterate over all collision
+            for actor1, _ in self._collisions:
+                name, env = self._get_env_from_robot_prim_path(actor1)
+                # only check collision for specified robot
+                if objName == name:
+                    if not envPunished[env]:
+                        self._collisionsCount[env] += 1
+                        envPunished[env] = True
+
+            # return true whenever more than max_value collisions occured
+            return np.where(self._collisionsCount < max_value, False, True)
+        return reset_condition
+
 
     def step_async(self, actions: np.ndarray) -> None:
         # print("Actions:", actions)
@@ -404,11 +463,17 @@ class IsaacEnv(ModularEnv):
         # get dones
         self._dones = self._get_dones()
 
-        # print("Obs    :", self._obs)
-        # print("Dist.  :", self._distances)
-        # print("Rewards:", self._rewards)
-        # print("Dones  :", self._dones)
-        # print("Timest.:", self._timesteps)
+        #print("Obs    :", self._obs)
+        #print("Dist.  :", self._distances)
+        #print("Rewards:", self._rewards)
+        #print("Dones  :", self._dones)
+        #print("Timest.:", self._timesteps)
+
+        #print("Rewards:", self._rewards, end="; ")
+        #print("Timest.:", self._timesteps, end="; ")
+        #print("Coll.:", self._collisionsCount, end="; ")
+        #print("Dist.  :", self._distances, end="; ")
+        #print("Dones  :", self._dones)
 
         # log rewards
         if self.verbose > 0:
@@ -424,6 +489,9 @@ class IsaacEnv(ModularEnv):
 
             # reset timesteps
             self._timesteps = np.zeros(self.num_envs)
+
+            # reset collisions count
+            self._collisionsCount = np.zeros(self.num_envs)
 
             # reset observations
             self._obs = self._get_observations()
@@ -468,6 +536,9 @@ class IsaacEnv(ModularEnv):
 
         # reset timestep tracking
         self._timesteps[env_idxs] = 0
+
+        # reset collisions count tracking
+        self._collisionsCount[env_idxs] = 0    
 
         # log distances of environments which were reset
         if self.verbose > 1:
@@ -623,6 +694,14 @@ class IsaacEnv(ModularEnv):
 
         return dones
 
+    def _get_env_from_robot_prim_path(self, prim_path):
+        '''
+        Argument:   prim path of an Articulation robot object
+        Return:     Tupel (name of the robot, environment of the robot)
+        '''
+        primShort = "/" + prim_path.split("/")[1] 
+        return self.prim_to_robot.get(primShort, (primShort, None))     
+
     def _on_contact_report_event(self, contact_headers, contact_data):
         """
         After each simulation step, ISAAC calles this function. 
@@ -715,6 +794,9 @@ class IsaacEnv(ModularEnv):
             
             # append to observable obstacles: No environment offset will be applied
             self._observable_robot_joints.append(Articulation(prim_path + f"/{obs_joint}", f"env{env_idx}-{robot.name}/{obs_joint}"))
+
+        # add mapping from prim path to robot environment for collision
+        self.prim_to_robot[prim_path] = (robot.name, env_idx)
 
         # add reference to robot scene to current stage
         return prim_path
