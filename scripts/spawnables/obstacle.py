@@ -24,7 +24,7 @@ class Cube(Obstacle):
         self,
         position: Union[ndarray, Tuple[ndarray, ndarray]] = array([0, 0, 0]), 
         orientation: Union[ndarray, Tuple[ndarray, ndarray]] = array([1, 0, 0, 0]),
-        scale: Union[List[float], Tuple[List[float], List[float]]] = [1., 1., 1.],
+        scale: Union[List[float], Tuple[List[float], List[float]]] = [.1, .1, .1],
         color: ndarray = array([1., 1., 1.]),
         collision: bool = True,
         observable: bool = True,
@@ -69,7 +69,7 @@ class Sphere(Obstacle):
     def __init__(
         self,
         position: Union[ndarray, Tuple[ndarray, ndarray]] = array([0, 0, 0]),
-        radius: Union[float, Tuple[float, float]] = 1.,
+        radius: Union[float, Tuple[float, float]] = .1,
         color: ndarray = array([1., 1., 1.]),
         collision: bool = True,
         observable: bool = True,
@@ -103,8 +103,8 @@ class Cylinder(Obstacle):
     def __init__(
         self,
         position: Union[ndarray, Tuple[ndarray, ndarray]] = array([0, 0, 0]),
-        radius: Union[float, Tuple[float, float]] = 1.,
-        height: Union[float, Tuple[float, float]] = 2.,
+        radius: Union[float, Tuple[float, float]] = .1,
+        height: Union[float, Tuple[float, float]] = .2,
         color: ndarray = array([1., 1., 1.]),
         collision: bool = True,
         observable: bool = True,

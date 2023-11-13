@@ -3,11 +3,14 @@ from scripts.envs.params.env_params import EnvParams
 import yaml
 from scripts.spawnables.robot import Robot
 from scripts.spawnables.obstacle import *
+from scripts.spawnables.urdf import Urdf
 from scripts.rewards.reward import Reward
 from scripts.rewards.distance import Distance
+from scripts.rewards.collision import Collision
 from scripts.resets.reset import Reset
 from scripts.resets.distance_reset import DistanceReset
 from scripts.resets.timesteps_reset import TimestepsReset
+from scripts.resets.collision_reset import CollisionReset
 from scripts.envs.params.control_type import ControlType
 
 
@@ -19,8 +22,13 @@ def parse_config(path: str) -> EnvParams:
 
         # parse required parameters
         content["robots"] = [_parse_robot(params) for params in _parse_params(content["robots"])]
-        content["obstacles"] = [_parse_obstacle(params) for params in _parse_params(content["obstacles"])]
+        content["obstacles"] = [_parse_obstacle(params) for params in _parse_params(content["obstacles"])] 
         content["rewards"] = [_parse_reward(params) for params in _parse_params(content["rewards"])]
+
+        try: 
+            content["urdfs"] = [_parse_urdf(params) for params in _parse_params(content["urdfs"])]
+        except:
+            content["urdfs"] = []
 
         # parsing name is not required since reset conditions have no name
         content["resets"] = [_parse_reset(params) for params in content["resets"].values()]
@@ -46,6 +54,9 @@ def _parse_params(config: dict) -> List[dict]:
 
 def _parse_robot(params: dict) -> Robot:
     return Robot(**params)
+
+def _parse_urdf(params: dict) -> Urdf:
+    return Urdf(**params)
 
 def _parse_obstacle(params: dict) -> Obstacle:
     selector = {
@@ -85,7 +96,8 @@ def _parse_list_as_tuple(params: dict, key: str):
 
 def _parse_reward(params: dict) -> Reward:
     selector = {
-        "Distance": Distance
+        "Distance": Distance,
+        "Collision": Collision,
     }
 
     # extract required type
@@ -104,7 +116,8 @@ def _parse_reward(params: dict) -> Reward:
 def _parse_reset(params: dict) -> Reset:
     selector = {
         "DistanceReset": DistanceReset,
-        "TimestepsReset": TimestepsReset
+        "TimestepsReset": TimestepsReset,
+        "CollisionReset": CollisionReset
     }
 
     # extract required type
