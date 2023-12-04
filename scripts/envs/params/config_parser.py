@@ -1,16 +1,23 @@
 from typing import List
-from scripts.envs.params.env_params import EnvParams
 import yaml
+
+from scripts.envs.params.env_params import EnvParams
+
 from scripts.spawnables.robot import Robot
-from scripts.spawnables.obstacle import *
 from scripts.spawnables.urdf import Urdf
+from scripts.spawnables.obstacle import *
+
+
 from scripts.rewards.reward import Reward
 from scripts.rewards.distance import Distance
+from scripts.rewards.timesteps import ElapsedTimesteps
 from scripts.rewards.collision import Collision
+
 from scripts.resets.reset import Reset
 from scripts.resets.distance_reset import DistanceReset
 from scripts.resets.timesteps_reset import TimestepsReset
 from scripts.resets.collision_reset import CollisionReset
+
 from scripts.envs.params.control_type import ControlType
 
 
@@ -98,6 +105,7 @@ def _parse_reward(params: dict) -> Reward:
     selector = {
         "Distance": Distance,
         "Collision": Collision,
+        "ElapsedTimesteps": ElapsedTimesteps,
     }
 
     # extract required type

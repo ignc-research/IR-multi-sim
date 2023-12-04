@@ -200,8 +200,10 @@ class PybulletEnv(ModularEnv):
         """
         Reward elapsed timesteps according to the weight factor
         """
+        weight = elapsed.weight
+        
         def timestep_reward():
-            return self._timesteps * elapsed.weight
+            return self._timesteps * weight
         
         return timestep_reward
     

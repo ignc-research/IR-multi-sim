@@ -14,19 +14,24 @@ urdfs:
 obstacles:
   TargetCube:
     position: [[-0.65, -0.4, 0.64], [0.65, 0.4, 1]]
+    color: [1, 0, 0]
     collision: False
+    observable: True
     type: "Cube"
   Sphere:
     position: [0.4, 0.3, 0.8]
     collision: True
+    observable: True
     type: "Sphere"
   Sphere2:
     position: [0.4, -0.3, 0.9]
     collision: True
+    observable: True
     type: "Sphere"
   Cylinder:
     position: [-0.45, 0.4, 0.7]
     collision: True
+    observable: True
     type: "Cylinder"
 rewards:
   TargetDistance:
@@ -49,13 +54,13 @@ resets:
     type: "TimestepsReset"
   three:
     obj: "R1"
-    max: 10
+    max: 1
     type: "CollisionReset"
 
 # optional parameters
 asset_path: "./data"
-step_size: 0.01
+step_size: 0.00416666666
 step_count: 1
-headless: False
-num_envs: 4
+headless: True
+num_envs: 9
 env_offset: [4, 4]
