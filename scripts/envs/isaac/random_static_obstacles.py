@@ -116,7 +116,7 @@ class RandomFixedSphere(FixedSphere):
         translation: Optional[np.ndarray] = None,
         visible: Optional[bool] = None,
         color: Optional[np.ndarray] = None,
-        size: Optional[float] = None,
+        radius: Optional[float] = None,
         visual_material: Optional[VisualMaterial] = None,
         physics_material: Optional[PhysicsMaterial] = None,
     ) -> None:
@@ -155,7 +155,7 @@ class RandomFixedSphere(FixedSphere):
             scale=scale[0],
             visible=visible,
             color=color,
-            size=size,
+            radius = radius,
             visual_material=visual_material,
             physics_material=physics_material
         )
@@ -201,7 +201,8 @@ class RandomFixedCylinder(FixedCylinder):
         translation: Optional[np.ndarray] = None,
         visible: Optional[bool] = None,
         color: Optional[np.ndarray] = None,
-        size: Optional[float] = None,
+        radius: Optional[float] = None,
+        height: Optional[float] = None,
         visual_material: Optional[VisualMaterial] = None,
         physics_material: Optional[PhysicsMaterial] = None,
     ) -> None:
@@ -239,7 +240,8 @@ class RandomFixedCylinder(FixedCylinder):
             scale=scale[0],
             visible=visible,
             color=color,
-            size=size,
+            radius = radius,
+            height = height,
             visual_material=visual_material,
             physics_material=physics_material
         )

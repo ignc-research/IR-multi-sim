@@ -2,12 +2,17 @@ from stable_baselines3 import TD3
 from stable_baselines3.common.base_class import BaseAlgorithm
 from os.path import exists
 import signal
+import re
 from scripts.envs.modular_env import ModularEnv
 
 
 def setup_model(path: str, reset: bool, env: ModularEnv) -> (BaseAlgorithm, str):
-    # parse model path
-    config_name = path.split('/')[-1].replace('.yaml', '')
+    # parse model path for windows(\) and linux(/)
+    #config_name = path.split('/')[-1].replace('.yaml', '')
+    pattern = r'[\\/]([^\\/]+)\.yaml$'
+    match = re.search(pattern, path)
+    
+    config_name = match.group(1)
     model_path = "./data/models/" + config_name + ".zip"
 
     # try loading existing model
@@ -25,7 +30,7 @@ def setup_model(path: str, reset: bool, env: ModularEnv) -> (BaseAlgorithm, str)
             tensorboard_log="./data/logs/"+config_name,
             verbose=1,
             batch_size=2048,
-            learning_rate=0.0001
+            learning_rate=0.0001,
         )
 
         print(f"No parameters found at {model_path}, creating new model!")

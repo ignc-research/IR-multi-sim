@@ -69,6 +69,8 @@ class Sphere(Obstacle):
     def __init__(
         self,
         position: Union[ndarray, Tuple[ndarray, ndarray]] = array([0, 0, 0]),
+        orientation: Union[ndarray, Tuple[ndarray, ndarray]] = array([1, 0, 0, 0]),
+        scale: Union[List[float], Tuple[List[float], List[float]]] = [.1, .1, .1],
         radius: Union[float, Tuple[float, float]] = .1,
         color: ndarray = array([1., 1., 1.]),
         collision: bool = True,
@@ -90,8 +92,16 @@ class Sphere(Obstacle):
         super().__init__(position, color, collision, observable, static, name)
         self.radius = radius
 
+        # parse orientation
+        if isinstance(orientation, List):
+            self.orientation = array(orientation)
+        else:
+            self.orientation = orientation
+            
+        self.scale = scale
+
     def get_constructor_params(self):
-        return {"position": self.position, "radius": self.radius, "color":self.color}
+        return {"position": self.position, "orientation": self.orientation, "scale":self.scale, "radius": self.radius, "color":self.color}
 
     def has_random_radius(self):
         return type(self.radius) is tuple
@@ -103,6 +113,8 @@ class Cylinder(Obstacle):
     def __init__(
         self,
         position: Union[ndarray, Tuple[ndarray, ndarray]] = array([0, 0, 0]),
+        orientation: Union[ndarray, Tuple[ndarray, ndarray]] = array([1, 0, 0, 0]),
+        scale: Union[List[float], Tuple[List[float], List[float]]] = [.1, .1, .1],
         radius: Union[float, Tuple[float, float]] = .1,
         height: Union[float, Tuple[float, float]] = .2,
         color: ndarray = array([1., 1., 1.]),
@@ -128,8 +140,16 @@ class Cylinder(Obstacle):
         self.radius = radius
         self.height = height
 
+        # parse orientation
+        if isinstance(orientation, List):
+            self.orientation = array(orientation)
+        else:
+            self.orientation = orientation
+            
+        self.scale = scale
+
     def get_constructor_params(self):
-        return {"position": self.position, "radius": self.radius, "height": self.height, "color":self.color}
+        return {"position": self.position, "orientation": self.orientation, "scale":self.scale, "radius": self.radius, "height": self.height, "color":self.color}
     
     def has_random_radius(self):
         return type(self.radius) is tuple
