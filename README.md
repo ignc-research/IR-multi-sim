@@ -100,5 +100,5 @@ The example configuration files can be found under "./data/configs".
 - [Pybullet](https://pybullet.org/wordpress/)
 
 # Existing models
-[Reach configuration](docs/Existing_models.md)
-[Set target positions](docs/Existing_models.md)
+- [Reach configuration](docs/reach_configuration.md)
+- [Set target positions](docs/target_position.md)
