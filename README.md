@@ -9,7 +9,7 @@ Follow the instructions found [here](https://docs.omniverse.nvidia.com/app_isaac
 Run any python files with Isaacs own python interpreter, usually located at "~/.local/share/ov/package/isaac_sim-*/python.shell", where the * is a wildcard for the installed issac sim version.
 
 ## PyBullet
-Install the pybullet_requirements.txt to use the PyBullet engine. You can test the setup by running the pybullet_example.py with your python interpreter.
+Install the pyb_requirements.txt to use the PyBullet engine.
 
 # Usage
 Define your environment with simple classes: Robot, Obstacle, Reward and Reset. The environment will automatically be created in the specified engine. Observation and Action space will be automatically parsed depending on the robots and obstacles spawned in the environment.
@@ -99,16 +99,6 @@ The example configuration files can be found under "./data/configs".
 - [IsaacSim](https://developer.nvidia.com/isaac-sim)
 - [Pybullet](https://pybullet.org/wordpress/)
 
-## Planned Support
-- ?
-
 # Existing models
-## Reach configuration
-Reach the target cube spawned randomly by appling force to the joints.
-
-![Reach configuration](./data/documentation/reach_config2M.png)
-
-## Set target positions
-Reach the target cube spawned randomly by setting joint position targets, and seeing if the predicted configuration reaches the target.
-
-![Set target positions](./data/documentation/set_target_pos1M.png)
+[Reach configuration](docs/Existing_models.md)
+[Set target positions](docs/Existing_models.md)
