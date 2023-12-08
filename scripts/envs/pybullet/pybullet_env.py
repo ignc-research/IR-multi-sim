@@ -410,6 +410,10 @@ class PybulletEnv(ModularEnv):
                 
                 else:
                     raise Exception(f"Control type {self.control_type} not implemented!")
+
+            # update obstacles that have a trajectory    
+            for obstacle in self._obstacles[envId]:
+                obstacle.update()
     	
         # step simulation amount of times according to params
         for _ in range(self.step_count):
@@ -419,10 +423,6 @@ class PybulletEnv(ModularEnv):
         # update the collision model if necessary
         if self.headless:
             pyb.performCollisionDetection()           
-          
-        #print(f"Sim state: NumBodies: {pyb.getNumBodies()}", f"Names: {pyb.getBodyInfo(0)}, {pyb.getBodyInfo(1)},{pyb.getBodyInfo(2)}" )
-        # get Collisions
-        #self._on_contact_report_event()
 
     
     def step_wait(self) -> VecEnvStepReturn:
@@ -682,13 +682,16 @@ class PybulletEnv(ModularEnv):
         orientation = obstacle.orientation[::-1]
         if isinstance(obstacle, Cube):
             newObject = PyCube(obstacle.name, self._env_offsets[env_idx], obstacle.position, orientation, 
-                               obstacle.scale, obstacle.static, obstacle.collision, obstacle.color)
+                               obstacle.scale, obstacle.static, obstacle.collision, obstacle.color, self.step_count, 
+                               self.stepSize)
         elif isinstance(obstacle, Sphere):
             newObject = PySphere(obstacle.name, self._env_offsets[env_idx], obstacle.position, orientation, 
-                                 obstacle.radius, obstacle.static, obstacle.collision, obstacle.color)
+                                 obstacle.radius, obstacle.static, obstacle.collision, obstacle.color, self.step_count, 
+                                 self.stepSize)
         elif isinstance(obstacle, Cylinder):
             newObject = PyCylinder(obstacle.name, self._env_offsets[env_idx], obstacle.position, orientation,
-                                   obstacle.radius, obstacle.height, obstacle.static, obstacle.collision, obstacle.color)
+                                   obstacle.radius, obstacle.height, obstacle.static, obstacle.collision, 
+                                   obstacle.color, self.step_count, self.stepSize)
         else:
             raise f"Obstacle {type(obstacle)} not implemented"
         
