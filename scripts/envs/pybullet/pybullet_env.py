@@ -685,13 +685,13 @@ class PybulletEnv(ModularEnv):
                                obstacle.scale, obstacle.static, obstacle.collision, obstacle.color, self.step_count, 
                                self.stepSize)
         elif isinstance(obstacle, Sphere):
-            newObject = PySphere(obstacle.name, self._env_offsets[env_idx], obstacle.position, orientation, 
-                                 obstacle.radius, obstacle.static, obstacle.collision, obstacle.color, self.step_count, 
+            newObject = PySphere(obstacle.radius, obstacle.name, self._env_offsets[env_idx], obstacle.position, 
+                                 orientation, obstacle.static, obstacle.collision, obstacle.color, self.step_count, 
                                  self.stepSize)
         elif isinstance(obstacle, Cylinder):
-            newObject = PyCylinder(obstacle.name, self._env_offsets[env_idx], obstacle.position, orientation,
-                                   obstacle.radius, obstacle.height, obstacle.static, obstacle.collision, 
-                                   obstacle.color, self.step_count, self.stepSize)
+            newObject = PyCylinder(obstacle.radius, obstacle.height, obstacle.name, self._env_offsets[env_idx], 
+                                   obstacle.position, orientation,obstacle.static, obstacle.collision, obstacle.color, 
+                                   self.step_count, self.stepSize)
         else:
             raise f"Obstacle {type(obstacle)} not implemented"
         

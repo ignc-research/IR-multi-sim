@@ -15,15 +15,17 @@ obstacles:
   TargetCube:
     position: [[-0.65, -0.4, 0.64], [0.65, 0.4, 1]]
     color: [1, 0, 0]
+    scale: [.1,.1,.1]
     collision: False
     observable: True
     type: "Cube"
   DynamicCube:
     position: [-0.45, 0.4, 0.7]
+    scale: [.1,.1,.1]
     collision: True
     observable: True
     static: False
-    type: "Cube"
+    type: "Cylinder"
 rewards:
   TargetDistance:
     obj1: "TargetCube"

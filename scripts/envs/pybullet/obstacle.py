@@ -65,6 +65,7 @@ class PyObstacle(ABC):
             min, max = self._initPos
             return (random.uniform(min, max) + self.offset).tolist()
         else:
+            print(self._initPos, self.offset)
             return (self._initPos + self.offset).tolist()
 
     # create random orientation if there is a range given as argument
@@ -92,7 +93,7 @@ class PyCube(PyObstacle):
     """A cube obstacle spawned in each environment with fixed parameters. """
     def __init__(self, 
                  name: str = None, 
-                 offset: ndarray = array([0,0,0]), 
+                 offset: ndarray = array([0, 0, 0]), 
                  position: Union[ndarray, Tuple[ndarray, ndarray]] = array([0, 0, 0]), 
                  orientation: Union[ndarray, Tuple[ndarray, ndarray]] = array([0., 0., 0., 1.]), 
                  scale: Union[List[float], Tuple[List[float], List[float]]] = array([1, 1, 1]), 
@@ -177,11 +178,11 @@ class PyCube(PyObstacle):
 class PySphere(PyObstacle):
     """A sphere obstacle spawned in each environment with fixed parameters. """
     def __init__(self, 
+                 radius: Union[float, Tuple[float, float]],
                  name: str = None, 
                  offset: ndarray = array([0,0,0]), 
                  position: Union[ndarray, Tuple[ndarray, ndarray]] = array([0, 0, 0]), 
                  orientation: Union[ndarray, Tuple[ndarray, ndarray]] = array([0., 0., 0., 1.]), 
-                 radius: Union[float, Tuple[float, float]] = 1.,
                  static: bool = True, 
                  collision: bool = False, 
                  color: ndarray = array([1, 1, 1]),
@@ -190,8 +191,8 @@ class PySphere(PyObstacle):
                 ) -> None:
     
         super().__init__(name, position, offset, orientation, static, collision, color, step_count, step_size)
-
-        self._initRadius = radius
+        
+        self._initRadius = radius or 0.1
         self.radius = self._getRadius()
 
         # set default name
@@ -238,7 +239,7 @@ class PySphere(PyObstacle):
             step = diff * (step / diff_norm)
             self.velocity = step / (self.step_size * self.step_count)
             self.position = self.position + step        
-            pyb.reset
+            pyb.resetBasePositionAndOrientation(self.id, self.position.tolist(), self.orientation)
 
     def reset(self) -> None:
         pyb.removeBody(self.id) 
@@ -262,12 +263,12 @@ class PySphere(PyObstacle):
 class PyCylinder(PyObstacle):
     """A cylinder obstacle spawned in each environment with fixed parameters. """
     def __init__(self, 
+                 radius: Union[float, Tuple[float, float]],
+                 height: Union[float, Tuple[float, float]],
                  name: str = None, 
                  offset: ndarray = array([0,0,0]), 
                  position: Union[ndarray, Tuple[ndarray, ndarray]] = array([0, 0, 0]), 
                  orientation: Union[ndarray, Tuple[ndarray, ndarray]] = array([0., 0., 0., 1.]), 
-                 radius: Union[float, Tuple[float, float]] = 1.,    # radius of cylinder
-                 height: Union[float, Tuple[float, float]] = 1.,
                  static: bool = True, 
                  collision: bool = False, 
                  color: ndarray = array([1, 1, 1]),
@@ -284,8 +285,8 @@ class PyCylinder(PyObstacle):
             _spawnedCylinders += 1     
         self.name= name
 
-        self._initRadius = radius
-        self._initHeight = height
+        self._initRadius = radius or 0.1
+        self._initHeight = height or 0.1
         self.radius = self._getRadius()
         self.height = self._getHeight()
 
@@ -335,7 +336,7 @@ class PyCylinder(PyObstacle):
             step = diff * (step / diff_norm)
             self.velocity = step / (self.step_size * self.step_count)
             self.position = self.position + step        
-            pyb.reset
+            pyb.resetBasePositionAndOrientation(self.id, self.position.tolist(), self.orientation)
 
     def reset(self) -> None:
         pyb.removeBody(self.id) 

@@ -54,6 +54,7 @@ class IsaacEnv(ModularEnv):
         self._timesteps: List[int] = np.zeros(params.num_envs)
         self._collisionsCount: List[int] = np.zeros(params.num_envs)
         self.step_count = params.step_count
+        self.step_size = params.step_size
         self.control_type = params.control_type
         self.verbose = params.verbose
 
@@ -425,30 +426,36 @@ class IsaacEnv(ModularEnv):
         return reset_condition
 
 
-    def step_async(self, actions: np.ndarray) -> None:
-        # print("Actions:", actions)
-        
+    def step_async(self, actions: np.ndarray) -> None:       
         # todo: this works only for one robot
         # apply actions
         if self.control_type == ControlType.Velocity:
             # set joint velocities
             for i, robot in enumerate(self._robots):
                 robot.set_joint_velocities(actions[i])
+        
         elif self.control_type == ControlType.Position:
             # set joint positions
             for i, robot in enumerate(self._robots):
                 robot.set_joint_positions(actions[i])
+        
         elif self.control_type == ControlType.PositionTarget:
             # set joint positions
             for i, robot in enumerate(self._robots):
                 robot._articulation_view.set_joint_position_targets(actions[i])
         else:
             raise Exception(f"Control type {self.control_type} not implemented!")
-            
+
+
+        # update obstacles with trajectories
+        for geometryPrim, _ in self._obstacles:
+            geometryPrim.update()
+
         # step simulation amount of times according to params
         for _ in range(self.step_count):
             self._simulation.update()
     
+
     def step_wait(self) -> VecEnvStepReturn:
         
         # get observations
@@ -834,7 +841,7 @@ class IsaacEnv(ModularEnv):
         from scripts.envs.isaac.random_dynamic_obstacles import RandomDynamicCuboid, RandomDynamicSphere, RandomDynamicCylinder
         from scripts.envs.isaac.random_static_obstacles import RandomFixedCuboid, RandomFixedSphere, RandomFixedCylinder
 
-        # select corresponding class: Obstacle type, isRandomized?, isStatic?
+        """         # select corresponding class: Obstacle type, isRandomized?, isStatic?
         class_selector = {
             # select cubes
             (Cube, False, False): DynamicCuboid,
@@ -857,7 +864,7 @@ class IsaacEnv(ModularEnv):
         selected_class = class_selector.get(((type(obstacle)), obstacle.is_randomized(), obstacle.static), None)
         
         if selected_class is None:
-            raise Exception(f"Obstacle of type {type(obstacle)}, random={obstacle.is_randomized()}, static={obstacle.static} isn't implemented!")
+            raise Exception(f"Obstacle of type {type(obstacle)}, random={obstacle.is_randomized()}, static={obstacle.static} isn't implemented!") """
 
         # create parameter dict
         params = obstacle.get_constructor_params()
@@ -867,9 +874,23 @@ class IsaacEnv(ModularEnv):
         # add env offset to position
         params["position"] = _add_position_offset(params["position"], self._env_offsets[env_idx])
 
-        # create instance
-        obstacle_obj = selected_class(**params)
+        """         # create instance
+        obstacle_obj = selected_class(**params) """
 
+        from scripts.envs.isaac.obstacle import IsaacObstacle, IsaacCube, IsaacSphere, IsaacCylinder  
+        params["step_size"] = self.step_size
+        params["step_count"] = self.step_count
+        
+        obstacle_obj = None
+        if isinstance(obstacle, Cube):
+            obstacle_obj = IsaacCube(**params)
+        elif isinstance(obstacle, Sphere):
+            obstacle_obj = IsaacSphere(**params)
+        elif isinstance(obstacle, Cylinder):
+            obstacle_obj = IsaacCylinder(**params)
+        else:
+            raise f"Obstacle {type(obstacle)} not implemented"
+        
         # add obstacle to scene
         self._scene.add(obstacle_obj)
 
