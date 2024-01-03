@@ -65,7 +65,6 @@ class PyObstacle(ABC):
             min, max = self._initPos
             return (random.uniform(min, max) + self.offset).tolist()
         else:
-            print(self._initPos, self.offset)
             return (self._initPos + self.offset).tolist()
 
     # create random orientation if there is a range given as argument

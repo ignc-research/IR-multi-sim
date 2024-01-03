@@ -16,7 +16,6 @@ class EnvParams():
             urdfs: List[Urdf],
             rewards: List[Reward],
             resets: List[Reset],
-            asset_path: str="./data",
             step_size: float=0.01,
             step_count: int=1,
             headless: bool=True,
@@ -52,7 +51,7 @@ class EnvParams():
 
         self.rewards = rewards
         self.resets = resets
-        self.asset_path = asset_path
+        self.asset_path = "./data"
         self.step_size = step_size
         self.step_count = step_count
         self.headless = headless
