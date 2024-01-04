@@ -24,15 +24,28 @@ def setup_model(config: dict, env: ModularEnv) -> (BaseAlgorithm, str):
 
     # create new model if necessary
     else:
-        model = config["algorithm"](
-            config["policy"],
-            env=env,   
-            policy_kwargs=config["custom_policy"],   
-            verbose=1,   
-            tensorboard_log= LOG_DIR + config_name,     
-            learning_rate=config["learning_rate"],  
-            batch_size=config["batch_size"]       
-        )
+        # to hanlde necessary parameter trian_freq only for td3 that does not exist in ppo
+        if config["train_freq"]:
+            model = config["algorithm"](
+                config["policy"],
+                env=env,   
+                policy_kwargs=config["custom_policy"],   
+                verbose=1,   
+                tensorboard_log= LOG_DIR + config_name,     
+                learning_rate=config["learning_rate"],  
+                batch_size=config["batch_size"],
+                train_freq=config["train_freq"]       
+            )
+        else:
+            model = config["algorithm"](
+                config["policy"],
+                env=env,   
+                policy_kwargs=config["custom_policy"],   
+                verbose=1,   
+                tensorboard_log= LOG_DIR + config_name,     
+                learning_rate=config["learning_rate"],  
+                batch_size=config["batch_size"]  
+            )
 
         print(f"No parameters found at {model_path}, creating new model!")
 

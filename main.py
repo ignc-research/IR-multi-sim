@@ -12,6 +12,8 @@ if __name__ == '__main__':
     parser.add_argument('-f', '--file', help="Environment config file")
     parser.add_argument('--eval', action="store_true", help="Start evaluating the specified model")
     args = parser.parse_args()
+
+    print("Handling", args.file, "!")
         
     # path to config file was not specified
     if args.file is None:        
@@ -20,6 +22,7 @@ if __name__ == '__main__':
 
     # parse config file
     environment_params, model_params, train_parameters, eval_parameters = parse_config(args.file)
+    print("Created env with prameters: ", environment_params.engine)
 
     # create environment
     env = create_env(environment_params)
