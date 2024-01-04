@@ -33,7 +33,7 @@ evaluation:
 env:
   num_envs: 9
   env_offset: [4, 4]
-  headless: True
+  headless: False
   step_size: 0.00416666666
   step_count: 1
 
@@ -41,6 +41,12 @@ env:
     - name: "R1"
       urdf_path: "robots/ur5/urdf/ur5_with_gripper.urdf"
       position: [0, 0, 0.63]
+      observable_joints: ["ee_link"]
+      control_type: "Velocity"
+    
+    - name: "R2"
+      urdf_path: "robots/ur5/urdf/ur5_with_gripper.urdf"
+      position: [0.55, 0.3, 0.63]
       observable_joints: ["ee_link"]
       control_type: "Position"
   

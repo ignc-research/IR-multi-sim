@@ -81,7 +81,7 @@ class IsaacEnv(ModularEnv):
 
         # allow tracking spawned objects
         from omni.isaac.core.articulations import Articulation
-        self._robots: List[Articulation] = []
+        self._robots: List = []
         self._observable_robots: List[Articulation] = []
         self._observable_robot_joints: List[Articulation] = []
 
@@ -425,25 +425,25 @@ class IsaacEnv(ModularEnv):
 
 
     def step_async(self, actions: np.ndarray) -> None:       
-        # apply actions
-        for i, robot in enumerate(self._robots):
-            
-            # set joint velocities
-            if robot[1] == "Velocity":
-                robot[0].set_joint_velocities(actions[i])
+        # select each environment
+        for idx in range(self.num_envs):
+            action = actions[idx]     # contains actions for all robotos in env idx  
 
-            # since we only use target position in pybullet, there is no need for jump to define position.
-            # we only move the joints for a certain amount towards desired angle
-            #set joint positions
-            #elif robot[1] == "Position":
-            #    robot[0].set_joint_positions(actions[i])
-            
-            # set joint positions targets
-            elif robot[1] == "Position":
-                robot[0]._articulation_view.set_joint_position_targets(actions[i])
+            # apply action to all robots of environment idx
+            for i, robot in enumerate(self._get_robots(idx)):
+                dofs = len(robot[0].dof_properties["maxVelocity"])
+                currentAction = action[i*dofs:(i+1)*dofs]   # get actions for all joints of current robot
 
-            else:
-                raise Exception(f"Control type {robot[1]} not implemented!")
+                # set joint velocities
+                if robot[1] == "Velocity":
+                    robot[0].set_joint_velocities(currentAction)
+                
+                # set joint positions targets
+                elif robot[1] == "Position":
+                    robot[0]._articulation_view.set_joint_position_targets(currentAction)
+                
+                else:
+                    raise Exception(f"Control type {robot[1]} not implemented!")
 
         # update obstacles with trajectories
         for geometryPrim, _ in self._obstacles:
@@ -520,6 +520,7 @@ class IsaacEnv(ModularEnv):
 
             # reset all robots to default pose
             for robot in self._get_robots(i):
+                robot = robot[0] # get prim from tuple
                 robot.post_reset()
 
                 # get joint limits
@@ -560,24 +561,25 @@ class IsaacEnv(ModularEnv):
         return self._obs
 
     def get_robot_dof_limits(self) -> List[Tuple[float, float]]:
-        # init array
-        limits = []
+        limits = []  # init array
 
         # ony get dof limits from robots of first environment
         for i in range(self.robot_count):
             if self._robots[i][1] == "Position":
                 for limit in self._robots[i][0].get_articulation_controller().get_joint_limits():
                     limits.append(list(limit))
-            
+
             elif self._robots[i][1] == "Velocity":
                 # check if custom max vel is set in config
                 if self._robots[i][2]: 
                     for _ in range(len(self._robots[i][0].dof_properties["maxVelocity"])):
-                        limits.append((-self._robots[i][2],self._robots[i][2]))
+                        limits.append(list((-self._robots[i][2],self._robots[i][2])))
+
                 # use max vel from robot urdf
                 else:
                     for vel in self._robots[i][0].dof_properties["maxVelocity"]:
-                        limits.append((-vel,vel))
+                        limits.append(list((-vel,vel)))
+
             else:
                 raise Exception(f"Unknown control type: {self._robots[i][1]}")
 
@@ -593,7 +595,7 @@ class IsaacEnv(ModularEnv):
     def _get_robots(self, env_idx: int):
         start_idx = env_idx * self.robot_count
 
-        return [self._robots[i][0] for i in range(start_idx, start_idx + self.robot_count)]
+        return [self._robots[i] for i in range(start_idx, start_idx + self.robot_count)]
 
     def _get_obstacles(self, env_idx: int):
         start_idx = env_idx * self.obstacle_count

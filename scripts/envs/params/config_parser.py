@@ -16,7 +16,6 @@ from scripts.resets.distance_reset import DistanceReset
 from scripts.resets.timesteps_reset import TimestepsReset
 from scripts.resets.collision_reset import CollisionReset
 
-from scripts.envs.params.control_type import ControlType
 from stable_baselines3 import PPO, TD3, SAC, A2C, DDPG
 import torch as th
 

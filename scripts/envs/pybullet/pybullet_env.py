@@ -8,7 +8,7 @@ from scripts.spawnables.urdf import Urdf
 
 from scripts.envs.pybullet.robot import PyRobot
 from scripts.envs.pybullet.obstacle import *
-from scripts.envs.pybullet.urdf import PyUrdf, PyTable
+from scripts.envs.pybullet.urdf import PyTable
 
 from scripts.rewards.reward import Reward
 from scripts.rewards.distance import Distance, calc_distance
@@ -113,7 +113,6 @@ class PybulletEnv(ModularEnv):
             # spawn robots
             for robot in robots:
                 self._spawn_robot(robot, env_idx)
-
             # spawn obstacles
             for obstacle in obstacles:
                 self._spawn_obstacle(obstacle, env_idx)  
@@ -396,13 +395,13 @@ class PybulletEnv(ModularEnv):
         """
         # get all robots from an environment and perform actions
         for envId in range(self.num_envs):
-            for robot in self._robots[envId]:
+            for i, robot in enumerate(self._robots[envId]):
                 
                 if robot.control_type == "Velocity":
-                    self._move_robot_via_velocity(robot, actions[envId]) 
+                    self._move_robot_via_velocity(robot, actions[envId][i*len(robot.limits):len(robot.limits)*(i+1)]) 
                 
                 elif robot.control_type == "Position":
-                    self._move_robot_via_position(robot, actions[envId])           
+                    self._move_robot_via_position(robot, actions[envId][i*len(robot.limits):len(robot.limits)*(i+1)])           
                 
                 else:
                     raise Exception(f"Control type {robot.control_type} not implemented!")
