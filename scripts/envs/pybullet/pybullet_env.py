@@ -267,7 +267,6 @@ class PybulletEnv(ModularEnv):
     def _setup_resets(self, rewards: List[Reward], resets: List[Reset]):
         # make sure that all resets referencing a distance are valid
         distance_names = [r.name for r in rewards if isinstance(r, Distance)]
-
         self._reset_fns = []
         for reset in resets:
             if isinstance(reset, DistanceReset):

@@ -7,7 +7,6 @@ from scripts.spawnables.robot import Robot
 from scripts.spawnables.urdf import Urdf
 from scripts.spawnables.obstacle import *
 
-
 from scripts.rewards.reward import Reward
 from scripts.rewards.distance import Distance
 from scripts.rewards.timesteps import ElapsedTimesteps
@@ -19,45 +18,112 @@ from scripts.resets.timesteps_reset import TimestepsReset
 from scripts.resets.collision_reset import CollisionReset
 
 from scripts.envs.params.control_type import ControlType
+from stable_baselines3 import PPO, TD3, SAC, A2C, DDPG
+import torch as th
+
+ALGO_MAP = {
+    "PPO": (PPO, "MultiInputPolicy"),
+    "TD3": (TD3, "MultiInputPolicy"),
+    "SAC": (SAC, "MultiInputPolicy"),
+    "A2C": (A2C, "MultiInputPolicy"),
+    "DDPG": (DDPG, "MultiInputPolicy")
+}
 
 
-def parse_config(path: str) -> EnvParams:
+def parse_config(path: str):
     # load yaml config file from path
     with open(path, 'r') as file:
-        # parse yaml file
-        content = yaml.load(file, yaml.SafeLoader)
+        config = yaml.safe_load(file)
 
-        # parse required parameters
-        content["robots"] = [_parse_robot(params) for params in _parse_params(content["robots"])]
-        content["obstacles"] = [_parse_obstacle(params) for params in _parse_params(content["obstacles"])] 
-        content["rewards"] = [_parse_reward(params) for params in _parse_params(content["rewards"])]
+        # Extract environment parameters
+        env = {}
+        params = config.get('env', {})
 
-        try: 
-            content["urdfs"] = [_parse_urdf(params) for params in _parse_params(content["urdfs"])]
-        except:
-            content["urdfs"] = []
+        env["engine"] = "PyBullet" if not params.get('engine') else params["engine"]
+        env["robots"] = [] if not params.get('robots') else [_parse_robot(obj) for obj in params["robots"]]
+        env["obstacles"] = [] if not params.get('obstacles') else [_parse_obstacle(obj) for obj in params["obstacles"]]
+        env["urdfs"] = [] if not params.get('urdfs') else [_parse_urdf(obj) for obj in params['urdfs']]
+        env["rewards"] = [] if not params.get('rewards') else [_parse_reward(obj) for obj in params["rewards"]]
+        env["resets"] = [] if not params.get('resets') else [_parse_reset(obj) for obj in params["resets"]]
+        env["step_size"] = 0.01 if not params.get('step_size') else params["step_size"]
+        env["step_count"] = 1 if not params.get('step_count') else params["step_count"]
+        env["headless"] = True if not params.get('headless') else params["headless"]
+        env["num_envs"] = 1 if not params.get('num_envs') else params["num_envs"]
+        env["env_offset"] = [10, 10] if not params.get('env_offset') else params["env_offset"]
+        env["control_type"] = ControlType.Position if not params.get('control_type') else _parse_control_type(params["control_type"])
 
-        # parsing name is not required since reset conditions have no name
-        content["resets"] = [_parse_reset(params) for params in content["resets"].values()]
 
-        # control type is specified as string. Transform it to enum
-        _parse_control_type(content)
+        # Extract runtime parameters
+        run = {}
+        params = config.get('run', {})
+        
+        # general run parameters of the model
+        run["path"] = path
+        run["engine"] = "PyBullet" if not params.get('engine') else params["engine"]
+        run["load_model"] = False if not params.get('load_model') else params["load_model"]
+        
+        # Extract specific model paramerters
+        alog_params = params.get('algorithm', {})
 
-        # parse optional parameters
-        return EnvParams(**content)
+        # use default algorithm if not defined by config file
+        if not alog_params:
+            run["algorithm"] = TD3
+            run["policy"] = "MultiInputPolicy"
+            run["learning_rate"] = 0.0001
+            run["batch_size"] = None
+            run["custom_policy"] = None
 
-def _parse_params(config: dict) -> List[dict]:
-    """
-    Per default, the key of the given dictionary is the name of the object.
-    Extracts the name and adds it as as key
-    """
-    
-    # save name in parameters
-    for name, params in config.items():
-        params["name"] = name
-    
-    # return parameters
-    return config.values()
+        # extract specific parameters for the model
+        else:
+            run["algorithm"] = ALGO_MAP[alog_params["type"]][0]
+            run["policy"] = ALGO_MAP[alog_params["type"]][1]
+            run["learning_rate"] = 0.0001 if "learning_rate" not in alog_params else alog_params["learning_rate"]
+            run["batch_size"] = None if "batch_size" not in alog_params else alog_params["batch_size"]
+
+            if "custom_policy" not in alog_params:
+                run["custom_policy"] = None
+            else:
+                if alog_params["custom_policy"]["activation_function"] == "ReLU":
+                    activation_function = th.nn.ReLU
+                elif alog_params["custom_policy"]["activation_function"] == "tanh":
+                    activation_function = th.nn.Tanh
+                else:
+                    raise Exception("Unsupported activation function!")
+                
+                pol_dict = dict(activation_fn=activation_function)
+                
+                if alog_params["type"] in ["PPO", "A2C", "TRPO", "AttentionPPO", "RecurrentPPO"]:
+                    vf_pi_dict = dict(vf=[], pi=[])
+                    q_name = "vf"
+                else:
+                    vf_pi_dict = dict(qf=[], pi=[])
+                    q_name = "qf"
+                
+                for layer in alog_params["custom_policy"]["value_function"]:
+                    vf_pi_dict[q_name].append(layer)
+                
+                for layer in alog_params["custom_policy"]["policy_function"]:
+                    vf_pi_dict["pi"].append(layer)    
+                
+                pol_dict["net_arch"] = vf_pi_dict
+                run["custom_policy"] = pol_dict     
+
+
+        # Extract training parameters
+        train = {}
+        params = config.get('train', {})
+        train["logging"] = 0 if "logging" not in params else params["logging"]
+        train["timesteps"] = 15000000 if "timesteps" not in params else params["timesteps"]
+        train["save_freq"] = 30000 if "save_freq" not in params else params["save_freq"]
+
+
+        # Extract training parameters
+        eval = {}
+        params = config.get('eval', {})
+        eval["timesteps"] = 15000000 if "timesteps" not in params else params["timesteps"]
+
+    return EnvParams(**env), run, train, eval
+
 
 def _parse_robot(params: dict) -> Robot:
     return Robot(**params)
@@ -131,25 +197,24 @@ def _parse_reset(params: dict) -> Reset:
     # extract required type
     type = params["type"]
 
-    # make sure parsing of obstacle type is implemented
+    # make sure parsing of reset type is implemented
     if type not in selector:
         raise Exception(f"Reset parsing of {type} is not implemented")
     
     # remove type parameter from dict to allow passing params directly to constructor
     params.pop("type")
 
-    # return instance of parsed reward
+    # return instance of parsed reset
     return selector[type](**params)
 
-def _parse_control_type(params: dict):
-    control_str = params.get("control_type", None)
-
+def _parse_control_type(type: str):
     # no control type was specified, use default
-    if control_str is None:
-        return
+    if type is None:
+        return None
     
     try:
         # transform the str to the enum control type
-        params["control_type"] = ControlType[control_str]
+        return ControlType[type]
     except KeyError:
-        raise Exception(f"Unknown control type {control_str}! Supported values: {[e.value for e in ControlType]}")
+        raise Exception(f"Unknown control type {type}! Supported values: {[e.value for e in ControlType]}")
+    
