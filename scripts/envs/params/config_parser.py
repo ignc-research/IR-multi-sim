@@ -1,4 +1,3 @@
-from typing import List
 import yaml
 
 from scripts.envs.params.env_params import EnvParams
@@ -38,7 +37,6 @@ def parse_config(path: str):
         # Extract environment parameters
         env = {}
         params = config.get('env', {})
-
         env["engine"] = "PyBullet" if "engine" not in config["run"] else config["run"]["engine"]
         env["robots"] = [] if "robots" not in params else [_parse_robot(obj) for obj in params["robots"]]
         env["obstacles"] = [] if "obstacles" not in params else [_parse_obstacle(obj) for obj in params["obstacles"]]
@@ -50,13 +48,11 @@ def parse_config(path: str):
         env["headless"] = True if "headless" not in params else params["headless"] 
         env["num_envs"] = 1 if "num_envs" not in params else params["num_envs"] 
         env["env_offset"] = [4, 4] if "env_offset" not in params else params["env_offset"] 
-        env["control_type"] = ControlType.Position if "control_type" not in params else _parse_control_type(params["control_type"]) 
-
 
         # Extract runtime parameters
         run = {}
         params = config.get('run', {})
-        
+
         # general run parameters of the model
         run["path"] = path
         run["engine"] = "PyBullet" if "engine" not in params else params["engine"]
@@ -208,15 +204,4 @@ def _parse_reset(params: dict) -> Reset:
 
     # return instance of parsed reset
     return selector[type](**params)
-
-def _parse_control_type(type: str):
-    # no control type was specified, use default
-    if type is None:
-        return None
-    
-    try:
-        # transform the str to the enum control type
-        return ControlType[type]
-    except KeyError:
-        raise Exception(f"Unknown control type {type}! Supported values: {[e.value for e in ControlType]}")
     

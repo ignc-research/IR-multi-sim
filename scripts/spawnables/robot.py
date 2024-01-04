@@ -13,6 +13,8 @@ class Robot(Spawnable):
         collision: bool = True,
         observable: bool = True,
         observable_joints: List[str]=[],
+        control_type: str = None,
+        max_velocity: float = None,
         name: str = None) -> None:
         """
         position: Beginning position of robot.
@@ -34,3 +36,5 @@ class Robot(Spawnable):
 
         self.urdf_path = urdf_path
         self.observable_joints = observable_joints
+        self.control_type = control_type if control_type else "Velocity"
+        self.max_velocity = max_velocity

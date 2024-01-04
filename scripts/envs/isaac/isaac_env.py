@@ -1,6 +1,5 @@
 from scripts.envs.modular_env import ModularEnv
 from scripts.envs.params.env_params import EnvParams
-from scripts.envs.params.control_type import ControlType
 
 from scripts.spawnables.obstacle import Obstacle, Cube, Sphere, Cylinder
 from scripts.spawnables.robot import Robot
@@ -55,7 +54,6 @@ class IsaacEnv(ModularEnv):
         self._collisionsCount: List[int] = np.zeros(params.num_envs)
         self.step_count = params.step_count
         self.step_size = params.step_size
-        self.control_type = params.control_type
         self.verbose = params.verbose
 
         # calculate which attributes are tracked for how many objects per env
@@ -427,25 +425,25 @@ class IsaacEnv(ModularEnv):
 
 
     def step_async(self, actions: np.ndarray) -> None:       
-        # todo: this works only for one robot
         # apply actions
-        if self.control_type == ControlType.Velocity:
+        for i, robot in enumerate(self._robots):
+            
             # set joint velocities
-            for i, robot in enumerate(self._robots):
-                robot.set_joint_velocities(actions[i])
-        
-        elif self.control_type == ControlType.Position:
-            # set joint positions
-            for i, robot in enumerate(self._robots):
-                robot.set_joint_positions(actions[i])
-        
-        elif self.control_type == ControlType.PositionTarget:
-            # set joint positions
-            for i, robot in enumerate(self._robots):
-                robot._articulation_view.set_joint_position_targets(actions[i])
-        else:
-            raise Exception(f"Control type {self.control_type} not implemented!")
+            if robot[1] == "Velocity":
+                robot[0].set_joint_velocities(actions[i])
 
+            # since we only use target position in pybullet, there is no need for jump to define position.
+            # we only move the joints for a certain amount towards desired angle
+            #set joint positions
+            #elif robot[1] == "Position":
+            #    robot[0].set_joint_positions(actions[i])
+            
+            # set joint positions targets
+            elif robot[1] == "Position":
+                robot[0]._articulation_view.set_joint_position_targets(actions[i])
+
+            else:
+                raise Exception(f"Control type {robot[1]} not implemented!")
 
         # update obstacles with trajectories
         for geometryPrim, _ in self._obstacles:
@@ -567,8 +565,21 @@ class IsaacEnv(ModularEnv):
 
         # ony get dof limits from robots of first environment
         for i in range(self.robot_count):
-            for limit in self._robots[i].get_articulation_controller().get_joint_limits():
-                limits.append(list(limit))
+            if self._robots[i][1] == "Position":
+                for limit in self._robots[i][0].get_articulation_controller().get_joint_limits():
+                    limits.append(list(limit))
+            
+            elif self._robots[i][1] == "Velocity":
+                # check if custom max vel is set in config
+                if self._robots[i][2]: 
+                    for _ in range(len(self._robots[i][0].dof_properties["maxVelocity"])):
+                        limits.append((-self._robots[i][2],self._robots[i][2]))
+                # use max vel from robot urdf
+                else:
+                    for vel in self._robots[i][0].dof_properties["maxVelocity"]:
+                        limits.append((-vel,vel))
+            else:
+                raise Exception(f"Unknown control type: {self._robots[i][1]}")
 
         return limits
 
@@ -582,7 +593,7 @@ class IsaacEnv(ModularEnv):
     def _get_robots(self, env_idx: int):
         start_idx = env_idx * self.robot_count
 
-        return [self._robots[i] for i in range(start_idx, start_idx + self.robot_count)]
+        return [self._robots[i][0] for i in range(start_idx, start_idx + self.robot_count)]
 
     def _get_obstacles(self, env_idx: int):
         start_idx = env_idx * self.obstacle_count
@@ -784,7 +795,7 @@ class IsaacEnv(ModularEnv):
         self._scene.add(obj)
 
         # track spawned robot
-        self._robots.append(obj)
+        self._robots.append((obj, robot.control_type, robot.max_velocity))
 
         # add it to list of observable objects, if necessary
         if robot.observable:
@@ -837,47 +848,16 @@ class IsaacEnv(ModularEnv):
         name = f"env{env_idx}-{obstacle.name}"
 
         # parse required class
+        from scripts.envs.isaac.obstacle import IsaacObstacle, IsaacCube, IsaacSphere, IsaacCylinder  
         from omni.isaac.core.objects import FixedCuboid, DynamicCuboid, FixedSphere, DynamicSphere, DynamicCylinder, FixedCylinder
-        from scripts.envs.isaac.random_dynamic_obstacles import RandomDynamicCuboid, RandomDynamicSphere, RandomDynamicCylinder
-        from scripts.envs.isaac.random_static_obstacles import RandomFixedCuboid, RandomFixedSphere, RandomFixedCylinder
-
-        """         # select corresponding class: Obstacle type, isRandomized?, isStatic?
-        class_selector = {
-            # select cubes
-            (Cube, False, False): DynamicCuboid,
-            (Cube, False, True): FixedCuboid,
-            (Cube, True, False): RandomDynamicCuboid,
-            (Cube, True, True): RandomFixedCuboid,
-            # select spheres
-            (Sphere, False, False): DynamicSphere,
-            (Sphere, False, True): FixedSphere,
-            (Sphere, True, False): RandomDynamicSphere,
-            (Sphere, True, True): RandomFixedSphere,
-            # select cylinders
-            (Cylinder, False, False): DynamicCylinder,
-            (Cylinder, False, True): FixedCylinder,
-            (Cylinder, True, False): RandomDynamicCylinder,
-            (Cylinder, True, True): RandomFixedCylinder
-        }
-
-        # parse equivalent of selected class in Isaac
-        selected_class = class_selector.get(((type(obstacle)), obstacle.is_randomized(), obstacle.static), None)
-        
-        if selected_class is None:
-            raise Exception(f"Obstacle of type {type(obstacle)}, random={obstacle.is_randomized()}, static={obstacle.static} isn't implemented!") """
-
+   
         # create parameter dict
         params = obstacle.get_constructor_params()
+
+        # add necessary parameters
         params["prim_path"] = prim_path
         params["name"] = name
-
-        # add env offset to position
         params["position"] = _add_position_offset(params["position"], self._env_offsets[env_idx])
-
-        """         # create instance
-        obstacle_obj = selected_class(**params) """
-
-        from scripts.envs.isaac.obstacle import IsaacObstacle, IsaacCube, IsaacSphere, IsaacCylinder  
         params["step_size"] = self.step_size
         params["step_count"] = self.step_count
         

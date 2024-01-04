@@ -9,7 +9,7 @@ _spawnedRobots = 0
 class PyRobot(ABC):
     """ A robot specific for the pybullet environment """
     def __init__(self,
-                 urdf_path: str, 
+                 urdf_path: str, control_type: str, max_velocity: float,
                  observableJoints: List[str], 
                  name: str = None, 
                  offset: ndarray = array([0,0,0]), 
@@ -32,7 +32,8 @@ class PyRobot(ABC):
         self.collision = collision
         self.observable = observable
         self.urdf_path = urdf_path
-
+        self.control_type = control_type
+       
         # save initial position and orientation
         self._initPos = position
         self._initOri = orientation
@@ -60,7 +61,7 @@ class PyRobot(ABC):
         self.maxForce = []
         self.lower = np.array([])
         self.upper = np.array([])
-                    
+
         for i in range(pyb.getNumJoints(self.id)):
             info = pyb.getJointInfo(self.id, i) 
 
@@ -71,20 +72,24 @@ class PyRobot(ABC):
             maxVel = info[11]
             maxF = info[10]
 
-            self.limits.append((lower,upper))
             self.jointIds.append(i)
             self.jointNames.append(name + "/" + jointName)
             self.initialJoints.append(jointAngle)
-
-            
+                 
             if controllable:
                 self.controllableJoints.append(i) 
                 self.lower = np.append(self.lower, lower)
                 self.upper = np.append(self.upper, upper)
-                self.maxVelocity.append(maxVel)
+                self.limits.append((lower,upper))
                 self.maxForce.append(maxF)
                 
-            
+                if max_velocity:
+                    # use max vel from yaml config
+                    self.maxVelocity.append(max_velocity) 
+                else:
+                    # max vel from robot urdf
+                    self.maxVelocity.append(maxVel)   
+                
             if jointName in observableJoints:
                 self.observableJoints.append(i)
                 self.observableJointNames.append(jointName)
@@ -94,7 +99,7 @@ class PyRobot(ABC):
             valid = False
             while not valid:
                 tmpPos = self._getJointPositions()
-                for i, joint in enumerate(self.jointIds):
+                for i, joint in enumerate(self.controllableJoints):
                     pyb.resetJointState(bodyUniqueId=self.id, jointIndex=joint, targetValue=tmpPos[i]) 
                     valid = self._checkValidJointConfig()
        
@@ -144,7 +149,7 @@ class PyRobot(ABC):
             valid = False
             while not valid:
                 tmpPos = self._getJointPositions()
-                for i, joint in enumerate(self.jointIds):
+                for i, joint in enumerate(self.controllableJoints):
                     pyb.resetJointState(bodyUniqueId=self.id, jointIndex=joint, targetValue=tmpPos[i]) 
                     valid = self._checkValidJointConfig()     
 
