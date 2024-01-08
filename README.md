@@ -22,7 +22,7 @@ python main.py -f ./data/configs/reach_target_pyb.yaml
 Robots, robot joints and obstacles can be marked as observable, meaning that their relative position, orientation and scale will be included in the observations of the machine learning model.
 
 ## Usable Objects and Settings
-An explanation of the definable settings can be found [here](docs/configs.md).
+An explanation of the definable settings can be found [here](docs/configuration.md).
 
 ## Full example
 This full example demonstrated how to easily create an environment constructed from previously explained parameters.

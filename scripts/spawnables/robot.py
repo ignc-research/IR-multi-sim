@@ -9,7 +9,7 @@ class Robot(Spawnable):
         urdf_path:str,
         position: Union[ndarray, List] = array([0, 0, 0]), 
         orientation: Union[ndarray, List] = array([1, 0, 0, 0]), 
-        color: Union[ndarray, List] = [1., 1., 1., 1.],
+        color: Union[ndarray, List] = [1., 1., 1.],
         collision: bool = True,
         observable: bool = True,
         observable_joints: List[str]=[],
