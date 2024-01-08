@@ -48,7 +48,7 @@ env:
 ```
 
 ### Objects within an environment
-You can create as many object of a type as needed. To do so, start a new object definition under the specific object type with a new hyphen. Insted of specific sensors, this project works with general observability definable for all objects. Therefore, robots, robot joints and obstacles can be marked as observable, meaning that their relative position, orientation and scale will be included in the observations of the machine learning model.
+You can create as many object of a type as needed. To do so, start a new object definition under the specific object type with a new hyphen. Instead of specific sensors, this project works with general observability definable for all objects. Therefore, robots, robot joints and obstacles can be marked as observable, meaning that their relative position, orientation and scale will be included in the observations of the machine learning model.
 
 #### Robots
 To create a robot in an environment, the urdf path is the only required argument. All other parameters are optional. The robots need to be defined in an [urdf](http://wiki.ros.org/urdf) file which needs to be saved in the "./data/robots" directory.
