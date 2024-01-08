@@ -12,8 +12,6 @@ if __name__ == '__main__':
     parser.add_argument('-f', '--file', help="Environment config file")
     parser.add_argument('--eval', action="store_true", help="Start evaluating the specified model")
     args = parser.parse_args()
-
-    print("Handling", args.file, "!")
         
     # path to config file was not specified
     if args.file is None:        
@@ -53,5 +51,5 @@ if __name__ == '__main__':
         model.learn(train_parameters["timesteps"], callback=parse_callback(train_parameters["logging"], environment_params.get_distance_names()))
 
         # learning done: safe parameters and clean up environment
-        # model.save(model_path)
+        model.save(model_path)
         env.close()
