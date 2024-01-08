@@ -27,12 +27,6 @@ def create_env(params: EnvParams) -> ModularEnv:
                 def __init__(self, params: EnvParams) -> None:
                     raise e
         
-    # dictionary of existing environments
-    #envs = {
-        #"Isaac": IsaacEnv,
-        #"PyBullet": PybulletEnv
-    #}
-
     # return new environment of specified type
     if name in envs.keys():
         return envs[name](params)

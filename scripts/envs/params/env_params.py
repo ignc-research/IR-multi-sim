@@ -5,7 +5,6 @@ from scripts.spawnables.urdf import Urdf
 from scripts.rewards.reward import Reward
 from scripts.rewards.distance import Distance
 from scripts.resets.reset import Reset
-from scripts.envs.params.control_type import ControlType
 
 class EnvParams():
     def __init__(
@@ -21,7 +20,6 @@ class EnvParams():
             headless: bool=True,
             num_envs: int=1,
             env_offset: Tuple[float, float]=(10, 10),
-            control_type: ControlType=ControlType.Position,
             max_velocity: int = 5,
             verbose: int = 1
         ) -> None:
@@ -57,7 +55,6 @@ class EnvParams():
         self.headless = headless
         self.num_envs = num_envs
         self.env_offset = env_offset
-        self.control_type = control_type
         self.max_velocity = max_velocity
         self.verbose = verbose
 

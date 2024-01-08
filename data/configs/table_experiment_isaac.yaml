@@ -1,0 +1,95 @@
+run:
+  engine: "Isaac"
+  load_model: False
+  algorithm:
+    type: "TD3"
+    learning_rate: 0.0003
+    batch_size: 2048 
+    train_freq: 1
+
+
+train:
+  logging: 0
+  timesteps: 15000000 
+  save_freq: 30000
+
+
+evaluation:
+  timesteps: 15000000 
+
+
+env:
+  num_envs: 9
+  env_offset: [4, 4]
+  headless: False
+  step_size: 0.00416666666
+  step_count: 1
+
+  robots:
+    - name: "R1"
+      urdf_path: "robots/ur5/urdf/ur5_with_gripper.urdf"
+      position: [0, 0, 0.63]
+      observable_joints: ["ee_link"]
+      control_type: "Velocity"
+  
+
+  urdfs:
+    - name: "Table"
+      urdf_path: "table/table.urdf"
+      type: "Table"
+      position: [0, 0, 0]
+      orientation: [1, 0, 0, 0]
+  
+
+  obstacles:
+    - name: "TargetCube"
+      position: [[-0.65, -0.4, 0.64], [0.65, 0.4, 1]]
+      color: [1, 0, 0]
+      collision: False
+      observable: True
+      type: "Cube"
+    
+    - name: "Sphere"
+      position: [0.4, 0.3, 0.8]
+      collision: True
+      observable: True
+      type: "Sphere"
+
+    - name: "Sphere2"
+      position: [0.4, -0.3, 0.9]
+      collision: True
+      observable: True
+      type: "Sphere"
+    
+    - name: "Cylinder"
+      position: [-0.45, 0.4, 0.7]
+      collision: True
+      observable: True
+      type: "Cylinder"
+  
+
+  rewards:
+    - name: "TargetDistance"
+      obj1: "TargetCube"
+      obj2: "R1/ee_link"
+      type: "Distance"
+    
+    - name: "CollisionDetection"
+      obj: "R1"
+      weight: -5
+      type: "Collision"
+
+
+  resets:
+    - distance: "TargetDistance"
+      min_distance: 0
+      max_distance: 1.5
+      type: "DistanceReset"
+    
+    - max: 100
+      type: "TimestepsReset"
+    
+    - obj: "R1"
+      max: 1
+      type: "CollisionReset"
+

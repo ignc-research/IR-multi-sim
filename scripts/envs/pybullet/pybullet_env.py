@@ -1,7 +1,6 @@
 
 from scripts.envs.modular_env import ModularEnv
 from scripts.envs.params.env_params import EnvParams
-from scripts.envs.params.control_type import ControlType
 
 from scripts.spawnables.obstacle import Obstacle, Cube, Sphere, Cylinder
 from scripts.spawnables.robot import Robot
@@ -9,7 +8,7 @@ from scripts.spawnables.urdf import Urdf
 
 from scripts.envs.pybullet.robot import PyRobot
 from scripts.envs.pybullet.obstacle import *
-from scripts.envs.pybullet.urdf import PyUrdf, PyTable
+from scripts.envs.pybullet.urdf import PyTable
 
 from scripts.rewards.reward import Reward
 from scripts.rewards.distance import Distance, calc_distance
@@ -47,10 +46,9 @@ class PybulletEnv(ModularEnv):
         self._timesteps: List[int] = np.zeros(params.num_envs)
         self._collisionsCount: List[int] = np.zeros(params.num_envs)
         self.step_count = params.step_count
-        self.control_type = params.control_type
         self.verbose = params.verbose
         self.stepSize = params.step_size
-        self.displayDelay = self.stepSize *  self.robot_count
+        self.displayDelay = self.stepSize * self.robot_count
 
         # for the reset
         self._initRobots = params.robots
@@ -115,7 +113,6 @@ class PybulletEnv(ModularEnv):
             # spawn robots
             for robot in robots:
                 self._spawn_robot(robot, env_idx)
-
             # spawn obstacles
             for obstacle in obstacles:
                 self._spawn_obstacle(obstacle, env_idx)  
@@ -339,7 +336,7 @@ class PybulletEnv(ModularEnv):
         if we don't, we run simple algebra to get the new joint angles for this step and then apply them
         '''
         newVel = action * robot.maxVelocity                 # transform action (-1 to 1) to desired new joint angles
-
+        
         if self.headless:
             jointDelta = newVel * self.stepSize             # compute delta for this sim step size
             newJoint = jointDelta + robot.getJointAngles()  # add delta to current joint angles
@@ -398,17 +395,16 @@ class PybulletEnv(ModularEnv):
         """
         # get all robots from an environment and perform actions
         for envId in range(self.num_envs):
-            for robot in self._robots[envId]:
-                action = actions[envId][robot.controllableJoints]   # filter actions for controllable joint
+            for i, robot in enumerate(self._robots[envId]):
                 
-                if self.control_type == ControlType.Velocity:
-                    self._move_robot_via_velocity(robot, action) 
+                if robot.control_type == "Velocity":
+                    self._move_robot_via_velocity(robot, actions[envId][i*len(robot.limits):len(robot.limits)*(i+1)]) 
                 
-                elif self.control_type == ControlType.Position:
-                    self._move_robot_via_position(robot, action)           
+                elif robot.control_type == "Position":
+                    self._move_robot_via_position(robot, actions[envId][i*len(robot.limits):len(robot.limits)*(i+1)])           
                 
                 else:
-                    raise Exception(f"Control type {self.control_type} not implemented!")
+                    raise Exception(f"Control type {robot.control_type} not implemented!")
 
             # update obstacles that have a trajectory    
             for obstacle in self._obstacles[envId]:
@@ -495,7 +491,15 @@ class PybulletEnv(ModularEnv):
         """
         limits = [] # init array
         for robot in self._robots[0]:
-            limits += robot.limits
+            if robot.control_type == "Position":
+                limits += robot.limits
+            elif robot.control_type == "Velocity":
+                for vel in robot.maxVelocity:
+                    limits.append((-vel,vel))
+            else:
+                raise Exception(f"Unknown control type: {robot.control_type}")
+        
+        print(limits)
         return limits
 
 
@@ -649,7 +653,7 @@ class PybulletEnv(ModularEnv):
         Spawn a robot object into the environment and safe it in a dictionary with its environment id 
         """
         urdf_path = self.asset_path + str(robot.urdf_path)
-        newRobot = PyRobot(urdf_path, robot.observable_joints, robot.name, self._env_offsets[env_idx], robot.position, 
+        newRobot = PyRobot(urdf_path, robot.control_type, robot.max_velocity, robot.observable_joints, robot.name, self._env_offsets[env_idx], robot.position, 
                            robot.orientation[::-1], robot.collision, robot.observable)
 
         # track spawned robot

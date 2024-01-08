@@ -1,4 +1,3 @@
-from typing import List
 import yaml
 
 from scripts.envs.params.env_params import EnvParams
@@ -17,7 +16,6 @@ from scripts.resets.distance_reset import DistanceReset
 from scripts.resets.timesteps_reset import TimestepsReset
 from scripts.resets.collision_reset import CollisionReset
 
-from scripts.envs.params.control_type import ControlType
 from stable_baselines3 import PPO, TD3, SAC, A2C, DDPG
 import torch as th
 
@@ -38,29 +36,26 @@ def parse_config(path: str):
         # Extract environment parameters
         env = {}
         params = config.get('env', {})
-
-        env["engine"] = "PyBullet" if not params.get('engine') else params["engine"]
-        env["robots"] = [] if not params.get('robots') else [_parse_robot(obj) for obj in params["robots"]]
-        env["obstacles"] = [] if not params.get('obstacles') else [_parse_obstacle(obj) for obj in params["obstacles"]]
-        env["urdfs"] = [] if not params.get('urdfs') else [_parse_urdf(obj) for obj in params['urdfs']]
-        env["rewards"] = [] if not params.get('rewards') else [_parse_reward(obj) for obj in params["rewards"]]
-        env["resets"] = [] if not params.get('resets') else [_parse_reset(obj) for obj in params["resets"]]
-        env["step_size"] = 0.01 if not params.get('step_size') else params["step_size"]
-        env["step_count"] = 1 if not params.get('step_count') else params["step_count"]
-        env["headless"] = True if not params.get('headless') else params["headless"]
-        env["num_envs"] = 1 if not params.get('num_envs') else params["num_envs"]
-        env["env_offset"] = [10, 10] if not params.get('env_offset') else params["env_offset"]
-        env["control_type"] = ControlType.Position if not params.get('control_type') else _parse_control_type(params["control_type"])
-
+        env["engine"] = "PyBullet" if "engine" not in config["run"] else config["run"]["engine"]
+        env["robots"] = [] if "robots" not in params else [_parse_robot(obj) for obj in params["robots"]]
+        env["obstacles"] = [] if "obstacles" not in params else [_parse_obstacle(obj) for obj in params["obstacles"]]
+        env["urdfs"] = [] if "urdfs" not in params else [_parse_urdf(obj) for obj in params['urdfs']]
+        env["rewards"] = [] if "rewards" not in params else [_parse_reward(obj) for obj in params["rewards"]]
+        env["resets"] = [] if "resets" not in params else [_parse_reset(obj) for obj in params["resets"]]
+        env["step_size"] = 0.01 if "step_size" not in params else params["step_size"]
+        env["step_count"] = 1 if "step_count" not in params else params["step_count"]
+        env["headless"] = True if "headless" not in params else params["headless"] 
+        env["num_envs"] = 1 if "num_envs" not in params else params["num_envs"] 
+        env["env_offset"] = [4, 4] if "env_offset" not in params else params["env_offset"] 
 
         # Extract runtime parameters
         run = {}
         params = config.get('run', {})
-        
+
         # general run parameters of the model
         run["path"] = path
-        run["engine"] = "PyBullet" if not params.get('engine') else params["engine"]
-        run["load_model"] = False if not params.get('load_model') else params["load_model"]
+        run["engine"] = "PyBullet" if "engine" not in params else params["engine"]
+        run["load_model"] = False if "load_model" not in params else params["load_model"]
         
         # Extract specific model paramerters
         alog_params = params.get('algorithm', {})
@@ -70,6 +65,7 @@ def parse_config(path: str):
             run["algorithm"] = TD3
             run["policy"] = "MultiInputPolicy"
             run["learning_rate"] = 0.0001
+            run["train_freq"] = (1, "step")
             run["batch_size"] = None
             run["custom_policy"] = None
 
@@ -79,6 +75,7 @@ def parse_config(path: str):
             run["policy"] = ALGO_MAP[alog_params["type"]][1]
             run["learning_rate"] = 0.0001 if "learning_rate" not in alog_params else alog_params["learning_rate"]
             run["batch_size"] = None if "batch_size" not in alog_params else alog_params["batch_size"]
+            run["train_freq"] = None if "train_freq" not in alog_params else (alog_params["train_freq"], "step")
 
             if "custom_policy" not in alog_params:
                 run["custom_policy"] = None
@@ -206,15 +203,4 @@ def _parse_reset(params: dict) -> Reset:
 
     # return instance of parsed reset
     return selector[type](**params)
-
-def _parse_control_type(type: str):
-    # no control type was specified, use default
-    if type is None:
-        return None
-    
-    try:
-        # transform the str to the enum control type
-        return ControlType[type]
-    except KeyError:
-        raise Exception(f"Unknown control type {type}! Supported values: {[e.value for e in ControlType]}")
     

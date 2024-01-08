@@ -1,0 +1,48 @@
+# Required parameters
+engine: "PyBullet"
+robots:
+  R1:
+    urdf_path: "robots/ur5/urdf/ur5_with_gripper.urdf"
+    position: [0, 0, 0.3]
+    orientation: [1, 0, 0, 0]
+    color: [1, 1, 1]
+    collision: True
+    observable: True
+    observable_joints: ["ee_link"]
+obstacles:
+  TargetCube:
+    position: [0.4, 0.4, 1]
+    color: [0, 1, 0]
+    scale: [0.1, 0.1, 0.1]
+    collision: False
+    type: "Cube"
+  Sphere:
+    position: [2, 2, 0.5]
+    type: "Sphere"
+  Cylinder:
+    position: [2, 4, 0.5]
+    type: "Cylinder"
+rewards:
+  TargetDistance:
+    obj1: "TargetCube"
+    obj2: "R1/ee_link"
+    type: "Distance"
+resets:
+  # Name of reset conditions is irrelevant
+  one:
+    distance: "TargetDistance"
+    min_distance: 0
+    max_distance: 1.5
+    type: "DistanceReset"
+  # Name of reset conditions is irrelevant
+  two:
+    max: 100
+    type: "TimestepsReset"
+
+# optional parameters
+asset_path: "./data"
+step_size: 0.00416666666
+step_count: 120
+headless: False
+num_envs: 8
+env_offset: [10, 10]

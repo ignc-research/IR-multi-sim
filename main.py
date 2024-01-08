@@ -20,6 +20,7 @@ if __name__ == '__main__':
 
     # parse config file
     environment_params, model_params, train_parameters, eval_parameters = parse_config(args.file)
+    print("Created env with prameters: ", environment_params.engine)
 
     # create environment
     env = create_env(environment_params)
@@ -50,5 +51,5 @@ if __name__ == '__main__':
         model.learn(train_parameters["timesteps"], callback=parse_callback(train_parameters["logging"], environment_params.get_distance_names()))
 
         # learning done: safe parameters and clean up environment
-        # model.save(model_path)
+        model.save(model_path)
         env.close()
