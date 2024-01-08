@@ -48,7 +48,6 @@ env:
   urdfs:
     - name: "Table"
       urdf_path: "table/table.urdf"
-      type: "Table"
       position: [0, 0, 0]
       orientation: [1, 0, 0, 0]
   

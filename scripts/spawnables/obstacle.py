@@ -4,16 +4,31 @@ from scripts.spawnables.spawnable import Spawnable
 from abc import abstractmethod
 
 class Obstacle(Spawnable):
-    def __init__(self, position: Union[ndarray, Tuple[ndarray, ndarray]], color: List[float], collision: bool, observable:bool, static:bool, name: str=None) -> None:
-        super().__init__(position, color, collision, observable, name)
+    def __init__(self, 
+                 position: Union[ndarray, Tuple[ndarray, ndarray]],
+                 orientation: Union[ndarray, Tuple[ndarray, ndarray]],
+                 scale: Union[ndarray, Tuple[ndarray, ndarray]],
+                 color: List[float], 
+                 collision: bool, 
+                 observable: bool, 
+                 static: bool, 
+                 velocity: float,
+                 name: str=None,
+                 endpoint: Union[ndarray, Tuple[ndarray, ndarray]]=None
+                ) -> None:
+        
+        super().__init__(position, orientation, collision, observable, name)
+
+        # parse color
+        if isinstance(color, List):
+            self.color = array(color)
+        else:
+            self.color = color
+
         self.static = static
-
-    def has_random_position(self):
-        return type(self.position) is tuple
-
-    @abstractmethod
-    def is_randomized(self):
-        pass
+        self.endpoint = endpoint
+        self.velocity = velocity
+        self.scale = scale
 
     @abstractmethod
     def get_constructor_params(self) -> DefaultDict:
@@ -30,9 +45,8 @@ class Cube(Obstacle):
         observable: bool = True,
         static: bool = True,
         velocity: Optional[Union[float, Tuple[float, float]]] = 1.,
-        length: Optional[Union[float, Tuple[float, float]]] = 1.,
-        direction: Optional[Union[ndarray, Tuple[ndarray, ndarray]]] = array([1, 0, 0]),
-        name: str = None
+        name: str = None,
+        endpoint: Union[ndarray, Tuple[ndarray, ndarray]] = array([0.5, 0.5, 0.5])
     )-> None:
         """A cube obstacle spawned in each environment with fixed parameters.
 
@@ -46,36 +60,18 @@ class Cube(Obstacle):
             static (bool, optional): Flag disabeling gravity to affect the obstacle. Default to True.
             name (str, optional): Name of cube, allowing it to be referenced. Defaults to None.
         """
-        super().__init__(position, color, collision, observable, static, name)
+        super().__init__(position, orientation, scale, color, collision, observable, static, velocity, name, endpoint)
 
-        self.scale = scale
         self.static = static
-        self.velocity = velocity
-        self.length = length
-        self.direction = direction
-
-        # parse orientation
-        if isinstance(orientation, List):
-            self.orientation = array(orientation)
-        else:
-            self.orientation = orientation
 
     def get_constructor_params(self):
         if self.static:
             return {"position": self.position, "orientation": self.orientation, "scale":self.scale, "color":self.color, 
                     "static":self.static}
         else: 
-            return {"position": self.position, "orientation": self.orientation, "scale":self.scale, "color":self.color, 
-                    "velocity": self.velocity, "length": self.length, "direction":self.direction, "static":self.static}
+            return {"position": self.position, "orientation": self.orientation, "scale": self.scale, "color": self.color, 
+                    "velocity": self.velocity, "static": self.static, "endpoint": self.endpoint}
     
-    def has_random_orientation(self):
-        return type(self.orientation) is tuple
-    
-    def has_random_scale(self):
-        return type(self.scale) is tuple
-    
-    def is_randomized(self):
-        return self.has_random_position() or self.has_random_orientation() or self.has_random_scale()
 
 class Sphere(Obstacle):
     def __init__(
@@ -89,9 +85,8 @@ class Sphere(Obstacle):
         observable: bool = True,
         static: bool = True,
         velocity: Optional[Union[float, Tuple[float, float]]] = 1.,
-        length: Optional[Union[float, Tuple[float, float]]] = 1.,
-        direction: Optional[Union[ndarray, Tuple[ndarray, ndarray]]] = array([1, 0, 0]),
-        name: str=None
+        name: str=None,
+        endpoint: Union[ndarray, Tuple[ndarray, ndarray]] = array([0.5, 0.5, 0.5])
     ) -> None:
         """A sphere obstacle spawned in each environment with fixed parameters.
 
@@ -104,20 +99,10 @@ class Sphere(Obstacle):
             static (bool, optional): Flag disabeling gravity to affect the obstacle. Default to True.
             name (str, optional): Name of sphere, allowing it to be referenced. Defaults to None.
         """
-        super().__init__(position, color, collision, observable, static, name)
+        super().__init__(position, orientation, scale, color, collision, observable, static, velocity, name, endpoint)
         
-        self.scale = scale
         self.radius = radius
         self.static = static
-        self.velocity = velocity
-        self.length = length
-        self.direction = direction
-
-        # parse orientation
-        if isinstance(orientation, List):
-            self.orientation = array(orientation)
-        else:
-            self.orientation = orientation
 
     def get_constructor_params(self):
         if self.static:
@@ -125,14 +110,8 @@ class Sphere(Obstacle):
                     "radius": self.radius*10, "color":self.color,  "static":self.static}
         else: 
             return {"position": self.position, "orientation": self.orientation, "scale":self.scale, 
-                    "radius": self.radius*10, "color":self.color, "velocity": self.velocity, "length": self.length, 
-                    "direction":self.direction, "static":self.static}
-
-    def has_random_radius(self):
-        return type(self.radius) is tuple
-    
-    def is_randomized(self):
-        return self.has_random_position() or self.has_random_radius()
+                    "radius": self.radius*10, "color":self.color, "velocity": self.velocity, "static":self.static, "endpoint":self.endpoint}
+        
 
 class Cylinder(Obstacle):
     def __init__(
@@ -147,9 +126,8 @@ class Cylinder(Obstacle):
         observable: bool = True,
         static: bool = True,
         velocity: Optional[Union[float, Tuple[float, float]]] = 1.,
-        length: Optional[Union[float, Tuple[float, float]]] = 1.,
-        direction: Optional[Union[ndarray, Tuple[ndarray, ndarray]]] = array([1, 0, 0]),
         name: str=None,
+        endpoint: Union[ndarray, Tuple[ndarray, ndarray]] = array([0.5, 0.5, 0.5])
     ) -> None:
         """A cylinder obstacle spawned in each environment with fixed parameters.
 
@@ -164,21 +142,11 @@ class Cylinder(Obstacle):
             name (str, optional): Name of cylinder, allowing it to be referenced. Defaults to None.
         """
 
-        super().__init__(position, color, collision, observable, static, name)
+        super().__init__(position, orientation, scale, color, collision, observable, static, velocity, name, endpoint)
         
         self.radius = radius
         self.height = height
-        self.scale = scale
         self.static = static
-        self.velocity = velocity
-        self.length = length
-        self.direction = direction
-
-        # parse orientation
-        if isinstance(orientation, List):
-            self.orientation = array(orientation)
-        else:
-            self.orientation = orientation
 
     def get_constructor_params(self):
         if self.static:
@@ -187,13 +155,4 @@ class Cylinder(Obstacle):
         else: 
             return {"position": self.position, "orientation": self.orientation, "scale":self.scale, 
                     "radius": self.radius*10, "height": self.height*10, "color":self.color, "velocity": self.velocity, 
-                    "length": self.length, "direction":self.direction, "static":self.static}
-    
-    def has_random_radius(self):
-        return type(self.radius) is tuple
-    
-    def has_random_height(self):
-        return type(self.height) is tuple
-
-    def is_randomized(self):
-        return self.has_random_position() or  self.has_random_radius() or self.has_random_height()
+                    "static": self.static, "endpoint": self.endpoint}

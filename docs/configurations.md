@@ -58,7 +58,6 @@ To define robots, the urdf path is the only required argument. All other paramet
       urdf_path:            # str: path to the urdf, usually in the robots folder
       position:             # [float, float, float]: x,y,z base position of the robot
       orientation:          # [float, float, float]: x,y,z base position of the robot
-      color:                # [R,G,B]: color of the robot, range: [0,1]
       collision:            # bool: true if robot is supposed to collide with surroundings
       observable:           # bool: true if pos and orientation included in observations for training
       observable_joints:    # ["string", ...]: robot joint names that should be observerd
@@ -73,7 +72,7 @@ To define a general urdf object, you need to provide a path to an urdf file. The
   urdfs:
     - name:         # str: name of the urdf
       urdf_path:    # str: path of the urdf
-      type:         # str: "Table", supported type
+      scale:        # [float, float, float]: along x-, y-, z-axis
       position:     # [float, float, float]: x,y,z position
       orientation:  # [float, float, float]: x,y,z orientation
 ```  
@@ -82,7 +81,8 @@ To define a general urdf object, you need to provide a path to an urdf file. The
 To define spawnable objects, you need to provide the object typ. The other parameters are optional. You can define the position, orientation and scale for each object a deterministic with a 3-dimensional list. Additionally, you can define ranges with minimal and maximal valid values (e.g.: [[min, min, min], [max, max, max]]) to automatically create randomized values for each reset.
 ```yaml 
   obstacles:
-    - name:         # str: name of the object
+    - type:         # str: "Cube", "Spher" or "Cylinder"
+      name:         # str: name of the object
       position:     # [float, float, float]: x,y,z position
       orientation:  # [float, float, float]: x,y,z orientation
       scale:        # [floa, float, float]: scale along x-, y-, z-axis 
@@ -90,10 +90,15 @@ To define spawnable objects, you need to provide the object typ. The other param
       collision:    # bool: true if robot is supposed to collide with surroundings
       observable:   # bool: true if pos and orientation included in observations for training
       static:       # bool: false if the object moves in space 
-      velocity:     # float: define the velocity of the tracjectory
-      length:       # float: define the length of the tracjectory
-      direction:    # float: define the direction of the trajectory
-      type:         # str: "Cube", "Spher" or "Cylinder"
+      velocity:     # float: define the velocity of the tracjectory  
+      endpoint:     # [float, float, float]: x,y,z position towards an object moves
+
+      # extra parameter for object of type sphere
+      radius:       # float: define the velocity of the tracjectory  
+
+      # extra parameter for object of type cylinder
+      radius:       # float: define the velocity of the tracjectory  
+      height:       # float: define the velocity of the tracjectory  
 ```  
 
 ### Parameters to define a task/goal

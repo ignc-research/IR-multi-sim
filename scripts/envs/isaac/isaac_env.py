@@ -762,7 +762,8 @@ class IsaacEnv(ModularEnv):
 
         # move urdf to desired location
         from omni.isaac.core.articulations import Articulation
-        obj = Articulation(prim_path, f"env{env_idx}-{urdf.name}", urdf.position + self._env_offsets[env_idx], orientation=urdf.orientation)
+        obj = Articulation(prim_path=prim_path, name=f"env{env_idx}-{urdf.name}", position=urdf.position + self._env_offsets[env_idx], 
+                           orientation=urdf.orientation, scale=urdf.scale)
         self._scene.add(obj)
 
         # add reference to urdf scene to current stage

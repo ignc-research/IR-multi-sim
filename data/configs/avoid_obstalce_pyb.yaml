@@ -33,7 +33,7 @@ evaluation:
 env:
   num_envs: 9
   env_offset: [4, 4]
-  headless: True
+  headless: False
   step_size: 0.00416666666
   step_count: 1
 
@@ -48,26 +48,27 @@ env:
   urdfs:
     - name: "Table" # workspace: [[-0.65,-0.40,0.64],[0.65,0.40,1.00]]
       urdf_path: "table/table.urdf"
-      type: "Table"
       position: [0, 0, 0]
       orientation: [1, 0, 0, 0]
   
-
   obstacles:
     - name: "Cube"
       position: [[-0.65,-0.40,0.64],[0.65,0.40,1.00]]
-      collision: False
+      static: True
+      collision: True
       observable: True
       type: "Cube"
     
     - name: "Sphere"
       position: [[-0.65,-0.40,0.64],[0.65,0.40,1.00]]
+      static: True
       collision: True
       observable: True
       type: "Sphere"
     
     - name: "Cylinder"
       position: [[-0.65,-0.40,0.64],[0.65,0.40,1.00]]
+      static: True
       collision: True
       observable: True
       type: "Cylinder"
@@ -85,10 +86,10 @@ env:
 
 
   resets:   
-    - max: 100
+    - max: 10000
       type: "TimestepsReset"
     
     - obj: "R1"
-      max: 1
+      max: 1000
       type: "CollisionReset"
 

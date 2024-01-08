@@ -2,10 +2,10 @@ from abc import ABC
 import numpy as np
 from typing import List
 
-_spawnable_objects = 0
+_object = 0
 
 class Spawnable(ABC):
-    def __init__(self, position: np.ndarray, color: List[float], collision: bool, observable:bool, name:str) -> None:
+    def __init__(self, position: np.ndarray, orientation: np.ndarray, collision: bool, observable:bool, name:str) -> None:
         """
         position: Beginning position of object
         color: Color of object
@@ -15,23 +15,22 @@ class Spawnable(ABC):
         """
         # set default name
         if name is None:
-            global _spawnable_objects
-            name = f"obj{_spawnable_objects}"
-            _spawnable_objects += 1
+            global _object
+            name = f"obj_{_object+1}"
+            _object += 1
 
         # parse position
         if isinstance(position, List):
             self.position = np.array(position)
         else:
             self.position = position
-        
-        # parse color
-        if isinstance(color, List):
-            self.color = np.array(color)
+
+        # parse orientation
+        if isinstance(orientation, List):
+            self.orientation = np.array(orientation)
         else:
-            self.color = color
+            self.orientation = orientation
 
         self.collision = collision
-        self.orientation = np.array([1, 0, 0, 0])  # default orientation of any spawnable object
         self.observable = observable
         self.name = name
