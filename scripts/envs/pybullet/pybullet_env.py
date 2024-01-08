@@ -8,7 +8,6 @@ from scripts.spawnables.urdf import Urdf
 
 from scripts.envs.pybullet.robot import PyRobot
 from scripts.envs.pybullet.obstacle import *
-from scripts.envs.pybullet.urdf import PyTable
 
 from scripts.rewards.reward import Reward
 from scripts.rewards.distance import Distance, calc_distance
@@ -499,7 +498,6 @@ class PybulletEnv(ModularEnv):
             else:
                 raise Exception(f"Unknown control type: {robot.control_type}")
         
-        print(limits)
         return limits
 
 
@@ -669,12 +667,14 @@ class PybulletEnv(ModularEnv):
         Spawn an urdf object into the environment and safe it in a dictionary with its environment id 
         """
         urdf_path = self.asset_path + str(urdf.urdf_path)
-        if urdf.type == "Table":
-            newTable = PyTable(urdf_path, urdf.name, self._env_offsets[env_idx], urdf.position, urdf.orientation[::-1], 
-                               urdf.collision, urdf.observable, urdf.static)
-            return newTable.name
-        else:
-            raise f"URDF {urdf.type} not implemented"
+        urdf_pos = (urdf.position + self._env_offsets[env_idx]).tolist()
+        urdf_ori = urdf.orientation[::-1]
+
+        # create pybullet instance of urdf
+        self.id = pyb.loadURDF(urdf_path, basePosition=urdf_pos, baseOrientation=urdf_ori, 
+                               useFixedBase=True, globalScaling=urdf.scale[0])
+        
+        return urdf.name
 
 
     def _spawn_obstacle(self, obstacle: Obstacle, env_idx: int) -> str:
@@ -686,15 +686,15 @@ class PybulletEnv(ModularEnv):
         if isinstance(obstacle, Cube):
             newObject = PyCube(obstacle.name, self._env_offsets[env_idx], obstacle.position, orientation, 
                                obstacle.scale, obstacle.static, obstacle.collision, obstacle.color, self.step_count, 
-                               self.stepSize)
+                               self.stepSize, obstacle.endpoint, obstacle.velocity)
         elif isinstance(obstacle, Sphere):
             newObject = PySphere(obstacle.radius, obstacle.name, self._env_offsets[env_idx], obstacle.position, 
                                  orientation, obstacle.static, obstacle.collision, obstacle.color, self.step_count, 
-                                 self.stepSize)
+                                 self.stepSize, obstacle.endpoint, obstacle.velocity)
         elif isinstance(obstacle, Cylinder):
             newObject = PyCylinder(obstacle.radius, obstacle.height, obstacle.name, self._env_offsets[env_idx], 
                                    obstacle.position, orientation,obstacle.static, obstacle.collision, obstacle.color, 
-                                   self.step_count, self.stepSize)
+                                   self.step_count, self.stepSize, obstacle.endpoint, obstacle.velocity)
         else:
             raise f"Obstacle {type(obstacle)} not implemented"
         

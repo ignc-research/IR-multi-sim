@@ -9,7 +9,6 @@ class Robot(Spawnable):
         urdf_path:str,
         position: Union[ndarray, List] = array([0, 0, 0]), 
         orientation: Union[ndarray, List] = array([1, 0, 0, 0]), 
-        color: Union[ndarray, List] = [1., 1., 1.],
         collision: bool = True,
         observable: bool = True,
         observable_joints: List[str]=[],
@@ -26,13 +25,7 @@ class Robot(Spawnable):
         observable_joints: List of joint names whose relative positions and orientation must be included in observations. Defaults to none.
         name: Name of the robot. Defaults to None.
         """
-        super().__init__(position, color, collision, observable, name)
-
-        # parse orientation
-        if isinstance(orientation, List):
-            self.orientation = array(orientation)
-        else:
-            self.orientation = orientation
+        super().__init__(position, orientation, collision, observable, name)
 
         self.urdf_path = urdf_path
         self.observable_joints = observable_joints

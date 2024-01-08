@@ -21,7 +21,7 @@ evaluation:
 env:
   num_envs: 9
   env_offset: [4, 4]
-  headless: False
+  headless: True
   step_size: 0.00416666666
   step_count: 1
 
@@ -35,27 +35,27 @@ env:
   urdfs:
     - name: "Table" # workspace: [[-0.65,-0.40,0.64],[0.65,0.40,1.00]]
       urdf_path: "table/table.urdf"
-      type: "Table"
       position: [0, 0, 0]
       orientation: [1, 0, 0, 0]
   
 
   obstacles:
-    - name: "DynamicCube"
-      position: [[-0.65, -0.4, 0.64], [0.65, 0.4, 1]]
-      scale: [.1,.1,.1]
-      collision: True
-      velocity: 1
-      observable: True
+    - name: "CubDynamicCubee"
+      position: [[-0.65,-0.4,0.64],[0.65,0.4,1]]
+      endpoint: [[-0.65,-0.4,0.64],[0.65,0.4,1]]
+      velocity: 0.3
       static: False
+      collision: True
+      observable: True
       type: "Cube"
-
+    
     - name: "DynamicCylinder"
-      position: [[0.2, 0.2, 0.8],[0.3, 0.3, 0.8]]
-      scale: [.1,.1,.1]
+      position: [-0.45, 0.4, 0.7]
+      endpoint: [0.65,0.4,1]
+      velocity: 0.3
+      static: True
       collision: True
       observable: True
-      static: False
       type: "Cylinder"
   
 

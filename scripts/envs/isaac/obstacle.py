@@ -15,21 +15,18 @@ class IsaacObstacle(ABC):
             orientation: [Union[ndarray, Tuple[ndarray, ndarray]]],
             scale: [Union[ndarray, Tuple[ndarray, ndarray]]],
             static: bool,
+            endpoint: Optional[Union[ndarray, Tuple[ndarray, ndarray]]] = None,
             velocity: Optional[float] = None,
-            length: Optional[Union[float, Tuple[float, float]]] = None,
-            direction: Optional[Union[ndarray, Tuple[ndarray, ndarray]]] = None,
             step_count: Optional[float] = None,
-            step_size: Optional[float] = None,
-
+            step_size: Optional[float] = None
     ) -> None:
         self._initPos = position        # save initial pos/ min-max range
         self._initOri = orientation     # save initial ori/ min-max range
         self._initScale = scale         # save initial scale/ min-max range
+        self._initEndpoint = endpoint   # save initial endpoint/ min-max range
         
         self.static = static            # save if the obstacle needs a trajecotry
         self._initVelocity = velocity   # save initial velocity/ min-max range
-        self._initLength = length       # save initial length/ min-max range
-        self._initDirection = direction # save initial direction/ min-max range
         self.step_count = step_count    # needed to calculate step for each update
         self.step_size = step_size      # needed to calculate step for each update
 
@@ -40,10 +37,8 @@ class IsaacObstacle(ABC):
 
         if not self.static:
             # create values for a random trajectory the obstacle moves along
+            self.endpoint = self._getEndpoint()
             self.velocity = self._getVelocity()
-            self.direction = self._getDirection()
-            self.length = self._getLength()
-            self.goal = self._getGoal()
             self.step = self._getStep()
 
     # create random position if there is a range given as argument
@@ -70,6 +65,14 @@ class IsaacObstacle(ABC):
         else:
             return self._initScale
     
+    # create random endpoint position if there is a range given as argument
+    def _getEndpoint(self) -> List[float]:        
+        if isinstance(self._initEndpoint, tuple):
+            min, max = self._initEndpoint
+            return random.uniform(low=min, high=max, size=(3,))
+        else:
+            return self._initEndpoint
+        
     # create a random velocity if there is a range given as argument
     def _getVelocity(self):
         if isinstance(self._initVelocity, tuple):
@@ -78,27 +81,7 @@ class IsaacObstacle(ABC):
         else:
             return self._initVelocity
         
-    # create a random direction if there is a range given as argument
-    def _getDirection(self):
-        if isinstance(self._initDirection, tuple):
-            min, max = self._initDirection
-            return random.uniform(low=min, high=max, size=(3,))
-        else:
-            return self._initDirection
-  
-    # create a random length if there is a range given as argument
-    def _getLength(self):
-        if isinstance(self._initLength, tuple):
-            min, max = self._initLength
-            return random.uniform(low=min, high=max)
-        else:
-            return self._initLength
-    
-    # create a goal for the direction and length of the trajactory
-    def _getGoal(self):
-        return self.position + (self.direction * self.length / linalg.norm(self.direction))
-    
-    # create a random step the obstacle moves towards the goal on an update
+    # create a random step the obstacle moves towards the endpoint on an update
     def _getStep(self):
         return self.velocity * self.step_count * self.step_size
     
@@ -116,16 +99,14 @@ class IsaacObstacle(ABC):
         # only for dynamic objects
         if not self.static:
             self.velocity = self._getVelocity()
-            self.direction = self._getDirection()
-            self.length = self._getLength()
-            self.goal = self._getGoal()
+            self.endpoint = self._getEndpoint()
             self.step = self._getStep()
 
     def update(self) -> bool:
         if self.static: return True
         
-        # move towards goal
-        diff = self.goal - self.position
+        # move towards endpoint
+        diff = self.endpoint - self.position
         diff_norm = linalg.norm(diff)
 
         if diff_norm > 1e-3:
@@ -149,17 +130,14 @@ class IsaacCube(IsaacObstacle, FixedCuboid):
         name: str = "random_cube",
         color: Optional[np.ndarray] = None,
         size: Optional[float] = None,
+        endpoint: Optional[Union[ndarray, Tuple[ndarray, ndarray]]] = None,
         velocity: Optional[Union[float, Tuple[float, float]]] = None,
-        length: Optional[Union[float, Tuple[float, float]]] = None,
-        direction: Optional[Union[ndarray, Tuple[ndarray, ndarray]]] = None,
         step_count: Optional[float] = None,
         step_size: Optional[float] = None,
-
     ) -> None:
         
         # Init class that hanldes random values
-        IsaacObstacle.__init__(self, position, orientation, scale, static, velocity, length, direction, step_count, 
-            step_size) 
+        IsaacObstacle.__init__(self, position, orientation, scale, static, endpoint, velocity, step_count, step_size) 
         
         # init base class from isaac for a cube 
         FixedCuboid.__init__(self, prim_path=prim_path, name=name, position=self.position, orientation=self.orientation,
@@ -177,16 +155,14 @@ class IsaacSphere(IsaacObstacle, FixedSphere):
         name: str = "random_cube",
         color: Optional[np.ndarray] = None,
         radius: Optional[float] = None,
+        endpoint: Optional[Union[ndarray, Tuple[ndarray, ndarray]]] = None,
         velocity: Optional[Union[float, Tuple[float, float]]] = None,
-        length: Optional[Union[float, Tuple[float, float]]] = None,
-        direction: Optional[Union[ndarray, Tuple[ndarray, ndarray]]] = None,
         step_count: Optional[float] = None,
-        step_size: Optional[float] = None,
-
+        step_size: Optional[float] = None
     ) -> None:
         
         # Init class that hanldes random values
-        IsaacObstacle.__init__(self, position, orientation, scale, static, velocity, length, direction, step_count, 
+        IsaacObstacle.__init__(self, position, orientation, scale, static, endpoint, velocity, step_count, 
             step_size) 
         
         # init base class from isaac for a cube 
@@ -206,17 +182,14 @@ class IsaacCylinder(IsaacObstacle, FixedCylinder):
         color: Optional[np.ndarray] = None,
         radius: Optional[float] = None,
         height: Optional[float] = None,
+        endpoint: Optional[Union[ndarray, Tuple[ndarray, ndarray]]] = None,
         velocity: Optional[Union[float, Tuple[float, float]]] = None,
-        length: Optional[Union[float, Tuple[float, float]]] = None,
-        direction: Optional[Union[ndarray, Tuple[ndarray, ndarray]]] = None,
         step_count: Optional[float] = None,
-        step_size: Optional[float] = None,
-
+        step_size: Optional[float] = None
     ) -> None:
         
         # Init class that hanldes random values
-        IsaacObstacle.__init__(self, position, orientation, scale, static, velocity, length, direction, step_count, 
-            step_size) 
+        IsaacObstacle.__init__(self, position, orientation, scale, static, endpoint, velocity, step_count, step_size) 
         
         # init base class from isaac for a cube 
         FixedCylinder.__init__(self, prim_path=prim_path, name=name, position=self.position, orientation=self.orientation,
