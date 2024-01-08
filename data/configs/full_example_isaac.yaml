@@ -35,6 +35,16 @@ env:
       observable: True
       observable_joints: ["ee_link"]
       control_type: "Position"
+    
+    - name: "R2"
+      urdf_path: "robots/ur5/urdf/ur5_with_gripper.urdf"
+      position: [0.55, 0.3, 0.63]
+      orientation: [1, 0, 0, 0]
+      collision: True
+      observable: True
+      observable_joints: ["ee_link"]
+      control_type: "Velocity"
+      max_velocity: 10
 
 
   urdfs:

@@ -1,24 +1,21 @@
 # IR-multi-sim
-A Framework for robot simulation on multiple engines.
+A Framework for robot simulation on multiple engines. It contains the [IsaacSim](https://developer.nvidia.com/isaac-sim) and the [Pybullet](https://pybullet.org/wordpress/) engine.
 
 # Installation
-Depending on the chosen target environments, different means of installation must be used.
+To use the full application, you need to install IsaacSim aswell as PyBullet.
 
 ## Isaac Sim
 Follow the instructions found [here](https://docs.omniverse.nvidia.com/app_isaacsim/app_isaacsim/install_workstation.html) to install Isaac Sim.
 Run any python files with Isaacs own python interpreter, usually located at "~/.local/share/ov/package/isaac_sim-*/python.shell", where the * is a wildcard for the installed issac sim version.
 
 ## PyBullet
-Install the pyb_requirements.txt to use the PyBullet engine.
+Install the pyb_requirements.txt preferably in a conda environment to use the PyBullet engine.
 
 # Usage
-Define your environment with simple classes: Robot, Obstacle, Reward and Reset. The environment will automatically be created in the specified engine. Observation and Action space will be automatically parsed depending on the robots and obstacles spawned in the environment.
-
-## Configutarion Files
-All of MultiSims functionality can be accesssed with configuration files. When running the main.py file, simply specify any of the example configuration files at "./data/files", or create your own!
+All of MultiSims functionality can be accesssed with configuration files. When running the main.py file, simply specify any of the example configuration files at "./data/configs", or create your own!
 
 ```shell
-python main.py -f ./data/configs/example_min.yaml
+python main.py -f ./data/configs/reach_target_pyb.yaml
 ```
 
 ## Observability
@@ -39,8 +36,7 @@ r1 = Robot("robots/ur5/urdf/ur5_with_gripper.urdf",  # relative path to urdf fil
 ```
 
 ## Obstacles
-Three types of obstacles are currently supported: Cubes, Speheres and Cylinders. Colour, collision, observability and more can be configured with the parameters of the obstacle.
-per default, all obstacles are observable
+Three types of obstacles are currently supported: Cubes, Speheres and Cylinders. Colour, collision, observability and more can be configured with the parameters of the obstacle. Per default, all obstacles are observable.
 
 Example:
 ``` python
@@ -94,10 +90,6 @@ distance_reset = DistanceReset(
 ## Full example
 This full example demonstrated how to easily create an environment constructed from previously explained parameters.
 The example configuration files can be found under "./data/configs".
-
-# Supported Engines
-- [IsaacSim](https://developer.nvidia.com/isaac-sim)
-- [Pybullet](https://pybullet.org/wordpress/)
 
 # Existing models
 - [Reach configuration](docs/reach_configuration.md)

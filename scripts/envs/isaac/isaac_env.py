@@ -436,7 +436,7 @@ class IsaacEnv(ModularEnv):
 
                 # set joint velocities
                 if robot[1] == "Velocity":
-                    robot[0].set_joint_velocities(currentAction)
+                        robot[0].set_joint_velocities(currentAction)
                 
                 # set joint positions targets
                 elif robot[1] == "Position":
@@ -469,11 +469,6 @@ class IsaacEnv(ModularEnv):
         self._dones = self._get_dones()
 
         #print("Obs    :", self._obs)
-        #print("Dist.  :", self._distances)
-        #print("Rewards:", self._rewards)
-        #print("Dones  :", self._dones)
-        #print("Timest.:", self._timesteps)
-
         #print("Rewards:", self._rewards, end="; ")
         #print("Timest.:", self._timesteps, end="; ")
         #print("Coll.:", self._collisionsCount, end="; ")
@@ -582,7 +577,7 @@ class IsaacEnv(ModularEnv):
 
             else:
                 raise Exception(f"Unknown control type: {self._robots[i][1]}")
-
+            
         return limits
 
     def _get_distance_and_rotation(self, name: str) -> Tuple[float, float]:
