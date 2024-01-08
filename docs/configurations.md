@@ -1,5 +1,5 @@
 # Documentation of the spawnable objects and usable settings
-The yaml settings file consists of multiple definable elements focusing on the runtime settings itself as well as the specific environment parts. 
+The yaml settings file consists of multiple definable elements focusing on the runtime settings itself as well as the specific environment. 
 
 ## General runtime parameter 
 ```yaml
@@ -51,7 +51,7 @@ env:
 You can create as many object of a type as needed. To do so, start a new object definition under the specific object type with a new hyphen.
 
 #### Robots
-To define robots, urdf path is the only required argument. All other parameters are optional.
+To define robots, the urdf path is the only required argument. All other parameters are optional.
 ```yaml 
   robots:
     - name:                 # str: name of the robot  
@@ -65,8 +65,7 @@ To define robots, urdf path is the only required argument. All other parameters 
       control_type:         # str: "Velocity" or "Position" to define control type
       max_velocity:         # float: define maximal velocity a joint can be moved by 
     
-    - name:                 # you can create multiple with different settings
-```
+    - name:                 # start new robot object
 
 #### General URDFs
 To define a general urdf object, you need to provide a path to an urdf file. The other parameters are optional. 
