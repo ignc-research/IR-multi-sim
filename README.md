@@ -18,11 +18,11 @@ All of MultiSims functionality can be accesssed with configuration files. When r
 python main.py -f ./data/configs/reach_target_pyb.yaml
 ```
 
+## Documentation of the spawnable objects and settings
+An explanation of the definable settings and how an environment is created can be found [here](docs/configurations.md).
+
 ## Observability
 Robots, robot joints and obstacles can be marked as observable, meaning that their relative position, orientation and scale will be included in the observations of the machine learning model.
-
-## Documentation of the spawnable objects and usable settings
-An explanation of the definable settings and how an environment is created can be found [here](docs/configurations.md).
 
 ## Full example
 This full example demonstrated how to easily create an environment constructed from previously explained parameters.
