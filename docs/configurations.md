@@ -65,6 +65,7 @@ To define robots, the urdf path is the only required argument. All other paramet
       max_velocity:         # float: define maximal velocity a joint can be moved by 
     
     - name:                 # start new robot object
+```
 
 #### General URDFs
 To define a general urdf object, you need to provide a path to an urdf file. The other parameters are optional. 
