@@ -84,7 +84,7 @@ def parse_config(path: str):
             else:
                 if alog_params["custom_policy"]["activation_function"] == "ReLU":
                     activation_function = th.nn.ReLU
-                elif alog_params["custom_policy"]["activation_function"] == "tanh":
+                elif alog_params["custom_policy"]["activation_function"] == "Tanh":
                     activation_function = th.nn.Tanh
                 else:
                     raise Exception("Unsupported activation function!")
