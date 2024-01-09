@@ -46,7 +46,7 @@ def parse_config(path: str):
         env["step_count"] = 1 if "step_count" not in params else params["step_count"]
         env["headless"] = True if "headless" not in params else params["headless"] 
         env["num_envs"] = 1 if "num_envs" not in params else params["num_envs"] 
-        env["env_offset"] = [4, 4] if "env_offset" not in params else params["env_offset"] 
+        env["env_offset"] = [4, 4] if "env_offset" not in params else params["env_offset"]
 
         # Extract runtime parameters
         run = {}
@@ -110,6 +110,7 @@ def parse_config(path: str):
         train = {}
         params = config.get('train', {})
         train["logging"] = 0 if "logging" not in params else params["logging"]
+        env["verbose"] = train["logging"]
         train["timesteps"] = 15000000 if "timesteps" not in params else params["timesteps"]
         train["save_freq"] = 30000 if "save_freq" not in params else params["save_freq"]
 
