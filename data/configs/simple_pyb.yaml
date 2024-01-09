@@ -23,14 +23,14 @@ run:
 
 train:
   logging: 2
-  timesteps: 100 
-  save_freq: 20
+  timesteps: 1000000 
+  save_freq: 100000
 
 evaluation:
   timesteps: 15000000 
 
 env:
-  num_envs: 4
+  num_envs: 9
   env_offset: [4, 4]
   headless: False
   step_size: 0.00416666666
