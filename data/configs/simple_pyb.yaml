@@ -1,0 +1,79 @@
+run:
+  engine: "PyBullet"
+  load_model: False
+  load_name: "simple_pyb\\checkpoint_40960.zip"
+  save_name: "simple_pyb"
+  algorithm:
+    type: "PPO"
+    gamma: 0.99
+    learning_rate: 0.0003
+    batch_size: 2048 
+    custom_policy:
+      activation_function: "ReLU"
+      value_function:
+        - 256
+        - 256
+        - 256
+        - 256
+      policy_function:
+        - 256
+        - 256
+        - 256
+        - 256
+
+train:
+  logging: 2
+  timesteps: 100 
+  save_freq: 20
+
+evaluation:
+  timesteps: 15000000 
+
+env:
+  num_envs: 4
+  env_offset: [4, 4]
+  headless: False
+  step_size: 0.00416666666
+  step_count: 1
+
+  robots:
+    - name: "R1"
+      urdf_path: "robots/ur5/urdf/ur5_with_gripper.urdf"
+      position: [0, 0, 0.63]
+      observable_joints: ["ee_link"]
+      control_type: "Velocity"  
+
+  urdfs:
+    - name: "Table" # workspace: [[-0.65,-0.40,0.64],[0.65,0.40,1.00]]
+      urdf_path: "table/table.urdf"
+      position: [0, 0, 0]
+      orientation: [1, 0, 0, 0]
+  
+  obstacles:
+    - name: "TargetCube"
+      position: [[-0.65, -0.4, 0.64], [0.65, 0.4, 1]]
+      color: [1, 0, 0]
+      collision: False
+      observable: True
+      type: "Cube"  
+
+  rewards:
+    - name: "TargetDistance"
+      obj1: "TargetCube"
+      obj2: "R1/ee_link"
+      type: "Distance"
+
+  resets:  
+    - distance: "TargetDistance"
+      min_distance: 0.0001
+      max_distance: 1.5
+      reward: 5
+      type: "DistanceReset" 
+      
+    - max: 500
+      type: "TimestepsReset"
+    
+    - obj: "R1"
+      max: 10
+      reward: -1
+      type: "CollisionReset"

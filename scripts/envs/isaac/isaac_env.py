@@ -432,7 +432,8 @@ class IsaacEnv(ModularEnv):
             # return true whenever more than max_value collisions occured  
             resets = np.where(self._collisionsCount < max_value, False, True)
             successes = np.where(self._collisionsCount < max_value, True, False)
-
+            
+            self._rewards += resets * reward    # punish collision
             return resets, successes
         
         return reset_condition

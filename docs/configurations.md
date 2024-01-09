@@ -6,6 +6,8 @@ The yaml settings file consists of multiple definable elements focusing on the r
 run:
   engine:                   # str: "PyBullet" or "Isaac"
   load_model:               # bool: create new model or use an existing one 
+  load_name:                # str: need to be a string of the path to the .zip file (starting with the model name, not use \\ for \) 
+  save_name:                # str: name of the original model you want to continue training
   algorithm:                # possibility to define custom algorithm settings. Otherwise a default is used
     type:                   # str: "PPO", "TD3", "SAC", "A2C" or "DDPG"
     gamma:                  # float: Reinforcement learning specific parameter
@@ -133,6 +135,7 @@ Resets are functions which determine wether the environment needs to be reset. T
 ```yaml 
   resets:  
     - type:         # str: "CollisionReset", "DistanceReset" or "TimestepsReset"
+      reward:       # float: reward/ punishment for a reset
 
       # parameters for type = CollisionReset 
       obj:          # str: name of the object you want to test for collision 
@@ -140,9 +143,11 @@ Resets are functions which determine wether the environment needs to be reset. T
 
       # parameters for type = DistanceReset 
       distance:     # str: name of the distance defined in rewards 
-      min_distance: # float: minimal distance before resetting
+      min_distance: # float: minimal distance before reset/success
       max_distance: # float: maximal distance before resetting
+      max_angle:    # float: max angular distance between two quaternions before resetting 
       
       # parameters for type = TimestepsReset 
       max:          # int: max amount of timesteps before resetting
+      min:          # int: minimal timesteps that have to pass to reset/success
 ``` 

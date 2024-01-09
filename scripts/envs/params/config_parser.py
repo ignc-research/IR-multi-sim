@@ -56,6 +56,8 @@ def parse_config(path: str):
         run["path"] = path
         run["engine"] = "PyBullet" if "engine" not in params else params["engine"]
         run["load_model"] = False if "load_model" not in params else params["load_model"]
+        run["load_name"] = None if "load_name" not in params else params["load_name"]
+        run["save_name"] = None if "save_name" not in params else params["save_name"]
         
         # Extract specific model paramerters
         alog_params = params.get('algorithm', {})
