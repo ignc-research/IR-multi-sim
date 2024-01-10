@@ -3,11 +3,18 @@ from stable_baselines3.common.base_class import BaseAlgorithm
 from os.path import exists
 import re
 from scripts.envs.modular_env import ModularEnv
+import os
 
 MODEL_DIR = "./data/models/"
 LOG_DIR = "./data/logs/"
 
 def setup_model(config: dict, env: ModularEnv) -> (BaseAlgorithm, str):
+    if not os.path.exists(MODEL_DIR):
+        os.makedirs(MODEL_DIR)
+    
+    if not os.path.exists(LOG_DIR):
+        os.makedirs(LOG_DIR)
+
     # try loading existing model
     if config["load_model"]:
         model_path = MODEL_DIR + config["load_name"]
