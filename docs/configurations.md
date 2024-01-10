@@ -16,7 +16,7 @@ run:
       batch_size:           # int: batch size for the model
       ...
     custom_policy:          # define specific layer settings and activation function
-    activation_function:    # str: "RELU" or "Tanh"
+      activation_function:    # str: "RELU" or "Tanh"
       value_function:
         - 256
         - 256
