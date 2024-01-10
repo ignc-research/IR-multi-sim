@@ -18,9 +18,9 @@ evaluation:
   timesteps: 15000000 
 
 env:
-  num_envs: 9
+  num_envs: 16
   env_offset: [4, 4]
-  headless: False
+  headless: True
   step_size: 0.00416666666
   step_count: 1
 
@@ -49,6 +49,8 @@ env:
     - name: "TargetDistance"
       obj1: "TargetCube"
       obj2: "R1/ee_link"
+      distance_weight: -1
+      orientation_weight: -0.1
       type: "Distance"
 
   resets:  
@@ -56,8 +58,6 @@ env:
       min_distance: 0.0001
       max_distance: 1.5
       reward: 10
-      distance_weight: -1
-      orientation_weight: -0.1
       type: "DistanceReset" 
       
     - max: 500
