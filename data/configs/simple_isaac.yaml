@@ -1,25 +1,13 @@
 run:
-  engine: "PyBullet"
+  engine: "Isaac"
   load_model: False
   load_name: "simple_pyb\\checkpoint_40960.zip"
   save_name: "simple_pyb"
   algorithm:
-    type: "PPO"
-    gamma: 0.99
+    type: "TD3"
     learning_rate: 0.0003
     batch_size: 2048 
-    custom_policy:
-      activation_function: "ReLU"
-      value_function:
-        - 256
-        - 256
-        - 256
-        - 256
-      policy_function:
-        - 256
-        - 256
-        - 256
-        - 256
+    train_freq: 1
 
 train:
   logging: 2
@@ -51,7 +39,7 @@ env:
   
   obstacles:
     - name: "TargetCube"
-      position: [[-0.65, -0.4, 0.64], [0.65, 0.4, 1]]
+      position: [[-0.63, -0.38, 0.67], [0.63, 0.42, 1]]
       color: [1, 0, 0]
       collision: False
       observable: True
@@ -68,6 +56,8 @@ env:
       min_distance: 0.0001
       max_distance: 1.5
       reward: 10
+      distance_weight: -1
+      orientation_weight: -0.1
       type: "DistanceReset" 
       
     - max: 500

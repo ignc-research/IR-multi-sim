@@ -76,7 +76,7 @@ def parse_config(path: str):
             run["algorithm"] = ALGO_MAP[alog_params["type"]][0]
             run["policy"] = ALGO_MAP[alog_params["type"]][1]
             run["learning_rate"] = 0.0001 if "learning_rate" not in alog_params else alog_params["learning_rate"]
-            run["batch_size"] = None if "batch_size" not in alog_params else alog_params["batch_size"]
+            run["batch_size"] = 2048 if "batch_size" not in alog_params else alog_params["batch_size"]
             run["train_freq"] = None if "train_freq" not in alog_params else (alog_params["train_freq"], "step")
 
             if "custom_policy" not in alog_params:

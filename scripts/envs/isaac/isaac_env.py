@@ -132,7 +132,7 @@ class IsaacEnv(ModularEnv):
     def _setup_urdf_import(self):
         # configure urdf importer
         from omni.kit.commands import execute
-        result, self._config = execute("URDFCreateImportConfig")
+        result, self._config =  execute("URDFCreateImportConfig")
         if not result:
             raise "Failed to create URDF import config"
         
@@ -432,7 +432,7 @@ class IsaacEnv(ModularEnv):
             # return true whenever more than max_value collisions occured  
             resets = np.where(self._collisionsCount < max_value, False, True)
             successes = np.where(self._collisionsCount < max_value, True, False)
-            
+                 
             self._rewards += resets * reward    # punish collision
             return resets, successes
         
@@ -473,7 +473,6 @@ class IsaacEnv(ModularEnv):
         self._timesteps += 1                        # increment elapsed timesteps
         self._obs = self._get_observations()        # get observations
         self._distances = self._get_distances()     # get distances after updated observations 
-        self._collisions = self._get_collisions()   # get collisions
         self._rewards = self._get_rewards()         # get rewards after updated distances
         self._dones = self._get_dones()             # get dones
 
@@ -801,7 +800,7 @@ class IsaacEnv(ModularEnv):
         from omni.kit.commands import execute
         success, prim_path = execute(
             "URDFParseAndImportFile", 
-            urdf_path=abs_path, 
+            urdf_path= abs_path, 
             import_config=self._config
         )
 
