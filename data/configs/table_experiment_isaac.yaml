@@ -7,19 +7,16 @@ run:
     batch_size: 2048 
     train_freq: 1
 
-
 train:
   logging: 0
-  timesteps: 15000000 
-  save_freq: 30000
-
+  timesteps: 1500000 
+  save_freq: 50000
 
 evaluation:
-  timesteps: 15000000 
-
+  timesteps: 1500000 
 
 env:
-  num_envs: 9
+  num_envs: 16
   env_offset: [4, 4]
   headless: False
   step_size: 0.00416666666
@@ -32,14 +29,12 @@ env:
       observable_joints: ["ee_link"]
       control_type: "Velocity"
   
-
   urdfs:
     - name: "Table"
       urdf_path: "table/table.urdf"
       position: [0, 0, 0]
       orientation: [1, 0, 0, 0]
   
-
   obstacles:
     - name: "TargetCube"
       position: [[-0.65, -0.4, 0.64], [0.65, 0.4, 1]]
@@ -66,7 +61,6 @@ env:
       observable: True
       type: "Cylinder"
   
-
   rewards:
     - name: "TargetDistance"
       obj1: "TargetCube"
@@ -77,7 +71,6 @@ env:
       obj: "R1"
       weight: -5
       type: "Collision"
-
 
   resets:
     - distance: "TargetDistance"
@@ -91,4 +84,3 @@ env:
     - obj: "R1"
       max: 1
       type: "CollisionReset"
-

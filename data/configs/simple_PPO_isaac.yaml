@@ -1,26 +1,13 @@
 run:
-  engine: "PyBullet"
+  engine: "Isaac"
   load_model: False
-  load_name: "simple_pyb\\checkpoint_40960.zip"
-  save_name: "simple_pyb"
+  load_name: "simple_PPO_isaac\\checkpoint_40960.zip"
+  save_name: "simple_PPO_isaac"
   algorithm:
     type: "PPO"
     parameters:
-      gamma: 0.99
       learning_rate: 0.0003
       batch_size: 2048 
-    custom_policy:
-      activation_function: "ReLU"
-      value_function:
-        - 256
-        - 256
-        - 256
-        - 256
-      policy_function:
-        - 256
-        - 256
-        - 256
-        - 256
 
 train:
   logging: 2
@@ -28,12 +15,12 @@ train:
   save_freq: 100000
 
 evaluation:
-  timesteps: 15000000 
+  timesteps: 100000 
 
 env:
-  num_envs: 9
+  num_envs: 16
   env_offset: [4, 4]
-  headless: False
+  headless: True
   step_size: 0.00416666666
   step_count: 1
 
@@ -52,7 +39,7 @@ env:
   
   obstacles:
     - name: "TargetCube"
-      position: [[-0.65, -0.4, 0.64], [0.65, 0.4, 1]]
+      position: [[-0.62, -0.37, 0.67], [0.62, 0.43, 1]]
       color: [1, 0, 0]
       collision: False
       observable: True
@@ -62,19 +49,16 @@ env:
     - name: "TargetDistance"
       obj1: "TargetCube"
       obj2: "R1/ee_link"
+      distance_weight: -1
+      orientation_weight: 0
       type: "Distance"
 
   resets:  
     - distance: "TargetDistance"
       min_distance: 0.0001
-      max_distance: 1.5
+      max_distance: 2
       reward: 10
       type: "DistanceReset" 
       
-    - max: 500
+    - max: 1000
       type: "TimestepsReset"
-    
-    - obj: "R1"
-      max: 1
-      reward: -1
-      type: "CollisionReset"

@@ -2,29 +2,23 @@ run:
   engine: "Isaac"
   load_model: False
   algorithm:
-    type: "TD3"
-    learning_rate: 0.0003
-    batch_size: 2048 
-    train_freq: 1
-
+    type: "PPO"
+    parameters:
 
 train:
   logging: 2
-  timesteps: 15000000 
-  save_freq: 30000
-
+  timesteps: 1000000 
+  save_freq: 50000
 
 evaluation:
-  timesteps: 15000000 
-
+  timesteps: 1000000 
 
 env:
-  num_envs: 4
+  num_envs: 16
   env_offset: [4, 4]
-  headless: False
+  headless: True
   step_size: 0.00416666666
   step_count: 1
-
 
   robots:
     - name: "R1"
@@ -36,14 +30,12 @@ env:
       observable_joints: ["ee_link"]
       control_type: "Position"
 
-
   urdfs:
     - name: "Table" # workspace: [[-0.65,-0.40,0.64],[0.65,0.40,1.00]]
       urdf_path: "table/table.urdf"
       position: [0, 0, 0]
       orientation: [1, 0, 0, 0]
   
-
   obstacles:
     - name: "TargetCube"
       position: [[-0.65, -0.4, 0.64], [0.65, 0.4, 1]]
@@ -64,7 +56,6 @@ env:
       observable: True
       type: "Cylinder"
   
-
   rewards:
     - name: "TargetDistance"
       obj1: "TargetCube"
@@ -76,7 +67,6 @@ env:
       weight: -1
       type: "Collision"
     
-
   resets:  
     - distance: "TargetDistance"
       min_distance: 0.0001

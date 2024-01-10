@@ -19,19 +19,16 @@ run:
         - 256
         - 256
 
-
 train:
   logging: 0
-  timesteps: 15000000 
-  save_freq: 30000
-
+  timesteps: 1500000 
+  save_freq: 50000
 
 evaluation:
-  timesteps: 15000000 
-
+  timesteps: 1500000 
 
 env:
-  num_envs: 9
+  num_envs: 16
   env_offset: [4, 4]
   headless: False
   step_size: 0.00416666666
@@ -44,7 +41,6 @@ env:
       observable_joints: ["ee_link"]
       control_type: "Velocity"
   
-
   urdfs:
     - name: "Table" # workspace: [[-0.65,-0.40,0.64],[0.65,0.40,1.00]]
       urdf_path: "table/table.urdf"
@@ -73,7 +69,6 @@ env:
       observable: True
       type: "Cylinder"
   
-
   rewards:
     - name: "CollisionDetection"
       obj: "R1"
@@ -84,7 +79,6 @@ env:
       weight: 1
       type: "ElapsedTimesteps"
 
-
   resets:   
     - max: 10000
       type: "TimestepsReset"
@@ -92,4 +86,3 @@ env:
     - obj: "R1"
       max: 1000
       type: "CollisionReset"
-

@@ -10,9 +10,11 @@ run:
   save_name:                # str: name of the original model you want to continue training
   algorithm:                # possibility to define custom algorithm settings. Otherwise a default is used
     type:                   # str: "PPO", "TD3", "SAC", "A2C" or "DDPG"
-    gamma:                  # float: Reinforcement learning specific parameter
-    learning_rate:          # float: learing rate of the model
-    batch_size:             # int: batch size for the model
+    parameters:             # define variety of parameters for your model e.g.:
+      gamma:                # float: Reinforcement learning specific parameter
+      learning_rate:        # float: learing rate of the model
+      batch_size:           # int: batch size for the model
+      ...
     custom_policy:          # define specific layer settings and activation function
     activation_function:    # str: "RELU" or "Tanh"
       value_function:

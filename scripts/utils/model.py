@@ -39,28 +39,16 @@ def setup_model(config: dict, env: ModularEnv) -> (BaseAlgorithm, str):
         config_name = match.group(1)
         model_path = MODEL_DIR + config_name
 
+        if not os.path.exists(model_path):
+            os.makedirs(model_path)
 
-        # to hanlde necessary parameter trian_freq only for td3 that does not exist in ppo
-        if config["train_freq"]:
-            model = config["algorithm"](
-                config["policy"],
-                env=env,   
-                policy_kwargs=config["custom_policy"],   
-                verbose=1,   
-                tensorboard_log= LOG_DIR + config_name,     
-                learning_rate=config["learning_rate"],  
-                batch_size=config["batch_size"],
-                train_freq=config["train_freq"]       
-            )
-        else:
-            model = config["algorithm"](
-                config["policy"],
-                env=env,   
-                policy_kwargs=config["custom_policy"],   
-                verbose=1,   
-                tensorboard_log= LOG_DIR + config_name,     
-                learning_rate=config["learning_rate"],  
-                batch_size=config["batch_size"]  
-            )
+        model = config["algorithm"](
+            config["policy"], 
+            env, 
+            policy_kwargs=config["custom_policy"], 
+            verbose=config["verbose"], 
+            tensorboard_log=LOG_DIR + config_name, 
+            **config["parameters"]
+        )
 
     return model, model_path

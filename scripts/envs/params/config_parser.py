@@ -60,48 +60,45 @@ def parse_config(path: str):
         run["save_name"] = None if "save_name" not in params else params["save_name"]
         
         # Extract specific model paramerters
-        alog_params = params.get('algorithm', {})
+        custom_algo = params.get('algorithm', {})
 
         # use default algorithm if not defined by config file
-        if not alog_params:
+        if len(custom_algo) == 0:
             run["algorithm"] = TD3
             run["policy"] = "MultiInputPolicy"
             run["learning_rate"] = 0.0001
-            run["train_freq"] = (1, "step")
-            run["batch_size"] = None
-            run["custom_policy"] = None
+            run["parameters"] = {}
 
         # extract specific parameters for the model
         else:
-            run["algorithm"] = ALGO_MAP[alog_params["type"]][0]
-            run["policy"] = ALGO_MAP[alog_params["type"]][1]
-            run["learning_rate"] = 0.0001 if "learning_rate" not in alog_params else alog_params["learning_rate"]
-            run["batch_size"] = 2048 if "batch_size" not in alog_params else alog_params["batch_size"]
-            run["train_freq"] = None if "train_freq" not in alog_params else (alog_params["train_freq"], "step")
+            run["algorithm"] = ALGO_MAP[custom_algo["type"]][0]
+            run["policy"] = ALGO_MAP[custom_algo["type"]][1]
 
-            if "custom_policy" not in alog_params:
+            run["parameters"] = custom_algo.get('parameters', {})
+
+            if "custom_policy" not in custom_algo:
                 run["custom_policy"] = None
             else:
-                if alog_params["custom_policy"]["activation_function"] == "ReLU":
+                if custom_algo["custom_policy"]["activation_function"] == "ReLU":
                     activation_function = th.nn.ReLU
-                elif alog_params["custom_policy"]["activation_function"] == "Tanh":
+                elif custom_algo["custom_policy"]["activation_function"] == "Tanh":
                     activation_function = th.nn.Tanh
                 else:
                     raise Exception("Unsupported activation function!")
                 
                 pol_dict = dict(activation_fn=activation_function)
                 
-                if alog_params["type"] in ["PPO", "A2C", "TRPO", "AttentionPPO", "RecurrentPPO"]:
+                if custom_algo["type"] in ["PPO", "A2C", "TRPO", "AttentionPPO", "RecurrentPPO"]:
                     vf_pi_dict = dict(vf=[], pi=[])
                     q_name = "vf"
                 else:
                     vf_pi_dict = dict(qf=[], pi=[])
                     q_name = "qf"
                 
-                for layer in alog_params["custom_policy"]["value_function"]:
+                for layer in custom_algo["custom_policy"]["value_function"]:
                     vf_pi_dict[q_name].append(layer)
                 
-                for layer in alog_params["custom_policy"]["policy_function"]:
+                for layer in custom_algo["custom_policy"]["policy_function"]:
                     vf_pi_dict["pi"].append(layer)    
                 
                 pol_dict["net_arch"] = vf_pi_dict
@@ -113,6 +110,7 @@ def parse_config(path: str):
         params = config.get('train', {})
         train["logging"] = 0 if "logging" not in params else params["logging"]
         env["verbose"] = train["logging"]
+        run["verbose"] = train["logging"]
         train["timesteps"] = 15000000 if "timesteps" not in params else params["timesteps"]
         train["save_freq"] = 30000 if "save_freq" not in params else params["save_freq"]
 

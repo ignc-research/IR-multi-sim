@@ -19,19 +19,16 @@ run:
         - 256
         - 256
 
-
 train:
   logging: 0
-  timesteps: 15000000 
-  save_freq: 30000
-
+  timesteps: 1500000 
+  save_freq: 50000
 
 evaluation:
-  timesteps: 15000000 
-
+  timesteps: 1500000 
 
 env:
-  num_envs: 9
+  num_envs: 16
   env_offset: [4, 4]
   headless: True
   step_size: 0.00416666666
@@ -50,7 +47,6 @@ env:
       position: [0, 0, 0]
       orientation: [1, 0, 0, 0]
   
-
   obstacles:    
     - name: "CubDynamicCubee"
       position: [[-0.65,-0.4,0.64],[0.65,0.4,1]]
@@ -70,7 +66,6 @@ env:
       observable: True
       type: "Cylinder"
   
-
   rewards:
     - name: "CollisionDetection"
       obj: "R1"
@@ -81,7 +76,6 @@ env:
       weight: 1
       type: "ElapsedTimesteps"
 
-
   resets:   
     - max: 100
       type: "TimestepsReset"
@@ -89,4 +83,3 @@ env:
     - obj: "R1"
       max: 1
       type: "CollisionReset"
-
