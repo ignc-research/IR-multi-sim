@@ -164,19 +164,20 @@ class PyCube(PyObstacle):
         return pos, rot, tuple(self.scale)
 
     def reset(self) -> None:
-        pyb.removeBody(self.id) 
+        #pyb.removeBody(self.id) 
 
         self.position = self._getPosition()
         self.orientation = self._getOrientation()
-        self.scale = self._getScale()
-        
-        self.id = pyb.createMultiBody(
-            baseMass=0.0,
-            baseVisualShapeIndex=pyb.createVisualShape(shapeType=pyb.GEOM_BOX,halfExtents=[x/2 for x in self.scale], rgbaColor=append(self.color,1)),
-            baseCollisionShapeIndex=pyb.createCollisionShape(shapeType=pyb.GEOM_BOX, halfExtents=[x/2 for x in self.scale]) if self.collision else -1,
-            basePosition=self.position,
-            baseOrientation=self.orientation
-        )   
+        pyb.resetBasePositionAndOrientation(self.id, self.position, self.orientation)
+
+        #self.scale = self._getScale()
+        #self.id = pyb.createMultiBody(
+        #    baseMass=0.0,
+        #    baseVisualShapeIndex=pyb.createVisualShape(shapeType=pyb.GEOM_BOX,halfExtents=[x/2 for x in self.scale], rgbaColor=append(self.color,1)),
+        #    baseCollisionShapeIndex=pyb.createCollisionShape(shapeType=pyb.GEOM_BOX, halfExtents=[x/2 for x in self.scale]) if self.collision else -1,
+        #    basePosition=self.position,
+        #    baseOrientation=self.orientation
+        #)   
         
         # create new random values for a trajectory of the obstacle
         if not self.static:
@@ -237,19 +238,20 @@ class PySphere(PyObstacle):
         return pos, rot, tuple((self.radius,0,0))
 
     def reset(self) -> None:
-        pyb.removeBody(self.id) 
+        # pyb.removeBody(self.id) 
         
         self.position = self._getPosition()
         self.orientation = self._getOrientation()
-        self.radius = self._getRadius()
-
-        self.id = pyb.createMultiBody(
-            baseMass=0.0,
-            baseVisualShapeIndex=pyb.createVisualShape(shapeType=pyb.GEOM_SPHERE, radius=self.radius, rgbaColor=append(self.color,1)),
-            baseCollisionShapeIndex=pyb.createCollisionShape(shapeType=pyb.GEOM_SPHERE, radius=self.radius) if self.collision else -1,
-            basePosition=self.position,
-            baseOrientation=self.orientation
-        ) 
+        pyb.resetBasePositionAndOrientation(self.id, self.position, self.orientation)
+        
+        # self.radius = self._getRadius()
+        # self.id = pyb.createMultiBody(
+        #     baseMass=0.0,
+        #     baseVisualShapeIndex=pyb.createVisualShape(shapeType=pyb.GEOM_SPHERE, radius=self.radius, rgbaColor=append(self.color,1)),
+        #     baseCollisionShapeIndex=pyb.createCollisionShape(shapeType=pyb.GEOM_SPHERE, radius=self.radius) if self.collision else -1,
+        #     basePosition=self.position,
+        #     baseOrientation=self.orientation
+        # ) 
 
         # create new random values for a trajectory of the obstacle
         if not self.static:
@@ -322,22 +324,23 @@ class PyCylinder(PyObstacle):
         return pos, rot, tuple((self.height,self.height,0))
 
     def reset(self) -> None:
-        pyb.removeBody(self.id) 
+        #pyb.removeBody(self.id) 
 
         self.position = self._getPosition()
         self.orientation = self._getOrientation()
-        self.radius = self._getRadius()
-        self.height = self._getHeight()
-
-        self.id = pyb.createMultiBody(
-            baseMass=0.0,
-            baseVisualShapeIndex=pyb.createVisualShape(shapeType=pyb.GEOM_CYLINDER, radius=self.radius, 
-                                                       length=self.height, rgbaColor=append(self.color,1)),
-            baseCollisionShapeIndex=pyb.createCollisionShape(shapeType=pyb.GEOM_CYLINDER, radius=self.radius, 
-                                                             height=self.height) if self.collision else -1, 
-            basePosition=self.position,
-            baseOrientation=self.orientation
-        ) 
+        pyb.resetBasePositionAndOrientation(self.id, self.position, self.orientation)
+        
+        # self.radius = self._getRadius()
+        # self.height = self._getHeight()
+        # self.id = pyb.createMultiBody(
+        #     baseMass=0.0,
+        #     baseVisualShapeIndex=pyb.createVisualShape(shapeType=pyb.GEOM_CYLINDER, radius=self.radius, 
+        #                                                length=self.height, rgbaColor=append(self.color,1)),
+        #     baseCollisionShapeIndex=pyb.createCollisionShape(shapeType=pyb.GEOM_CYLINDER, radius=self.radius, 
+        #                                                      height=self.height) if self.collision else -1, 
+        #     basePosition=self.position,
+        #     baseOrientation=self.orientation
+        # ) 
 
         # create new random values for a trajectory of the obstacle
         if not self.static:
