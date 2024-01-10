@@ -20,12 +20,10 @@ from scripts.resets.timesteps_reset import TimestepsReset
 from scripts.resets.collision_reset import CollisionReset
 
 from stable_baselines3.common.vec_env.base_vec_env import *
-from typing import List, Tuple
+from typing import List, Tuple, Dict
 from pathlib import Path
 import numpy as np
 import math
-import time 
-
 import pybullet as pyb
 
 
@@ -467,11 +465,11 @@ class PybulletEnv(ModularEnv):
         # reset entire simulation
         if env_idxs is None:
             pyb.resetSimulation()  
-            self._setup_environments(self._initRobots, self._initObstacles, self._initUrdfs) # build environment new                
-            self._timesteps = np.zeros(self.num_envs)                       # reset timestep tracking
-            self._collisionsCount = np.zeros(self.num_envs)                 # reset collisions count tracking
-            self._obs = self._get_observations()                            # reset observations 
-            self._distances_after_reset = self._get_distances()             # calculate new distances
+            self._setup_environments(self._initRobots, self._initObstacles, self._initUrdfs)    # build environment new                
+            self._timesteps = np.zeros(self.num_envs)                                           # reset timestep tracking
+            self._collisionsCount = np.zeros(self.num_envs)                                     # reset collisions count tracking
+            self._obs = self._get_observations()                                                # reset observations 
+            self._distances_after_reset = self._get_distances()                                 # calculate new distances
 
             # set dummy value to avoid KeyError
             if self.verbose > 0:
@@ -743,6 +741,7 @@ class PybulletEnv(ModularEnv):
         """
         newObject = None
         orientation = obstacle.orientation[::-1]
+
         if isinstance(obstacle, Cube):
             newObject = PyCube(obstacle.name, self._env_offsets[env_idx], obstacle.position, orientation, 
                                obstacle.scale, obstacle.static, obstacle.collision, obstacle.color, self.step_count, 

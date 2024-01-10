@@ -1,8 +1,8 @@
 run:
-  engine: "Isaac"
+  engine: "PyBullet"
   load_model: False
-  load_name: "simple_PPO_isaac\\checkpoint_40960.zip"
-  save_name: "simple_PPO_isaac"
+  load_name: "simple_PPO_pyb\\checkpoint_40960.zip"
+  save_name: "simple_PPO_pyb"
   algorithm:
     type: "PPO"
     parameters:
@@ -18,7 +18,7 @@ evaluation:
   timesteps: 100000 
 
 env:
-  num_envs: 16
+  num_envs: 4
   env_offset: [4, 4]
   headless: False
   step_size: 0.00416666666
@@ -43,6 +43,7 @@ env:
       color: [1, 0, 0]
       collision: False
       observable: True
+      static: True
       type: "Cube"  
 
   rewards:
