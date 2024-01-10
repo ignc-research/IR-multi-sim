@@ -22,7 +22,7 @@ class PyObstacle(ABC):
                  endpoint: ndarray, 
                  velocity: ndarray
                 ) -> None:
-        
+            
         self.offset = offset
         self.static = static
         self.collision = collision
@@ -42,7 +42,6 @@ class PyObstacle(ABC):
         if not self.static:
             self._initEndpoint = endpoint
             self._initVel = velocity
-            
             self.endpoint = self._getEndpoint()
             self.velocity = self._getVelocity()
             self.step = self._getStep()
@@ -77,16 +76,16 @@ class PyObstacle(ABC):
         
     # create random endpoint position if there is a range given as argument
     def _getEndpoint(self) -> List[float]:
-        if self.static:
+        if self.static == True:
             return [0,0,0]
         
-        if isinstance(self._initEndpoint, tuple):
+        if len(self._initEndpoint) == 2:
             min, max = self._initEndpoint
             return (random.uniform(min, max) + self.offset).tolist()
         else:
             return (self._initEndpoint + self.offset).tolist()
     
-    def update(self):
+    def update(self):         
         if self.static:
             return False
 
@@ -99,7 +98,7 @@ class PyObstacle(ABC):
             step = self.step if diff_norm > self.step else diff_norm 
             step = diff * (step / diff_norm)
             self.velocity = step / (self.step_size * self.step_count)
-            self.position = self.position + step        
+            self.position = self.position + step      
             pyb.resetBasePositionAndOrientation(self.id, self.position.tolist(), self.orientation)
         return True
 

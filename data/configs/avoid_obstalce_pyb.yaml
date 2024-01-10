@@ -3,21 +3,7 @@ run:
   load_model: False
   algorithm:
     type: "PPO"
-    gamma: 0.99
-    learning_rate: 0.0003
-    batch_size: 2048 
-    custom_policy:
-      activation_function: "ReLU"
-      value_function:
-        - 256
-        - 256
-        - 256
-        - 256
-      policy_function:
-        - 256
-        - 256
-        - 256
-        - 256
+
 
 train:
   logging: 0

@@ -3,34 +3,21 @@ run:
   load_model: False
   algorithm:
     type: "PPO"
-    gamma: 0.99
     learning_rate: 0.0003
     batch_size: 2048 
-    custom_policy:
-      activation_function: "ReLU"
-      value_function:
-        - 256
-        - 256
-        - 256
-        - 256
-      policy_function:
-        - 256
-        - 256
-        - 256
-        - 256
 
 train:
   logging: 0
   timesteps: 1500000 
-  save_freq: 50000
+  save_freq: 100000
 
 evaluation:
   timesteps: 1500000 
 
 env:
-  num_envs: 16
+  num_envs: 9
   env_offset: [4, 4]
-  headless: True
+  headless: False
   step_size: 0.00416666666
   step_count: 1
 
@@ -48,7 +35,7 @@ env:
       orientation: [1, 0, 0, 0]
   
   obstacles:    
-    - name: "CubDynamicCubee"
+    - name: "DynamicCube"
       position: [[-0.65,-0.4,0.64],[0.65,0.4,1]]
       endpoint: [[-0.65,-0.4,0.64],[0.65,0.4,1]]
       velocity: 0.3
@@ -69,17 +56,17 @@ env:
   rewards:
     - name: "CollisionDetection"
       obj: "R1"
-      weight: -5
+      weight: -1
       type: "Collision"
     
     - name: "Timestep"
-      weight: 1
       type: "ElapsedTimesteps"
 
   resets:   
-    - max: 100
+    - max: 1000
       type: "TimestepsReset"
     
     - obj: "R1"
-      max: 1
+      max: 10
+      reward: -5
       type: "CollisionReset"

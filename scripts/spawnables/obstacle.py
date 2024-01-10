@@ -8,13 +8,13 @@ class Obstacle(Spawnable):
                  position: Union[ndarray, Tuple[ndarray, ndarray]],
                  orientation: Union[ndarray, Tuple[ndarray, ndarray]],
                  scale: Union[ndarray, Tuple[ndarray, ndarray]],
+                 endpoint: Union[ndarray, Tuple[ndarray, ndarray]],
                  color: List[float], 
                  collision: bool, 
                  observable: bool, 
                  static: bool, 
                  velocity: float,
-                 name: str=None,
-                 endpoint: Union[ndarray, Tuple[ndarray, ndarray]]=None
+                 name: str=None
                 ) -> None:
         
         super().__init__(position, orientation, collision, observable, name)
@@ -25,8 +25,13 @@ class Obstacle(Spawnable):
         else:
             self.color = color
 
+        # parse endpoint
+        if isinstance(endpoint, List):
+            self.endpoint = array(endpoint)
+        else:
+            self.endpoint = endpoint
+
         self.static = static
-        self.endpoint = endpoint
         self.velocity = velocity
         self.scale = scale
 
@@ -60,7 +65,7 @@ class Cube(Obstacle):
             static (bool, optional): Flag disabeling gravity to affect the obstacle. Default to True.
             name (str, optional): Name of cube, allowing it to be referenced. Defaults to None.
         """
-        super().__init__(position, orientation, scale, color, collision, observable, static, velocity, name, endpoint)
+        super().__init__(position, orientation, scale, endpoint, color, collision, observable, static, velocity, name)
 
         self.static = static
 
@@ -99,7 +104,7 @@ class Sphere(Obstacle):
             static (bool, optional): Flag disabeling gravity to affect the obstacle. Default to True.
             name (str, optional): Name of sphere, allowing it to be referenced. Defaults to None.
         """
-        super().__init__(position, orientation, scale, color, collision, observable, static, velocity, name, endpoint)
+        super().__init__(position, orientation, scale, endpoint, color, collision, observable, static, velocity, name)
         
         self.radius = radius
         self.static = static
@@ -142,7 +147,7 @@ class Cylinder(Obstacle):
             name (str, optional): Name of cylinder, allowing it to be referenced. Defaults to None.
         """
 
-        super().__init__(position, orientation, scale, color, collision, observable, static, velocity, name, endpoint)
+        super().__init__(position, orientation, scale, endpoint, color, collision, observable, static, velocity, name)
         
         self.radius = radius
         self.height = height

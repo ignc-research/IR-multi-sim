@@ -447,16 +447,16 @@ class PybulletEnv(ModularEnv):
         self._obs = self._get_observations()        # get observations
         self._distances = self._get_distances()     # get distances after updated observations 
         self._collisions = self._get_collisions()   # get collisions
-        self._rewards = self._get_rewards()         # get rewards after updated distances
+        self._rewards = self._get_rewards()         # get rewards after updated distances and collisions
         self._dones = self._get_dones()             # get dones
- 
+
         #print("\nObs    :", self._obs["Positions"])
         #print("Dist.  :", self._distances)
         #print("Collisions:", self._collisions)
         #print("Rewards:", self._rewards, end="; ")
         #print("Timest.:", self._timesteps, end="; ")
         #print("Coll.:", self._collisionsCount, end="; ")
-        #print("Dones  :", self._dones)
+        #print("Dones  :", self._dones) 
 
         return self._obs, self._rewards, self._dones, self.env_data
 
@@ -693,8 +693,6 @@ class PybulletEnv(ModularEnv):
             print("Collisions:", finalCollisions)   # 0:plane, 1:table, 5:robots
             for coll in finalCollisions:
                 print(f'Collision from {pyb.getBodyInfo(coll[0])[1]} with {pyb.getBodyInfo(coll[1])[1]}')
-            import time
-            time.sleep(4)
 
 
     def close(self) -> None:

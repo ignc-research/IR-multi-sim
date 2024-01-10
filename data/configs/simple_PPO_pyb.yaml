@@ -11,14 +11,14 @@ run:
 
 train:
   logging: 2
-  timesteps: 1000000 
+  timesteps: 1500000 
   save_freq: 100000
 
 evaluation:
   timesteps: 100000 
 
 env:
-  num_envs: 32
+  num_envs: 18
   env_offset: [4, 4]
   headless: False
   step_size: 0.00416666666
@@ -50,16 +50,21 @@ env:
     - name: "TargetDistance"
       obj1: "TargetCube"
       obj2: "R1/ee_link"
-      distance_weight: -1
+      distance_weight: -2
       orientation_weight: 0
       type: "Distance"
 
   resets:  
     - distance: "TargetDistance"
       min_distance: 0.0001
-      max_distance: 2
+      max_distance: 1.5
       reward: 10
       type: "DistanceReset" 
       
     - max: 1000
       type: "TimestepsReset"
+
+    - obj: "R1"
+      max: 1
+      reward: -1
+      type: "CollisionReset"
