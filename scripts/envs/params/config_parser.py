@@ -46,7 +46,7 @@ def parse_config(path: str):
         env["step_count"] = 1 if "step_count" not in params else params["step_count"]
         env["headless"] = True if "headless" not in params else params["headless"] 
         env["num_envs"] = 1 if "num_envs" not in params else params["num_envs"] 
-        env["env_offset"] = [4, 4] if "env_offset" not in params else params["env_offset"] 
+        env["env_offset"] = [4, 4] if "env_offset" not in params else params["env_offset"]
 
         # Extract runtime parameters
         run = {}
@@ -56,6 +56,8 @@ def parse_config(path: str):
         run["path"] = path
         run["engine"] = "PyBullet" if "engine" not in params else params["engine"]
         run["load_model"] = False if "load_model" not in params else params["load_model"]
+        run["load_name"] = None if "load_name" not in params else params["load_name"]
+        run["save_name"] = None if "save_name" not in params else params["save_name"]
         
         # Extract specific model paramerters
         alog_params = params.get('algorithm', {})
@@ -74,7 +76,7 @@ def parse_config(path: str):
             run["algorithm"] = ALGO_MAP[alog_params["type"]][0]
             run["policy"] = ALGO_MAP[alog_params["type"]][1]
             run["learning_rate"] = 0.0001 if "learning_rate" not in alog_params else alog_params["learning_rate"]
-            run["batch_size"] = None if "batch_size" not in alog_params else alog_params["batch_size"]
+            run["batch_size"] = 2048 if "batch_size" not in alog_params else alog_params["batch_size"]
             run["train_freq"] = None if "train_freq" not in alog_params else (alog_params["train_freq"], "step")
 
             if "custom_policy" not in alog_params:
@@ -82,7 +84,7 @@ def parse_config(path: str):
             else:
                 if alog_params["custom_policy"]["activation_function"] == "ReLU":
                     activation_function = th.nn.ReLU
-                elif alog_params["custom_policy"]["activation_function"] == "tanh":
+                elif alog_params["custom_policy"]["activation_function"] == "Tanh":
                     activation_function = th.nn.Tanh
                 else:
                     raise Exception("Unsupported activation function!")
@@ -110,6 +112,7 @@ def parse_config(path: str):
         train = {}
         params = config.get('train', {})
         train["logging"] = 0 if "logging" not in params else params["logging"]
+        env["verbose"] = train["logging"]
         train["timesteps"] = 15000000 if "timesteps" not in params else params["timesteps"]
         train["save_freq"] = 30000 if "save_freq" not in params else params["save_freq"]
 

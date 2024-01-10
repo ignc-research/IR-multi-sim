@@ -9,7 +9,7 @@ run:
 
 
 train:
-  logging: 0
+  logging: 2
   timesteps: 15000000 
   save_freq: 30000
 
@@ -19,7 +19,7 @@ evaluation:
 
 
 env:
-  num_envs: 9
+  num_envs: 4
   env_offset: [4, 4]
   headless: False
   step_size: 0.00416666666
@@ -73,17 +73,18 @@ env:
 
     - name: "CollisionDetection"
       obj: "R1"
-      weight: -5
+      weight: -1
       type: "Collision"
     
 
   resets:  
     - distance: "TargetDistance"
-      min_distance: 0
+      min_distance: 0.0001
       max_distance: 1.5
+      reward: 5
       type: "DistanceReset" 
       
-    - max: 100
+    - max: 1000
       type: "TimestepsReset"
     
     - obj: "R1"

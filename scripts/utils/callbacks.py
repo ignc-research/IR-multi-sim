@@ -9,6 +9,7 @@ class InfoCallback(BaseCallback):
     def _on_step(self) -> bool:
         # log rewards
         self.logger.record('average_rewards', self.training_env.get_attr('average_rewards')[0])
+        self.logger.record('average_success', self.training_env.get_attr('average_success')[0])
         return True
     
 class DistanceCallback(InfoCallback):
@@ -23,6 +24,8 @@ class DistanceCallback(InfoCallback):
             key = "distance_" + name
             # and record the current average value
             self.logger.record(key, self.training_env.get_attr(key)[0])
+            self.logger.record('average_steps', self.training_env.get_attr('average_steps')[0])
+            self.logger.record('average_collision', self.training_env.get_attr('average_collision')[0])
         return super()._on_step()
     
 def parse_callback(verbose: int, distance_names: List[str]) -> InfoCallback:
