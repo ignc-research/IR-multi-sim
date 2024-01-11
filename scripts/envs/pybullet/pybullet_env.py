@@ -171,21 +171,21 @@ class PybulletEnv(ModularEnv):
             distance_space, distance_orientation = self._get_distance_and_rotation(name)
 
             # apply weight factor
-            weighted_space = distance_weight * distance_space
-            weighted_orientation = orientation_weight * distance_orientation
+            weighted_space = distance_weight * (distance_space ** exponent)
+            weighted_orientation = orientation_weight * (distance_orientation ** exponent)
 
             # skip normalization
             if not normalize:
-                return (weighted_space + weighted_orientation) ** exponent
+                return weighted_space + weighted_orientation
 
             # retrieve distences after last reset
             begin_space, begin_orient = self._distances_after_reset[name]
 
             # calculate variance to previous distance, avoiding division by zero
-            normalized_space = np.where(begin_space == 0, weighted_space, distance_weight * distance_space / begin_space) 
-            normalized_orient = np.where(begin_orient == 0, weighted_orientation, distance_orientation * distance_orientation / begin_orient) 
+            normalized_space = np.where(begin_space == 0, weighted_space, distance_weight * (distance_space ** exponent) / begin_space) 
+            normalized_orient = np.where(begin_orient == 0, weighted_orientation, distance_orientation * (distance_orientation ** exponent) / begin_orient) 
 
-            return (normalized_space + normalized_orient) ** exponent
+            return normalized_space + normalized_orient
 
         return calculate_distance_reward
     
@@ -278,27 +278,31 @@ class PybulletEnv(ModularEnv):
     def _parse_distance_reset(self, reset: DistanceReset):
         # extract name to allot created function to access it easily
         name = reset.distance_name
-        distance_min, distance_max = reset.min_distance, reset.max_distance
+        min_distance, max_distance = reset.min_distance, reset.max_distance
         max_angle = reset.max_angle
         reward = reset.reward
 
         # parse function
         def reset_condition() -> np.ndarray:
             # get distances of current timestep
+            # TODO: add rotation condition
             distance, rotation = self._get_distance_and_rotation(name)
 
-            # positive reward if it reaches min dist
-            min_distance_reset = np.where(distance <= distance_min, True, False)
-            min_rotation_reset = np.where(np.abs(rotation) <= distance_min, True, False)
-            
-            # stores true for env whose objects are within min distance range
-            successes = np.logical_and(min_distance_reset, min_rotation_reset)
-            self._rewards += successes * reward
+            if min_distance:
+                dist_success = np.where(distance <= min_distance, True, False)  
+                successes = np.logical_and(dist_success, True)
+                resets = np.logical_or(dist_success, False)
 
-            # if distance exceed max value: reset
-            max_distance_reset = np.where(distance > distance_max, True, False)
-            max_rotation_reset = np.where(np.abs(rotation) > max_angle, True, False)
-            resets = np.logical_or(max_distance_reset, max_rotation_reset)
+                # apply reward in case of successes
+                self._rewards += successes * reward 
+
+            else:
+                dist_resets = np.where(distance > max_distance, True, False)
+                successes = np.where(distance <= max_distance, True, False)  
+                resets = np.logical_or(dist_resets, False)
+        
+                # apply punishment/ reward in case of reset 
+                self._rewards += resets * reward
 
             return resets, successes
 
@@ -310,7 +314,7 @@ class PybulletEnv(ModularEnv):
         min_steps =  reset.min
         reward = reset.reward
 
-         # parse function
+        # parse function
         def reset_condition() -> np.ndarray:
             # signal reset whenever the current timespets exceed the max value
             resets = np.where(self._timesteps < max_steps, False, True)
@@ -342,7 +346,7 @@ class PybulletEnv(ModularEnv):
                             self._collisionsCount[envId] += 1
 
             # return true whenever more than max_value collisions occured  
-            resets = np.where(self._collisionsCount < max_value, False, True)
+            resets = np.where(self._collisionsCount > max_value, True, False)
             successes = np.where(self._collisionsCount < max_value, True, False)
             
             self._rewards += resets * reward    # punish collision
@@ -450,12 +454,11 @@ class PybulletEnv(ModularEnv):
         self._rewards = self._get_rewards()         # get rewards after updated distances and collisions
         self._dones = self._get_dones()             # get dones
 
-        #print("\nObs    :", self._obs["Positions"])
-        #print("Dist.  :", self._distances)
-        #print("Collisions:", self._collisions)
-        #print("Rewards:", self._rewards, end="; ")
-        #print("Timest.:", self._timesteps, end="; ")
-        #print("Coll.:", self._collisionsCount, end="; ")
+        #print("\nObs    :", self._obs["Positions"])   
+        #print("Dist:", [f"{value[0]:.4f}" for value in self._distances['target']], end=" | ")
+        #print("Rewards:", [f"{value:.4f}" for value in self._rewards], end=" | ")
+        #print("Timest.:", self._timesteps, end=" | ")
+        #print("Coll.:", self._collisionsCount, end=" | ")
         #print("Dones  :", self._dones) 
 
         return self._obs, self._rewards, self._dones, self.env_data
@@ -478,7 +481,7 @@ class PybulletEnv(ModularEnv):
 
             if self.verbose > 1:
                 for name, _ in self._distances_after_reset.items():
-                    self.set_attr("distance_" + name, None)   
+                    self.set_attr("average/" + name + "_dist", None)   
                 self.set_attr("average_steps", None)
                 self.set_attr("average_collision", None)
         
@@ -491,21 +494,6 @@ class PybulletEnv(ModularEnv):
                     robot.reset()
                 for obstacle in self._obstacles[i]:
                     obstacle.reset()
-
-            # log rewards
-            if self.verbose > 0:
-                self.set_attr("average_rewards", np.average(self._rewards))
-
-            # log distances of environments which were reset
-            if self.verbose > 1:
-                for name, distance in self._distances.items():
-                    self.set_attr("distance_"+name, np.average(distance[env_idxs]))
-            
-            # log average steps of environments which were reset  
-            self.set_attr("average_steps", np.average(self._timesteps[env_idxs]))
-
-            # log average collisions of environments which were reset     
-            self.set_attr("average_collision", np.average(self._collisionsCount[env_idxs]))
 
             self._timesteps[env_idxs] = 0           # reset timestep tracking
             self._collisionsCount[env_idxs] = 0     # reset collisions count tracking
@@ -622,7 +610,7 @@ class PybulletEnv(ModularEnv):
         dones = np.full(self.num_envs, False)    # init default array: No env is done
         successes = np.full(self.num_envs, False)
 
-        # check if any of the functions specify a reset
+        # check if any of the functions specify a reset or success
         for fn in self._reset_fns:
             curr_dones, curr_success = fn()
             dones = np.logical_or(dones, curr_dones)
@@ -644,7 +632,9 @@ class PybulletEnv(ModularEnv):
             if self.verbose > 1:
                 # log distances of environments
                 for name, distance in self._distances.items():
-                    self.set_attr("distance_"+name, np.average(distance[reset_idx]))
+                    # dont take rotation into account
+                    curr_dist = [value[0] for value in distance[reset_idx]]
+                    self.set_attr("average/" + name + "_dist" , np.average(curr_dist))
             
                 # log average steps of environments 
                 self.set_attr("average_steps", np.average(self._timesteps[reset_idx]))

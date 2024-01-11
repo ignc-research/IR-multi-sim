@@ -1,8 +1,8 @@
 run:
   engine: "PyBullet"
   load_model: False
-  load_name: "simple_PPO_pyb\\checkpoint_40960.zip"
-  save_name: "simple_PPO_pyb"
+  model_name: "simple_PPO_pyb"
+  checkpoint: "checkpoint_40960.zip"
   algorithm:
     type: "PPO"
     parameters:
@@ -20,7 +20,7 @@ evaluation:
 env:
   num_envs: 18
   env_offset: [4, 4]
-  headless: False
+  headless: True
   step_size: 0.00416666666
   step_count: 1
 
@@ -56,7 +56,7 @@ env:
 
   resets:  
     - distance: "TargetDistance"
-      min_distance: 0.0001
+      min_distance: 0.01
       max_distance: 1.5
       reward: 10
       type: "DistanceReset" 

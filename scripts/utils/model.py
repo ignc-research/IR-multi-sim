@@ -17,7 +17,7 @@ def setup_model(config: dict, env: ModularEnv) -> (BaseAlgorithm, str):
 
     # try loading existing model
     if config["load_model"]:
-        model_path = MODEL_DIR + config["load_name"]
+        model_path = MODEL_DIR + config["model_name"] + "/" + config["checkpoint"]
         if exists(model_path):
             model = config["algorithm"].load(model_path, env=env)
             model.set_parameters(model_path)
@@ -25,9 +25,9 @@ def setup_model(config: dict, env: ModularEnv) -> (BaseAlgorithm, str):
 
             print("Model timesteps:", model.num_timesteps)
 
-            return model, MODEL_DIR + config["save_name"]
+            return model, MODEL_DIR + config["model_name"]
         
-        print(f"No parameters found at {model_path}!")
+        print(f"Model not found at {model_path}!")
         exit(0)
 
     # create new model if necessary

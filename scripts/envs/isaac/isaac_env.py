@@ -364,27 +364,31 @@ class IsaacEnv(ModularEnv):
     def _parse_distance_reset(self, reset: DistanceReset):
         # extract name to allow created function to access it easily
         name = reset.distance_name
-        distance_min, distance_max = reset.min_distance, reset.max_distance
+        min_distance, max_distance = reset.min_distance, reset.max_distance
         max_angle = reset.max_angle
         reward = reset.reward
 
         # parse function
         def reset_condition() -> np.ndarray:
             # get distances of current timestep
+            # TODO: add rotation condition
             distance, rotation = self._get_distance_and_rotation(name)
 
-            # positive reward if it reaches min dist
-            min_distance_reset = np.where(distance <= distance_min, True, False)
-            min_rotation_reset = np.where(np.abs(rotation) <= distance_min, True, False)
-            
-            # stores true for env whose objects are within min distance range
-            successes = np.logical_and(min_distance_reset, min_rotation_reset)
-            self._rewards += successes * reward
+            if min_distance:
+                dist_success = np.where(distance <= min_distance, True, False)  
+                successes = np.logical_and(dist_success, True)
+                resets = np.logical_or(dist_success, False)
 
-            # if distance exceed max value: reset
-            max_distance_reset = np.where(distance > distance_max, True, False)
-            max_rotation_reset = np.where(np.abs(rotation) > max_angle, True, False)
-            resets = np.logical_or(max_distance_reset, max_rotation_reset)
+                # apply reward in case of successes
+                self._rewards += successes * reward 
+
+            else:
+                dist_resets = np.where(distance > max_distance, True, False)
+                successes = np.where(distance <= max_distance, True, False)  
+                resets = np.logical_or(dist_resets, False)
+        
+                # apply punishment/ reward in case of reset 
+                self._rewards += resets * reward
 
             return resets, successes
 
@@ -430,7 +434,7 @@ class IsaacEnv(ModularEnv):
                         envPunished[env] = True
         
             # return true whenever more than max_value collisions occured  
-            resets = np.where(self._collisionsCount < max_value, False, True)
+            resets = np.where(self._collisionsCount > max_value, True, False)
             successes = np.where(self._collisionsCount < max_value, True, False)
                  
             self._rewards += resets * reward    # punish collision
@@ -476,13 +480,12 @@ class IsaacEnv(ModularEnv):
         self._rewards = self._get_rewards()         # get rewards after updated distances
         self._dones = self._get_dones()             # get dones
 
-        #print("Obs    :", self._obs)
-        #print("\n\nRewards:", self._rewards, end="\n")
-        #print("Timest.:", self._timesteps, end="\n")
-        #print("Coll.:", self._collisionsCount, end="\n")
-        #print("Dist.  :", self._distances, end="\n")
-        #print("Dones  :", self._dones)
-
+        #print("Obs    :", self._obs)        
+        #print("Dist:", [f"{value[0]:.4f}" for value in self._distances['TargetDistance']], end=" | ")
+        #print("Rewards:", [f"{value:.4f}" for value in self._rewards], end=" | ")
+        #print("Timest.:", self._timesteps, end=" | ")
+        #print("Coll.:", self._collisionsCount, end=" | ")
+        #print("Dones  :", self._dones) 
         return self._obs, self._rewards, self._dones, self.env_data
 
     def reset(self, env_idxs: np.ndarray=None) -> VecEnvObs:
@@ -510,7 +513,7 @@ class IsaacEnv(ModularEnv):
 
             if self.verbose > 1:
                 for name, _ in self._distances_after_reset.items():
-                    self.set_attr("distance_" + name, None)   
+                    self.set_attr("average/" + name + "_dist", None)   
                 self.set_attr("average_steps", None)
                 self.set_attr("average_collision", None)
 
@@ -717,7 +720,8 @@ class IsaacEnv(ModularEnv):
             if self.verbose > 1:
                 # log distances of environments
                 for name, distance in self._distances.items():
-                    self.set_attr("distance_"+name, np.average(distance[reset_idx]))
+                    curr_dist = [value[0] for value in distance[reset_idx]]
+                    self.set_attr("average/" + name + "_dist" , np.average(curr_dist))
             
                 # log average steps of environments 
                 self.set_attr("average_steps", np.average(self._timesteps[reset_idx]))
