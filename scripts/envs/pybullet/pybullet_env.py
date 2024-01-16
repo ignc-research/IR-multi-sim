@@ -13,6 +13,7 @@ from scripts.rewards.reward import Reward
 from scripts.rewards.distance import Distance, calc_distance
 from scripts.rewards.timesteps import ElapsedTimesteps
 from scripts.rewards.collision import Collision
+from scripts.rewards.shaking import Shaking
 
 from scripts.resets.reset import Reset
 from scripts.resets.distance_reset import DistanceReset
@@ -56,7 +57,7 @@ class PybulletEnv(ModularEnv):
         self._distance_funcions = []
         self._distances: Dict[str, np.ndarray] = {}
         self._distances_after_reset: Dict[str, np.ndarray] = {}
-        self.num_distances = params.num_distances
+        self._last_dist: Dict[int, list] = {}
 
         # calculate env offsets
         break_index = math.ceil(math.sqrt(self.num_envs))
@@ -125,6 +126,8 @@ class PybulletEnv(ModularEnv):
                 self._reward_fns.append(self._parse_timestep_reward(reward))
             elif isinstance(reward, Collision):
                 self._reward_fns.append(self._parse_collision_reward(reward))
+            elif isinstance(reward, Shaking):
+                self._reward_fns.append(self._parse_shaking_reward(reward))
             else:
                 raise f"Reward {type(reward)} not implemented!"
 
@@ -166,7 +169,7 @@ class PybulletEnv(ModularEnv):
         # add to existing distance functions
         self._distance_funcions.append(distance_per_env)
 
-        def calculate_distance_reward() -> float:
+        def calculate_distance_reward():
             # get current distances
             distance_space, distance_orientation = self._get_distance_and_rotation(name)
 
@@ -189,6 +192,46 @@ class PybulletEnv(ModularEnv):
 
         return calculate_distance_reward
     
+    def _parse_shaking_reward(self, shaking: Shaking):
+        weight = shaking.weight
+        length = shaking.length
+        dist_name = shaking.distance_name
+        
+        for i in range(self.num_envs):
+            self._last_dist[i] = []
+
+        # reward elapsed timesteps
+        def shaking_reward():
+            # init enmtpy shaking array 
+            shakings = np.zeros(self.num_envs)
+
+            # get current distance
+            distance_space, _ = self._get_distance_and_rotation(dist_name)
+
+            # only save last length distances
+            for i in range(self.num_envs):
+                if len(self._last_dist[i]) > length:
+                    self._last_dist[i].pop(0)
+
+                # add recent distance if not already in there
+                if not np.any(distance_space[i] == self._last_dist[i]):
+                    self._last_dist[i].append(distance_space[i])
+
+            # add negative reward for shaking
+            for idx in range(self.num_envs):
+                shaking = 0
+                if len(self._last_dist[idx]) >= length:
+                    flipping = []
+                    for i in range(length-1):
+                        flipping.append(0) if self._last_dist[idx][i+1] - self._last_dist[idx][i] >= 0 else flipping.append(1)
+                    for j in range(length-2):
+                        if flipping[j] != flipping[j+1]:
+                            shaking += 1
+                shakings[idx] = shaking
+
+            return weight * shakings
+        
+        return shaking_reward
     
     def _parse_timestep_reward(self, elapsed: ElapsedTimesteps):
         """
@@ -461,6 +504,10 @@ class PybulletEnv(ModularEnv):
         #print("Coll.:", self._collisionsCount, end=" | ")
         #print("Dones  :", self._dones) 
 
+        if self.verbose > 0:
+            # log rewards of environments 
+            self.set_attr("average_rewards", np.average(self._rewards))
+
         return self._obs, self._rewards, self._dones, self.env_data
 
 
@@ -622,10 +669,7 @@ class PybulletEnv(ModularEnv):
 
         # log and reset environments if necessary
         if reset_idx.size > 0:
-            
             if self.verbose > 0:
-                # log rewards of environments 
-                self.set_attr("average_rewards", np.average(self._rewards[reset_idx]))
                 # log success of environments
                 self.set_attr("average_success", np.average(successes[reset_idx]))
 

@@ -114,7 +114,7 @@ Rewards are functions which evluate the current environment state, rating desira
 ```yaml 
   rewards:
     - name:                 # str: name of the reward, free choosable 
-      type:                 # str:  supported types: "collision", "distance" or "timestep"
+      type:                 # str:  supported types: "collision", "distance" , "timestep", shaking
 
       # parameters for type = collision 
       obj:                  # str: name of the object you want to test for collision 
@@ -129,7 +129,12 @@ Rewards are functions which evluate the current environment state, rating desira
       normalize:            # bool: normalize reward depending on current pos relative to beginning pos
     
       # parameters for type = timestep
-      weight: # float: reward/penalty
+      weight:               # float: reward/penalty
+
+      # parameters for type = shaking
+      distance:             # str: name of the distance defined in rewards 
+      weight:               # float: reward/penalty
+      length:               # amount of past distances taken into account
 ``` 
 
 #### Resets

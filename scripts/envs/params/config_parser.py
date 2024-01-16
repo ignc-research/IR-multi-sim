@@ -10,6 +10,7 @@ from scripts.rewards.reward import Reward
 from scripts.rewards.distance import Distance
 from scripts.rewards.timesteps import ElapsedTimesteps
 from scripts.rewards.collision import Collision
+from scripts.rewards.shaking import Shaking
 
 from scripts.resets.reset import Reset
 from scripts.resets.distance_reset import DistanceReset
@@ -170,6 +171,7 @@ def _parse_reward(params: dict) -> Reward:
         "Distance": Distance,
         "Collision": Collision,
         "ElapsedTimesteps": ElapsedTimesteps,
+        "Shaking": Shaking,
     }
 
     # extract required type

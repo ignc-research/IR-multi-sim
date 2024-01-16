@@ -4,13 +4,13 @@ run:
   model_name: "simple_test_pyb"
   checkpoint: ""
   algorithm:
-    type: "TD3"
+    type: "PPO"
     parameters:
-      learning_rate: 0.001
-      train_freq: 1
+      learning_rate: 0.0003
+      gamma: 0.99
 train:
   logging: 2
-  timesteps: 1500000 
+  timesteps: 15000000 
   save_freq: 100000
 
 evaluation:
@@ -19,7 +19,7 @@ evaluation:
 env:
   num_envs: 4
   env_offset: [4, 4]
-  headless: False
+  headless: True
   step_size: 0.00416666666
   step_count: 1
 
@@ -38,7 +38,7 @@ env:
   
   obstacles:
     - name: "TargetCube"
-      position: [[-0.5, -0.3, 0.7],[0.3, 0.3, 1.]]
+      position: [-0.5, -0.3, 0.7]
       color: [1, 0, 0]
       collision: False
       observable: True
@@ -49,26 +49,22 @@ env:
     - name: "target"
       obj1: "TargetCube"
       obj2: "R1/ee_link"
-      distance_weight: -32
-      exponent: 2
+      distance_weight: -0.01
+      exponent: 1
       orientation_weight: 0
       type: "Distance"
 
+    - distance: "target"
+      weight: -0.005
+      length: 10
+      type: "Shaking"
+
   resets:  
     - distance: "target"
-      min_distance: 0.1
+      min_distance: 0.2
       reward: 10
       type: "DistanceReset" 
-    
-    - distance: "target"
-      max_distance: 1.2
-      reward: -5
-      type: "DistanceReset" 
-      
-    - max: 200
+          
+    - max: 1024
       type: "TimestepsReset"
-
-    - obj: "R1"
-      max: 1
-      reward: -5
-      type: "CollisionReset"
+      reward: -0.5

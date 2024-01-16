@@ -17,7 +17,7 @@ evaluation:
   timesteps: 100000 
 
 env:
-  num_envs: 18
+  num_envs: 36
   env_offset: [4, 4]
   headless: True
   step_size: 0.00416666666
@@ -54,10 +54,15 @@ env:
       orientation_weight: 0
       type: "Distance"
 
+    - distance: "target"
+      weight: -0.005
+      length: 10
+      type: "Shaking"
+
   resets:  
     - distance: "target"
       min_distance: 0.1
-      reward: 10
+      reward: 15
       type: "DistanceReset" 
     
     - distance: "target"
