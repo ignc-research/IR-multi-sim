@@ -56,6 +56,7 @@ class IsaacEnv(ModularEnv):
         self.step_count = params.step_count
         self.step_size = params.step_size
         self.verbose = params.verbose
+        self.observable_urdfs_count = len([o for o in params.urdfs if o.observable])
 
         # calculate which attributes are tracked for how many objects per env
         self._scale_tracked = self.observable_robots_count + self.observable_obstacles_count
@@ -85,6 +86,7 @@ class IsaacEnv(ModularEnv):
         self._robots: List = []
         self._observable_robots: List[Articulation] = []
         self._observable_robot_joints: List[Articulation] = []
+        self._observable_urdfs: List[Articulation] = []
 
         # for collision detection save mapping from primpath to robot environment
         self.prim_to_robot = {}
@@ -711,6 +713,19 @@ class IsaacEnv(ModularEnv):
                 rotations = np.append(rotations, rot)
                 scales = np.append(scales, obstacle.get_local_scale())
 
+            # get observations from all urdfs in environment
+            urdf_idx_offset = self.observable_urdfs_count * env_idx
+            for urdf_idx in range(urdf_idx_offset, self.observable_urdfs_count + urdf_idx_offset):
+                # get urdf, its pos and rot
+                urdf = self._observable_urdfs[urdf_idx]
+                pos, rot = urdf.get_local_pose()
+                pos -= self._env_offsets[env_idx]
+
+                # add obstacle pos and rotation to list of observations
+                positions = np.append(positions, pos)
+                rotations = np.append(rotations, rot)
+                scales = np.append(scales, urdf.get_local_scale())           
+
         # reshape obs
         positions = positions.reshape(self.num_envs, -1)
         rotations = rotations.reshape(self.num_envs, -1)
@@ -837,6 +852,14 @@ class IsaacEnv(ModularEnv):
                            orientation=urdf.orientation, scale=urdf.scale)
         self._scene.add(obj)
 
+        # add it to list of observable objects, if necessary
+        if urdf.observable:
+            self._observable_urdfs.append(obj)
+
+        # configure collision
+        if urdf.collision:
+            self._add_collision_material(prim_path, self._collision_material_path)
+
         # add reference to urdf scene to current stage
         return prim_path
         
@@ -918,7 +941,6 @@ class IsaacEnv(ModularEnv):
 
         # parse required class
         from scripts.envs.isaac.obstacle import IsaacObstacle, IsaacCube, IsaacSphere, IsaacCylinder  
-        from omni.isaac.core.objects import FixedCuboid, DynamicCuboid, FixedSphere, DynamicSphere, DynamicCylinder, FixedCylinder
    
         # create parameter dict
         params = obstacle.get_constructor_params()

@@ -17,7 +17,7 @@ evaluation:
   timesteps: 100000 
 
 env:
-  num_envs: 36
+  num_envs: 18
   env_offset: [4, 4]
   headless: True
   step_size: 0.00416666666

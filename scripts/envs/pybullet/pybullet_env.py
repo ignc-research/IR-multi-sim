@@ -74,6 +74,7 @@ class PybulletEnv(ModularEnv):
         self._observable_robots: Dict[int, List[PyRobot]] = {}
         self._obstacles: Dict[int, List[PyObstacle]] = {}
         self._observable_obstacles: Dict[int, List[PyObstacle]] = {}
+        self._observable_urdfs: Dict[int, List[Urdf]] = {}
 
         # setup rl environment
         self._setup_environments(params.robots, params.obstacles, params.urdfs)
@@ -98,7 +99,8 @@ class PybulletEnv(ModularEnv):
         self._robots = {i: [] for i in range(self.num_envs)}
         self._observable_robots  = {i: [] for i in range(self.num_envs)}
         self._obstacles = {i: [] for i in range(self.num_envs)}
-        self._observable_obstacles= {i: [] for i in range(self.num_envs)}
+        self._observable_obstacles = {i: [] for i in range(self.num_envs)}
+        self._observable_urdfs = {i: [] for i in range(self.num_envs)}
 
         # load ground plane
         pyb.loadURDF(self.asset_path  + "workspace/plane.urdf", [0,0,-1e-3])         
@@ -589,7 +591,6 @@ class PybulletEnv(ModularEnv):
                 positions = np.append(positions, pos)
                 rotations = np.append(rotations, rot)
                 scales = np.append(scales, scale)
-                joint_positions = np.append(joint_positions, 0) # TODO:
 
                 # get observations from all observable joints from the robot
                 jointsPos, jointsRot = robot.getObservableJointsPose()           
@@ -598,11 +599,24 @@ class PybulletEnv(ModularEnv):
                 positions = np.append(positions, jointsPos)
                 rotations = np.append(rotations, jointsRot)
 
+                # get angles of joints
+                angles = robot.getJointAngles()
+                joint_positions = np.append(joint_positions, angles)
+
             # get observations from all obstacles in environment
             for obstacle in self._observable_obstacles[env_idx]:
-                pos, rot, scale = obstacle.getPose()   # get its pose  
+                pos, rot, scale = obstacle.getPose() 
+                
+                positions = np.append(positions, pos)
+                rotations = np.append(rotations, rot)
+                scales = np.append(scales, scale)
 
-                # add obstacle pos, rotation and scale to list of observations
+            # get observations from all observable urdfs
+            for urdf in self._observable_urdfs[env_idx]:
+                pos, rot = pyb.getBasePositionAndOrientation(urdf[0]) 
+                pos -= urdf[1]
+                scale =  pyb.getVisualShapeData(urdf[0])[3][3]
+
                 positions = np.append(positions, pos)
                 rotations = np.append(rotations, rot)
                 scales = np.append(scales, scale)
@@ -764,6 +778,9 @@ class PybulletEnv(ModularEnv):
         self.id = pyb.loadURDF(urdf_path, basePosition=urdf_pos, baseOrientation=urdf_ori, 
                                useFixedBase=True, globalScaling=urdf.scale[0])
         
+        if urdf.observable:
+            self._observable_urdfs[env_idx].append((self.id, self._env_offsets[env_idx]))
+
         return urdf.name
 
 
