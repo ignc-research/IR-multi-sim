@@ -859,6 +859,8 @@ class IsaacEnv(ModularEnv):
         # configure collision
         if urdf.collision:
             self._add_collision_material(prim_path, self._collision_material_path)
+        else:
+            obj.set_collision_enabled(False)
 
         # add reference to urdf scene to current stage
         return prim_path
@@ -896,6 +898,8 @@ class IsaacEnv(ModularEnv):
         # configure collision
         if robot.collision:
             self._add_collision_material(prim_path, self._collision_material_path)
+        else:
+            obj.set_collision_enabled(False)
 
         # track observable joints of robot
         for obs_joint in robot.observable_joints:

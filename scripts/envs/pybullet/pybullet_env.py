@@ -59,6 +59,9 @@ class PybulletEnv(ModularEnv):
         self._distances_after_reset: Dict[str, np.ndarray] = {}
         self._last_dist: Dict[int, list] = {}
 
+        # save collidable objects for collision detection
+        self._collidable = []
+
         # calculate env offsets
         break_index = math.ceil(math.sqrt(self.num_envs))
         self._env_offsets = dict(zip(
@@ -380,14 +383,12 @@ class PybulletEnv(ModularEnv):
         reward = reset.reward
         
         # parse function
-        def reset_condition() -> np.ndarray:
-            unique_collisions = list(set(self._collisions))  # remove duplicated collision            
-
+        def reset_condition() -> np.ndarray:   
             for envId in range(self.num_envs):
                 for robot in self._robots[envId]:
                     # only check collision for specified robot
                     if objName == robot.name:
-                        if any(robot.id in tup for tup in unique_collisions):
+                        if any(robot.id in tup for tup in self._collisions):
                             self._collisionsCount[envId] += 1
 
             # return true whenever more than max_value collisions occured  
@@ -717,7 +718,11 @@ class PybulletEnv(ModularEnv):
         for point in _contactPoints:
             # pyb may have contacts with separation dist greater zero    
             if point[8] <= 0: 
-                _collisions.append((point[1], point[2]))
+                if point[1] in self._collidable and point[2] in self._collidable:
+                    _collisions.append((point[1], point[2]))
+
+        # remove duplicated collision
+        _collisions = list(set(_collisions))  
 
         return _collisions
 
@@ -762,7 +767,10 @@ class PybulletEnv(ModularEnv):
         self._robots[env_idx].append(newRobot)          
         
         if robot.observable:
-            self._observable_robots[env_idx].append(newRobot)       
+            self._observable_robots[env_idx].append(newRobot)    
+        
+        if robot.collision:
+            self._collidable.append(newRobot.id)   
 
         return newRobot.name
     
@@ -775,11 +783,14 @@ class PybulletEnv(ModularEnv):
         urdf_ori = urdf.orientation[::-1]
 
         # create pybullet instance of urdf
-        self.id = pyb.loadURDF(urdf_path, basePosition=urdf_pos, baseOrientation=urdf_ori, 
+        new_urdf = pyb.loadURDF(urdf_path, basePosition=urdf_pos, baseOrientation=urdf_ori, 
                                useFixedBase=True, globalScaling=urdf.scale[0])
         
         if urdf.observable:
-            self._observable_urdfs[env_idx].append((self.id, self._env_offsets[env_idx]))
+            self._observable_urdfs[env_idx].append((new_urdf, self._env_offsets[env_idx]))
+
+        if urdf.collision:
+            self._collidable.append(new_urdf)
 
         return urdf.name
 
@@ -811,5 +822,8 @@ class PybulletEnv(ModularEnv):
         
         if obstacle.observable:
             self._observable_obstacles[env_idx].append(newObject) 
+
+        if obstacle.collision:
+            self._collidable.append(newObject.id)
 
         return newObject.name
