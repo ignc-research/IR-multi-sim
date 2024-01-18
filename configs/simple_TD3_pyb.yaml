@@ -1,0 +1,69 @@
+run:
+  engine: "PyBullet"
+  load_model: True
+  model_name: "simple_TD3_pyb"
+  checkpoint: "checkpoint_400032.zip"
+  algorithm:
+    type: "TD3"
+    parameters:
+      learning_rate: 0.001
+      train_freq: 1
+train:
+  logging: 2
+  timesteps: 1500000 
+  save_freq: 100000
+
+evaluation:
+  timesteps: 100000 
+
+env:
+  num_envs: 18
+  env_offset: [4, 4]
+  headless: True
+  step_size: 0.00416666666
+  step_count: 1
+
+  robots:
+    - name: "R1"
+      urdf_path: "robots/ur5/urdf/ur5_with_gripper.urdf"
+      position: [0, 0, 0.63]
+      observable_joints: ["ee_link"]
+      control_type: "Velocity"  
+
+  urdfs:
+    - name: "Table" # workspace: [[-0.65,-0.40,0.64],[0.65,0.40,1.00]]
+      urdf_path: "table/table.urdf"
+      position: [0, 0, 0]
+      orientation: [1, 0, 0, 0]
+  
+  obstacles:
+    - name: "TargetCube"
+      position: [-0.55, -0.37, 0.8]
+      color: [1, 0, 0]
+      collision: False
+      observable: True
+      static: True
+      type: "Cube"  
+
+  rewards:
+    - name: "TargetDistance"
+      obj1: "TargetCube"
+      obj2: "R1/ee_link"
+      distance_weight: -2
+      orientation_weight: 0
+      type: "Distance"
+
+  resets:  
+    - distance: "TargetDistance"
+      min_distance: 0.01
+      max_distance: 1.5
+      reward: 10
+      type: "DistanceReset" 
+      
+    - max: 1000
+      type: "TimestepsReset"
+
+    - obj: "R1"
+      max: 10
+      reward: -5
+      type: "CollisionReset"

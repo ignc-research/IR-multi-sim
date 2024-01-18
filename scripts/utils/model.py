@@ -5,8 +5,8 @@ import re
 from scripts.envs.modular_env import ModularEnv
 import os
 
-MODEL_DIR = "./data/models/"
-LOG_DIR = "./data/logs/"
+MODEL_DIR = "./models/"
+LOG_DIR = "./logs/"
 
 def setup_model(config: dict, env: ModularEnv) -> (BaseAlgorithm, str):
     if not os.path.exists(MODEL_DIR):
