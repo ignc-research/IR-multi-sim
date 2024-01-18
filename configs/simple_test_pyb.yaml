@@ -17,7 +17,7 @@ evaluation:
   timesteps: 100000 
 
 env:
-  num_envs: 18
+  num_envs: 4
   env_offset: [4, 4]
   headless: True
   step_size: 0.00416666666
@@ -79,3 +79,9 @@ env:
       max: 1
       reward: -5
       type: "CollisionReset"
+
+    - obj: "R1"
+      min_bound: [0,0,0]
+      max_bound: [1,1,2.6]
+      reward: -1
+      type: "BoundaryReset"

@@ -159,4 +159,9 @@ Resets are functions which determine wether the environment needs to be reset. T
       # parameters for type = TimestepsReset 
       max:          # int: max amount of timesteps before resetting
       min:          # int: minimal timesteps that have to pass to reset/success
+
+      # parameters for type = BoundaryReset 
+      obj:                # str: name of the robot you want to test for boundary excess (includes the robots joints)  
+      max_bound:          # int: upper boundary
+      min_bound:          # int: lower boundary
 ``` 
