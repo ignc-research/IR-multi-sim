@@ -61,7 +61,7 @@ To create a robot in an environment, the urdf path is the only required argument
     - name:                 # str: name of the robot  
       urdf_path:            # str: path to the urdf, usually in the robots folder
       position:             # [float, float, float]: x,y,z base position of the robot
-      orientation:          # [float, float, float]: x,y,z base position of the robot
+      orientation:          # [float, float, float, float]: x,y,z,w world space quaternion of the robot
       collision:            # bool: true if robot is supposed to collide with surroundings
       observable:           # bool: true if pos and orientation included in observations for training
       observable_joints:    # ["string", ...]: robot joint names that should be observerd
@@ -79,7 +79,9 @@ To define a general urdf object, you need to provide a path to an urdf file. The
       urdf_path:    # str: path of the urdf
       scale:        # [float, float, float]: along x-, y-, z-axis
       position:     # [float, float, float]: x,y,z position
-      orientation:  # [float, float, float]: x,y,z orientation
+      orientation:  # [float, float, float, float]: x,y,z,w world space quaternion of the robot
+      collision:            # bool: true if is supposed to collide with robots
+      observable:           # bool: true if pos and orientation included in observations for training
 ```  
 
 #### Spawnable Objects
@@ -89,10 +91,10 @@ To define spawnable objects, you need to provide the object typ. The other param
     - type:         # str: "Cube", "Spher" or "Cylinder"
       name:         # str: name of the object
       position:     # [float, float, float]: x,y,z position
-      orientation:  # [float, float, float]: x,y,z orientation
+      orientation:  # [float, float, float, float]: x,y,z,w world space quaternion of the robot
       scale:        # [floa, float, float]: scale along x-, y-, z-axis 
       color:        # [R,G,B]: color of the robot, range: [0,1]
-      collision:    # bool: true if robot is supposed to collide with surroundings
+      collision:    # bool: true if is supposed to collide with robots
       observable:   # bool: true if pos and orientation included in observations for training
       static:       # bool: false if the object moves in space 
       velocity:     # float: define the velocity of the tracjectory  

@@ -11,8 +11,8 @@ class Urdf(Spawnable):
         position: Union[ndarray, List] = array([0, 0, 0]), 
         orientation: Union[ndarray, List] = array([1, 0, 0, 0]),
         scale: Union[ndarray, List] = array([1, 1, 1]),
-        observable: bool = False,
-        collision: bool = False,
+        observable: bool = True,
+        collision: bool = True,
         static: bool = False
         )-> None:
 
