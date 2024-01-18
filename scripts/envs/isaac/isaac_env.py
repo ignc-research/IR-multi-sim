@@ -15,6 +15,7 @@ from scripts.resets.reset import Reset
 from scripts.resets.distance_reset import DistanceReset
 from scripts.resets.timesteps_reset import TimestepsReset
 from scripts.resets.collision_reset import CollisionReset
+from scripts.resets.boundary_reset import BoundaryReset
 
 from stable_baselines3.common.vec_env.base_vec_env import *
 from typing import List, Tuple, Union
@@ -68,6 +69,9 @@ class IsaacEnv(ModularEnv):
         self._distances: Dict[str, np.ndarray] = {}
         self._distances_after_reset: Dict[str, np.ndarray] = {}
         self._last_dist: Dict[int, list] = {}
+        
+        # initialize empty obersvation dict
+        self._obs = {}
 
         # calculate env offsets
         break_index = math.ceil(math.sqrt(self.num_envs))
@@ -403,6 +407,8 @@ class IsaacEnv(ModularEnv):
                 self._reset_fns.append(self._parse_timesteps_reset(reset))
             elif isinstance(reset, CollisionReset):
                 self._reset_fns.append(self._parse_collision_reset(reset))
+            elif isinstance(reset, BoundaryReset):
+                self._reset_fns.append(self._parse_boundary_reset(reset))
             else:
                 raise f"Reset {type(reset)} not implemented!"
 
@@ -437,6 +443,48 @@ class IsaacEnv(ModularEnv):
 
             return resets, successes
 
+        return reset_condition
+    
+    def _parse_boundary_reset(self, reset: BoundaryReset):
+        min_bound = reset.min_bound
+        max_bound = reset.max_bound
+        objName = reset.obj
+        reward = reset.reward
+
+        # parse function
+        def reset_condition() -> np.ndarray:   
+            reset = []
+
+            for envIdx in range(self.num_envs):
+                robot_idx_offset = self.observable_robots_count * envIdx
+                for robot_idx in range(robot_idx_offset, self.observable_robots_count + robot_idx_offset):
+                    robot = self._observable_robots[robot_idx]
+                    
+                    # only check boundary for defined robots
+                    if robot.name.split("-")[1] == objName:
+                        pos, _ = robot.get_world_pose()
+                        pos -= self._env_offsets[envIdx]
+                        resRobot = np.any(np.logical_or(pos < min_bound, pos > max_bound))
+
+                # get observations from all observable joints in environment
+                joint_idx_offset = self.observable_robot_joint_count * envIdx
+                for joint_idx in range(joint_idx_offset, self.observable_robot_joint_count + joint_idx_offset):
+                    joint = self._observable_robot_joints[joint_idx]
+
+                     # only check boundary for defined robots
+                    if joint.name.split("-")[1].split("/")[0] == objName:
+                        pos, _ = joint.get_world_pose()
+                        pos -= self._env_offsets[envIdx]
+                        resJoints = np.any(np.logical_or(pos < min_bound, pos > max_bound))
+      
+                # set reset true if one element is out of bounce
+                reset.append(np.logical_or(resRobot, resJoints))
+            
+            reset = np.array(reset)
+            success = [not val for val in reset]
+            self._rewards += reset * reward
+            
+            return reset, success
         return reset_condition
 
     def _parse_timesteps_reset(self, reset: TimestepsReset):
@@ -674,7 +722,7 @@ class IsaacEnv(ModularEnv):
                 robot = self._observable_robots[robot_idx]
 
                 # get its pose
-                pos, rot = robot.get_local_pose()
+                pos, rot = robot.get_world_pose()
                 # apply env offset
                 pos -= self._env_offsets[env_idx]
 
@@ -690,8 +738,9 @@ class IsaacEnv(ModularEnv):
                 # get joint of environment
                 joint = self._observable_robot_joints[joint_idx]
 
-                # get its pose # todo: doesn't factor in parent object (robot) offset
-                pos, rot = joint.get_local_pose()
+                # get its pose
+                pos, rot = joint.get_world_pose()
+                pos -= self._env_offsets[env_idx]
 
                 # add pos and rotation to list of observations
                 positions = np.append(positions, pos)
@@ -704,7 +753,7 @@ class IsaacEnv(ModularEnv):
                 obstacle = self._observable_obstacles[obstacle_idx]
 
                 # get its pose
-                pos, rot = obstacle.get_local_pose()
+                pos, rot = obstacle.get_world_pose()
                 # apply env offset
                 pos -= self._env_offsets[env_idx]
 
@@ -718,7 +767,7 @@ class IsaacEnv(ModularEnv):
             for urdf_idx in range(urdf_idx_offset, self.observable_urdfs_count + urdf_idx_offset):
                 # get urdf, its pos and rot
                 urdf = self._observable_urdfs[urdf_idx]
-                pos, rot = urdf.get_local_pose()
+                pos, rot = urdf.get_world_pose()
                 pos -= self._env_offsets[env_idx]
 
                 # add obstacle pos and rotation to list of observations

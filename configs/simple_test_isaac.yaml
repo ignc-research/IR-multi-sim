@@ -19,7 +19,7 @@ evaluation:
 env:
   num_envs: 4
   env_offset: [4, 4]
-  headless: True
+  headless: False
   step_size: 0.00416666666
   step_count: 1
 
@@ -68,3 +68,9 @@ env:
     - max: 1024
       type: "TimestepsReset"
       reward: -0.5
+    
+    - obj: "R1" # workspace: [[-0.65,-0.40,0.63],[0.65,0.40,1.00]]
+      min_bound: [-0.65,-0.4,0.63]
+      max_bound: [0.65,0.4,1]
+      reward: -1
+      type: "BoundaryReset"

@@ -19,6 +19,7 @@ from scripts.resets.reset import Reset
 from scripts.resets.distance_reset import DistanceReset
 from scripts.resets.timesteps_reset import TimestepsReset
 from scripts.resets.collision_reset import CollisionReset
+from scripts.resets.boundary_reset import BoundaryReset 
 
 from stable_baselines3.common.vec_env.base_vec_env import *
 from typing import List, Tuple, Dict
@@ -61,6 +62,7 @@ class PybulletEnv(ModularEnv):
 
         # save collidable objects for collision detection
         self._collidable = []
+        self._obs = {}
 
         # calculate env offsets
         break_index = math.ceil(math.sqrt(self.num_envs))
@@ -319,6 +321,8 @@ class PybulletEnv(ModularEnv):
                 self._reset_fns.append(self._parse_timesteps_reset(reset))
             elif isinstance(reset, CollisionReset):
                 self._reset_fns.append(self._parse_collision_reset(reset))
+            elif isinstance(reset, BoundaryReset):
+                self._reset_fns.append(self._parse_boundary_reset(reset))
             else:
                 raise f"Reset {type(reset)} not implemented!"
 
@@ -355,6 +359,34 @@ class PybulletEnv(ModularEnv):
             return resets, successes
 
         return reset_condition
+    
+    def _parse_boundary_reset(self, reset: BoundaryReset):
+        min_bound = reset.min_bound
+        max_bound = reset.max_bound
+        objName = reset.obj
+        reward = reset.reward
+
+        # parse function
+        def reset_condition() -> np.ndarray:   
+            reset = []
+            for envIdx in range(self.num_envs):
+                for robot in self._observable_robots[envIdx]:                    
+                    if robot.name == objName:
+                        pos, _, _= robot.getPose()
+                        jointsPos, _ = robot.getObservableJointsPose() 
+                        pos = np.array(pos)
+                        jointsPos = np.array(jointsPos)
+
+                        resRobot = np.logical_or(pos < min_bound, pos > max_bound)
+                        resJoints = np.logical_or(jointsPos < min_bound, jointsPos > max_bound)
+                        reset.append(np.any(np.logical_or(resRobot, resJoints)))
+   
+            success = [not val for val in reset]
+            self._rewards += reset * reward
+            
+            return reset, success
+        
+        return reset_condition
 
 
     def _parse_timesteps_reset(self, reset: TimestepsReset):
@@ -368,7 +400,7 @@ class PybulletEnv(ModularEnv):
             resets = np.where(self._timesteps < max_steps, False, True)
 
             if min_steps:
-                successes = np.where(self._timesteps > min_steps, True, False)              
+                successes = np.where(self._timesteps >= min_steps, True, False)              
             else:
                 successes = np.where(self._timesteps < max_steps, True, False)
             
@@ -399,7 +431,6 @@ class PybulletEnv(ModularEnv):
             return resets, successes
         
         return reset_condition
-
 
     def _move_robot_via_velocity(self, robot: PyRobot, action: np.ndarray) -> None: 
         ''' 

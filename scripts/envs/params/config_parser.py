@@ -16,6 +16,7 @@ from scripts.resets.reset import Reset
 from scripts.resets.distance_reset import DistanceReset
 from scripts.resets.timesteps_reset import TimestepsReset
 from scripts.resets.collision_reset import CollisionReset
+from scripts.resets.boundary_reset import BoundaryReset
 
 from stable_baselines3 import PPO, TD3, SAC, A2C, DDPG
 import torch as th
@@ -191,7 +192,8 @@ def _parse_reset(params: dict) -> Reset:
     selector = {
         "DistanceReset": DistanceReset,
         "TimestepsReset": TimestepsReset,
-        "CollisionReset": CollisionReset
+        "CollisionReset": CollisionReset,
+        "BoundaryReset": BoundaryReset,
     }
 
     # extract required type
