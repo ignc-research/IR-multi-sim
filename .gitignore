@@ -15,7 +15,7 @@ _*/
 .vscode
 
 # logs of runs
-/data/logs/
-/data/models/
+/logs/
+/models/
 
 pyvenv.cfg
