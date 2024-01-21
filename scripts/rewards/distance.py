@@ -11,7 +11,7 @@ class Distance(Reward):
             obj1: Union[Spawnable, str],
             obj2: Union[Spawnable, str],
             distance_weight: float=-1,
-            orientation_weight: float=-0.1,
+            orientation_weight: float=0,
             exponent: float=1,
             normalize: bool=False,
             name: str=None

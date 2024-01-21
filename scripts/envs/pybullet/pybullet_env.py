@@ -330,29 +330,48 @@ class PybulletEnv(ModularEnv):
     def _parse_distance_reset(self, reset: DistanceReset):
         # extract name to allot created function to access it easily
         name = reset.distance_name
-        min_distance, max_distance = reset.min_distance, reset.max_distance
-        max_angle = reset.max_angle
         reward = reset.reward
-
+        min_distance = reset.min_distance
+        max_distance = reset.max_distance
+        min_angle = reset.min_angle
+        max_angle = reset.max_angle
+        
         # parse function
         def reset_condition() -> np.ndarray:
             # get distances of current timestep
-            # TODO: add rotation condition
-            distance, rotation = self._get_distance_and_rotation(name)
+            distance, rotation = self._get_distance_and_rotation(name)  
+            #print(f"Current Dist: {distance} and Rot: {rotation}")
 
+            # add positive reward if condition successfully reached 
             if min_distance:
                 dist_success = np.where(distance <= min_distance, True, False)  
-                successes = np.logical_and(dist_success, True)
-                resets = np.logical_or(dist_success, False)
+        
+                if min_angle:
+                    rot_success = np.where(rotation <= min_angle, True, False)  
+                    successes = np.logical_and(dist_success, rot_success)
+                else:
+                    successes = dist_success
+                    
+                resets = successes
+                #print(f"Min dist successes: {successes} and resets {resets}")
 
                 # apply reward in case of successes
                 self._rewards += successes * reward 
-
+            
+            # apply penalty for reset condtion reached
             else:
                 dist_resets = np.where(distance > max_distance, True, False)
-                successes = np.where(distance <= max_distance, True, False)  
-                resets = np.logical_or(dist_resets, False)
-        
+
+                if max_angle:
+                    rot_reset = np.where(rotation > max_angle, True, False)   
+                    resets = np.logical_or(dist_resets, rot_reset)  
+                    #print(f"Max angle reset: {rot_reset} and resets {resets}")          
+                else: 
+                    resets = dist_resets
+                
+                successes = np.logical_not(resets)
+                #print(f"Max dist successes: {successes} and resets {resets}")
+                    
                 # apply punishment/ reward in case of reset 
                 self._rewards += resets * reward
 
@@ -380,7 +399,8 @@ class PybulletEnv(ModularEnv):
                         resRobot = np.logical_or(pos < min_bound, pos > max_bound)
                         resJoints = np.logical_or(jointsPos < min_bound, jointsPos > max_bound)
                         reset.append(np.any(np.logical_or(resRobot, resJoints)))
-   
+            
+            reset = np.array(reset)
             success = [not val for val in reset]
             self._rewards += reset * reward
             

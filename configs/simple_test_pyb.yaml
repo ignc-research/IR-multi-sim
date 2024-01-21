@@ -63,12 +63,14 @@ env:
 
   resets:  
     - distance: "target"
-      min_distance: 0.1
+      min_distance: 0.8
+      min_angle: 2.0
       reward: 15
       type: "DistanceReset" 
     
     - distance: "target"
-      max_distance: 1.2
+      max_distance: 1.0
+      max_angle: 2.5
       reward: -5
       type: "DistanceReset" 
       
