@@ -1,6 +1,6 @@
-from typing import Optional, Tuple, Sequence, List, Union
+from typing import Optional, Tuple, List, Union
 import numpy as np
-from abc import ABC, abstractmethod
+from abc import ABC
 from omni.isaac.core.materials import PhysicsMaterial
 from omni.isaac.core.materials.visual_material import VisualMaterial
 from omni.isaac.core.objects import FixedCuboid, FixedSphere, FixedCylinder

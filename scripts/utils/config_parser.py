@@ -1,6 +1,6 @@
 import yaml
 
-from scripts.envs.params.env_params import EnvParams
+from scripts.envs.env_params import EnvParams
 
 from scripts.spawnables.robot import Robot
 from scripts.spawnables.urdf import Urdf

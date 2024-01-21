@@ -1,5 +1,5 @@
 from argparse import ArgumentParser
-from scripts.envs.params.config_parser import parse_config
+from scripts.utils.config_parser import parse_config
 from scripts.envs import create_env
 from scripts.utils.model import setup_model
 from scripts.utils.callbacks import parse_callback

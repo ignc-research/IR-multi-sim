@@ -1,5 +1,5 @@
 from scripts.envs.modular_env import ModularEnv
-from scripts.envs.params.env_params import EnvParams
+from scripts.envs.env_params import EnvParams
 
 
 #from scripts.envs.pybullet.pybullet_env import PybulletEnv
