@@ -3,7 +3,7 @@
 # If this is not working, use conda init in the console and restart terminal
 
 # Define the python path to the isaac interpreter here
-PYTHON_PATH="/mnt/c/Users/chris/AppData/Local/ov/pkg/isaac_sim-2022.2.1/python.bat"
+PYTHON_PATH="/mnt/c/Users/chris/AppData/Local/ov/pkg/isaac_sim-2022.2.1/kit/exts/omni.kit.window.extensions/ext_template/tools/python.sh"
 
 # Define anaconda environment name here
 CONDA_ENV_NAME="ir-multi-sim"
@@ -20,7 +20,7 @@ if [ "$1" == "pybullet" ]; then
     source activate "$CONDA_ENV_NAME"
 
     # Run the python script in that environment
-    python main.py "$1" "$2" "$3"
+    python main.py $1 $2 $3
 
     # Deactivate the conda environment
     conda deactivate
@@ -33,7 +33,7 @@ elif [ "$1" == "isaac" ]; then
     fi
 
     # Run Python code with the chosen interpreter and all arguments except the first one
-    "$PYTHON_PATH" main.py "$1" "$2" "$3"
+    "$PYTHON_PATH" main.py $1 $2 $3
 
 else
     # If no valid engine is given, print an error message
