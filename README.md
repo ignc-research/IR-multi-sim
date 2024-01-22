@@ -12,11 +12,18 @@ Run any python files with Isaacs own python interpreter, usually located at "~/.
 Install the pyb_requirements.txt preferably in a conda environment to use the PyBullet engine.
 
 ## Usage
-All of MultiSims functionality can be accesssed with configuration files. When running the main.py file, simply specify any of the example configuration files at "./data/configs", or create your own!
+All of MultiSims functionality can be accesssed with configuration files. When running the main.py file, simply specify any of the example configuration files at "./configs", or create your own!
 
 ```shell
-python main.py -f ./data/configs/reach_target_pyb.yaml
+python main.py pybullet ./configs/reach_target_pyb.yaml
 ```
+
+ Or run with the shell script that handle switching between interpreters
+
+```shell
+.\run.bat isaac .\configs\simple_test_isaac.yaml
+```
+
 
 ## Documentation of the spawnable objects and settings
 An explanation of the definable settings and how an environment is created can be found [here](docs/configurations.md).

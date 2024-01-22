@@ -4,7 +4,6 @@ The yaml settings file consists of multiple definable elements focusing on the r
 ## General runtime parameter 
 ```yaml
 run:
-  engine:                   # str: "PyBullet" or "Isaac"
   load_model:               # bool: create new model or use an existing one 
   model_name:               # str: need to be a string of model folder
   checkpoint:               # str: name of the model version you want to continue training (including .zip)
@@ -39,6 +38,7 @@ train:
 
 evaluation:
   timesteps:    # int: amount of timesteps the model ueses to evaluate
+  logging:      # int: level of information to be output during learing 0, 1, 2, ...
 ```
 
 ## Environment parameter

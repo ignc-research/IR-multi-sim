@@ -1,19 +1,19 @@
 run:
-  engine: "PyBullet"
   load_model: False
   model_name: "simple_test_pyb"
-  checkpoint: ""
+  checkpoint: "checkpoint_1000.zip"
   algorithm:
     type: "TD3"
     parameters:
       learning_rate: 0.001
       train_freq: 1
 train:
-  logging: 2
+  logging: 0
   timesteps: 1500000 
-  save_freq: 100000
+  save_freq: 1000
 
 evaluation:
+  logging: 2
   timesteps: 100000 
 
 env:

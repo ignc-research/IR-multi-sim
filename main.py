@@ -4,28 +4,30 @@ from scripts.envs import create_env
 from scripts.utils.model import setup_model
 from scripts.utils.callbacks import parse_callback
 import signal
+import sys
 
 if __name__ == '__main__':
     parser = ArgumentParser("IR-Multi-Sim", description="Train complex training instructions for machine learning environments with a simple interface")
 
     # allow parsing file
-    parser.add_argument('-f', '--file', help="Environment config file")
-    parser.add_argument('--eval', action="store_true", help="Start evaluating the specified model")
+    parser.add_argument('engine', choices=['pybullet', "isaac"], help="Specify the engine 'pybullet' or 'isaac'")
+    parser.add_argument('file', help="Environment config file")
+    parser.add_argument('-e', '--eval', action="store_true", help="Start evaluating the specified model")
+    
+    # extract arguments
     args = parser.parse_args()
-        
-    # path to config file was not specified
-    if args.file is None:        
-        print("Use -f to specify a file path to the yaml config file")
-        exit(0)
+    engine = args.engine
+    file = args.file
+    eval = args.eval
 
     # parse config file
-    environment_params, model_params, train_parameters, eval_parameters = parse_config(args.file)
+    environment_params, model_params, train_parameters, eval_parameters = parse_config(file, engine, eval)     
 
     # create environment
     env = create_env(environment_params)
   
     # evaluate existing model for desired amount of timesteps
-    if args.eval:
+    if eval:
         # load model
         model_params["load_model"] = True
         model, model_path = setup_model(model_params, env)
@@ -40,6 +42,7 @@ if __name__ == '__main__':
         
         # Print out results and clean up environment
         env.close()
+        print("Evaluation finished!")
         exit(0)
     
     # train model for desired amount of timesteps

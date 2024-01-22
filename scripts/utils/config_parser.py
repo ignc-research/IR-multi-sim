@@ -30,7 +30,7 @@ ALGO_MAP = {
 }
 
 
-def parse_config(path: str):
+def parse_config(path: str, engine:str, isEval:bool):
     # load yaml config file from path
     with open(path, 'r') as file:
         config = yaml.safe_load(file)
@@ -38,7 +38,7 @@ def parse_config(path: str):
         # Extract environment parameters
         env = {}
         params = config.get('env', {})
-        env["engine"] = "PyBullet" if "engine" not in config["run"] else config["run"]["engine"]
+        env["engine"] = "PyBullet"  if engine == "pybullet" else "Isaac"
         env["robots"] = [] if "robots" not in params else [_parse_robot(obj) for obj in params["robots"]]
         env["obstacles"] = [] if "obstacles" not in params else [_parse_obstacle(obj) for obj in params["obstacles"]]
         env["urdfs"] = [] if "urdfs" not in params else [_parse_urdf(obj) for obj in params['urdfs']]
@@ -56,7 +56,7 @@ def parse_config(path: str):
 
         # general run parameters of the model
         run["path"] = path
-        run["engine"] = "PyBullet" if "engine" not in params else params["engine"]
+        run["engine"] = env["engine"]
         run["load_model"] = False if "load_model" not in params else params["load_model"]
         run["model_name"] = None if "model_name" not in params else params["model_name"]
         run["checkpoint"] = None if "checkpoint" not in params else params["checkpoint"]
@@ -106,21 +106,24 @@ def parse_config(path: str):
                 pol_dict["net_arch"] = vf_pi_dict
                 run["custom_policy"] = pol_dict     
 
-
-        # Extract training parameters
         train = {}
-        params = config.get('train', {})
-        train["logging"] = 0 if "logging" not in params else params["logging"]
-        env["verbose"] = train["logging"]
-        run["verbose"] = train["logging"]
-        train["timesteps"] = 15000000 if "timesteps" not in params else params["timesteps"]
-        train["save_freq"] = 30000 if "save_freq" not in params else params["save_freq"]
-
-
-        # Extract training parameters
         eval = {}
-        params = config.get('eval', {})
-        eval["timesteps"] = 15000000 if "timesteps" not in params else params["timesteps"]
+
+        if isEval:
+            # Extract evaluation parameters
+            params = config.get('eval', {})
+            eval["timesteps"] = 15000000 if "timesteps" not in params else params["timesteps"]
+            eval["logging"] = 0 if "logging" not in params else params["logging"]
+            env["verbose"] = eval["logging"]
+            run["verbose"] = eval["logging"]
+        else:
+            # Extract training parameters
+            params = config.get('train', {})
+            train["logging"] = 0 if "logging" not in params else params["logging"]
+            env["verbose"] = train["logging"]
+            run["verbose"] = train["logging"]
+            train["timesteps"] = 15000000 if "timesteps" not in params else params["timesteps"]
+            train["save_freq"] = 30000 if "save_freq" not in params else params["save_freq"]
 
     return EnvParams(**env), run, train, eval
 
