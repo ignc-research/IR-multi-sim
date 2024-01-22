@@ -29,7 +29,7 @@ An explanation of the definable settings and how an environment is created can b
 
 ## Full example
 This full example demonstrated how to easily create an environment constructed from previously explained parameters.
-The example configuration files can be found under "./data/configs".
+The example configuration files can be found under "./configs".
 
 ## Existing models
 - [Reach configuration](docs/reach_configuration.md)
