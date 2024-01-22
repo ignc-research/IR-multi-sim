@@ -19,7 +19,7 @@ if "%1" equ "pybullet" (
     call activate %CONDA_ENV_NAME%
 
     rem Run the python script in that environment
-    python main.py %1 %2 %3 %4 
+    python main.py %1 %2 %3 
 
     rem Deactivate the conda environment
     conda deactivate
@@ -32,10 +32,10 @@ if "%1" equ "pybullet" (
     )
 
     REM Run python code with the chosen interpreter and all arguments except the first one
-    %PYTHON_PATH% main.py %1 %2 %3 %4
+    %PYTHON_PATH% main.py %1 %2 %3
 
 ) else (
-    REM If no valid Engine is given, print an error message
+    REM If no valid engine is given, print an error message
     echo Error: You need to specify a valid engine!
     exit /b 1
 )
