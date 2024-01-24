@@ -1,167 +1,162 @@
 # Documentation of the spawnable objects and usable settings
-The yaml settings file consists of multiple definable elements focusing on the runtime settings itself as well as the specific environment. 
+The YAML settings file comprises several definable elements that focus on the runtime settings and the specific environment.
 
 ## General runtime parameter 
 ```yaml
-run:
-  load_model:               # bool: create new model or use an existing one 
-  model_name:               # str: need to be a string of model folder
-  checkpoint:               # str: name of the model version you want to continue training (including .zip)
-  algorithm:                # possibility to define custom algorithm settings. Otherwise a default is used
-    type:                   # str: "PPO", "TD3", "SAC", "A2C" or "DDPG"
-    parameters:             # define variety of parameters for your model e.g.:
-      gamma:                # float: Reinforcement learning specific parameter
-      learning_rate:        # float: learing rate of the model
-      batch_size:           # int: batch size for the model
+  run:
+  load_model:               # bool: Create a new model or utilize an existing one.
+  model_name:               # str: Should be a string representing the model folder.
+  checkpoint:               # str: Name of the model version for continuing training (including .zip).
+  algorithm:                # Specify custom algorithm settings; default is used if not defined.
+    type:                   # str: Choose from "PPO," "TD3," "SAC," "A2C," or "DDPG".
+    parameters:             # Define various parameters for your model, e.g.:
+      gamma:                # float: Reinforcement learning-specific parameter.
+      learning_rate:        # float: Learning rate of the model.
+      batch_size:           # int: Batch size for the model.
       ...
-    custom_policy:          # define specific layer settings and activation function
-      activation_function:    # str: "RELU" or "Tanh"
-      value_function:
-        - 256
-        - 256
-        - 256
-        - 256
+    custom_policy:          # Define specific layer settings and activation function.
+      activation_function:  # str: Choose between "RELU" or "Tanh".
+      value_function:       # array[int]: Define layer sizes.
+        - ...
       policy_function:
-        - 256
-        - 256
-        - 256
-        - 256
+        - ...
 ```
 
 ## Training and evaluation parameter
 ```yaml 
-train:  	
-  logging:      # int: level of information to be output during learing 0, 1, 2, ...
-  timesteps:    # int: amount of timesteps the model should learn
-  save_freq:    # int: how frequently a model should be saved
-
+train:
+  logging:      # int: Level of information output during learning (0, 1, 2, ...).
+  timesteps:    # int: Number of timesteps for the model to learn.
+  save_freq:    # int: Frequency at which the model should be saved.
 
 evaluation:
-  timesteps:    # int: amount of timesteps the model ueses to evaluate
-  logging:      # int: level of information to be output during learing 0, 1, 2, ...
+  timesteps:    # int: Number of timesteps used for model evaluation.
+  logging:      # int: Level of information output during learning (0, 1, 2, ...).
 ```
 
 ## Environment parameter
 ```yaml 
 env:
-  num_envs:     # int: number of simultaneously running environments
-  env_offset:   # [int, int]: size in x,y direction of an environment
-  headless:     # bool: run with visualization
-  step_size:    # float: size of one simulation step, in general 240Hz = 1/240
-  step_count:   # int: amount of steps the simulation can do each iteration
+  num_envs:     # int: Number of simultaneously running environments.
+  env_offset:   # [int, int]: Size in the x and y directions of an environment.
+  headless:     # bool: Run the simulation without visualization.
+  step_size:    # float: Size of one simulation step; generally, 240Hz = 1/240.
+  step_count:   # int: Number of steps the simulation can perform in each iteration.
+
 ```
 
 ### Objects within an environment
-You can create as many object of a type as needed. To do so, start a new object definition under the specific object type with a new hyphen. Instead of specific sensors, this project works with general observability definable for all objects. Therefore, robots, robot joints and obstacles can be marked as observable, meaning that their relative position, orientation and scale will be included in the observations of the machine learning model.
+Multiple objects of the same type can be created as needed by starting a new object definition under the specific object type with a new hyphen. This project works with general observability that can be defined for all objects, rather than specific sensors. As a result, robots, robot joints, and obstacles can be marked as observable. This means that their relative position, orientation, and scale will be included in the observations of the machine learning model.
 
 #### Robots
-To create a robot in an environment, the urdf path is the only required argument. All other parameters are optional. The robots need to be defined in an [urdf](http://wiki.ros.org/urdf) file which needs to be saved in the "./data/robots" directory.
+To create a robot in an environment, only the urdf path is required. All other parameters are optional. The robot must be defined in an [urdf](http://wiki.ros.org/urdf) file and saved in the "./data/robots" directory.
 ```yaml 
   robots:
-    - name:                 # str: name of the robot  
-      urdf_path:            # str: path to the urdf, usually in the robots folder
-      position:             # [float, float, float]: x,y,z base position of the robot
-      orientation:          # [float, float, float, float]: x,y,z,w world space quaternion of the robot
-      collision:            # bool: true if robot is supposed to collide with surroundings
-      observable:           # bool: true if pos and orientation included in observations for training
-      observable_joints:    # ["string", ...]: robot joint names that should be observerd
-      control_type:         # str: "Velocity" or "Position" to define control type
-      max_velocity:         # float: define maximal velocity a joint can be moved by 
+  - name:                 # str: Name of the robot.
+    urdf_path:            # str: Path to the URDF, usually in the robots folder.
+    position:             # [float, float, float]: X, Y, Z base position of the robot.
+    orientation:          # [float, float, float, float]: X, Y, Z, W world space quaternion of the robot.
+    collision:            # bool: True if the robot is supposed to collide with surroundings.
+    observable:           # bool: True if position and orientation are included in observations for training.
+    observable_joints:    # ["string", ...]: Names of robot joints to be observed.
+    control_type:         # str: "Velocity" or "Position" to define the control type.
+    max_velocity:         # float: Define the maximum velocity a joint can be moved by.
     
-    - name:                 # start new robot object
+  - name:                 # Start a new robot object.
 ```
 
 #### General URDFs
-To define a general urdf object, you need to provide a path to an urdf file. The other parameters are optional. 
+To define a general URDF object, you must provide a path to a URDF file. The other parameters are optional.
 ```yaml 
   urdfs:
-    - name:         # str: name of the urdf
-      urdf_path:    # str: path of the urdf
-      scale:        # [float, float, float]: along x-, y-, z-axis
-      position:     # [float, float, float]: x,y,z position
-      orientation:  # [float, float, float, float]: x,y,z,w world space quaternion of the robot
-      collision:            # bool: true if is supposed to collide with robots
-      observable:           # bool: true if pos and orientation included in observations for training
+  - name:         # str: Name of the URDF.
+    urdf_path:    # str: Path of the URDF.
+    scale:        # [float, float, float]: Scaling along the x, y, z axes.
+    position:     # [float, float, float]: X, Y, Z position.
+    orientation:  # [float, float, float, float]: X, Y, Z, W world space quaternion.
+    collision:    # bool: True if it is supposed to collide with robots.
+    observable:   # bool: True if position and orientation are included in observations for training.
 ```  
 
 #### Spawnable Objects
-To define spawnable objects, you need to provide the object typ. The other parameters are optional. You can define the position, orientation and scale for each object a deterministic with a 3-dimensional list. Additionally, you can define ranges with minimal and maximal valid values (e.g.: [[min, min, min], [max, max, max]]) to automatically create randomized values for each reset.
-```yaml 
+To define objects that can be spawned, you must provide the object type. The other parameters are optional. You can define the position, orientation, and scale for each object deterministically with a 3-dimensional list. Additionally, you can define ranges with minimum and maximum valid values (e.g. [[min, min, min], [max, max, max]]) to automatically create randomized values for each reset.
+```yaml  
   obstacles:
-    - type:         # str: "Cube", "Spher" or "Cylinder"
-      name:         # str: name of the object
-      position:     # [float, float, float]: x,y,z position
-      orientation:  # [float, float, float, float]: x,y,z,w world space quaternion of the robot
-      scale:        # [floa, float, float]: scale along x-, y-, z-axis 
-      color:        # [R,G,B]: color of the robot, range: [0,1]
-      collision:    # bool: true if is supposed to collide with robots
-      observable:   # bool: true if pos and orientation included in observations for training
-      static:       # bool: false if the object moves in space 
-      velocity:     # float: define the velocity of the tracjectory  
-      endpoint:     # [float, float, float]: x,y,z position towards an object moves
+  - type:         # str: Type of the obstacle, choose from "Cube," "Sphere," or "Cylinder".
+    name:         # str: Name of the object.
+    position:     # [float, float, float]: X, Y, Z position.
+    orientation:  # [float, float, float, float]: X, Y, Z, W world space quaternion.
+    scale:        # [float, float, float]: Scaling along the x, y, z axes.
+    color:        # [R, G, B]: Color of the object, range: [0, 1].
+    collision:    # bool: True if it is supposed to collide with robots.
+    observable:   # bool: True if position and orientation are included in observations for training.
+    static:       # bool: False if the object moves in space.
+    velocity:     # float: Define the velocity of the trajectory.
+    endpoint:     # [float, float, float]: X, Y, Z position towards which the object moves.
 
-      # extra parameter for object of type sphere
-      radius:       # float: define the velocity of the tracjectory  
+    # Extra parameter for objects of type Sphere.
+    radius:       # float: Radius of the sphere.
 
-      # extra parameter for object of type cylinder
-      radius:       # float: define the velocity of the tracjectory  
-      height:       # float: define the velocity of the tracjectory  
+    # Extra parameter for objects of type Cylinder.
+    radius:       # float: Radius of the cylinder.
+    height:       # float: Height of the cylinder.
+
 ```  
 
 ### Parameters to define a task/goal
-You can define specific rewards and resets to create a custom task for your agents.
+Specific rewards and resets can be defined to create a customized task for agents.
 
 #### Rewards
-Rewards are functions which evluate the current environment state, rating desirable states with a high value and undesirable states with a low value. The specific parameters for a reward differ depending on the type. Also note that all objects referenced in a rewards must exist and have to be observable
-```yaml 
+Rewards are functions that evaluate the current state of the environment, assigning a high value to desirable states and a low value to undesirable ones. The parameters for a reward vary depending on the type. It is important to note that all objects referenced in a reward must exist and be observable.
+```yaml  
   rewards:
-    - name:                 # str: name of the reward, free choosable 
-      type:                 # str:  supported types: "Collision", "Distance" , "Timestep", Shaking
+  - name:                 # str: Name of the reward, freely choosable.
+    type:                 # str: Supported types: "Collision," "Distance," "Timestep," or "Shaking".
 
-      # parameters for type = Collision 
-      obj:                  # str: name of the object you want to test for collision 
-      weight:               # float: reward/penalty
+    # Parameters for type = Collision.
+    obj:                  # str: Name of the object to test for collision.
+    weight:               # float: Reward/penalty weight.
 
-      # parameters for type = Distance  
-      obj1:                 # str: name of object measured form   
-      obj2:                 # str: name of object measured to
-      distance_weight:      # float: Factor distance is multiplied with
-      orientation_weight:   # float: Factor orientation is multiplied with
-      exponent:             # float: Exponent applied to final result
-      normalize:            # bool: normalize reward depending on current pos relative to beginning pos
-    
-      # parameters for type = Timestep
-      weight:               # float: reward/penalty
+    # Parameters for type = Distance.
+    obj1:                 # str: Name of the object measured from.
+    obj2:                 # str: Name of the object measured to.
+    distance_weight:      # float: Factor distance is multiplied with.
+    orientation_weight:   # float: Factor orientation is multiplied with.
+    exponent:             # float: Exponent applied to the final result.
+    normalize:            # bool: Normalize reward depending on current position relative to the beginning position.
 
-      # parameters for type = Shaking
-      distance:             # str: name of the distance defined in rewards 
-      weight:               # float: reward/penalty
-      length:               # amount of past distances taken into account
+    # Parameters for type = Timestep.
+    weight:               # float: Reward/penalty weight.
+
+    # Parameters for type = Shaking.
+    distance:             # str: Name of the distance defined in rewards.
+    weight:               # float: Reward/penalty weight.
+    length:               # int: Number of past distances taken into account.
 ``` 
 
 #### Resets
-Resets are functions which determine wether the environment needs to be reset. This included exceeded min or max values of a previously defined distance function, or an exceeded number of timesteps. The specific parameters for a reset differ depending on the type. Also note that all objects referenced in a rewards must exist and have to be observable
+Resets are functions that determine whether the environment needs to be reset. This includes exceeded minimum or maximum values of a previously defined distance function or an exceeded number of timesteps. The specific parameters for a reset differ depending on the type. It is important to note that all objects referenced in a reward must exist and be observable.
 ```yaml 
-  resets:  
-    - type:         # str: "CollisionReset", "DistanceReset" or "TimestepsReset"
-      reward:       # float: reward/ punishment for a reset
+  resets:
+  - type:         # str: Choose from "CollisionReset," "DistanceReset," "TimestepsReset," or "BoundaryReset".
+    reward:       # float: Reward/punishment for a reset.
 
-      # parameters for type = CollisionReset 
-      obj:          # str: name of the object you want to test for collision 
-      max:          # int: max amount of collision before reseting
+    # Parameters for type = CollisionReset.
+    obj:          # str: Name of the object to test for collision.
+    max:          # int: Maximum number of collisions before resetting.
 
-      # parameters for type = DistanceReset 
-      distance:     # str: name of the distance defined in rewards 
-      min_distance: # float: minimal distance before reset/success
-      max_distance: # float: maximal distance before resetting
-      max_angle:    # float: max angular distance between two quaternions before resetting 
-      
-      # parameters for type = TimestepsReset 
-      max:          # int: max amount of timesteps before resetting
-      min:          # int: minimal timesteps that have to pass to reset/success
+    # Parameters for type = DistanceReset.
+    distance:     # str: Name of the distance defined in rewards.
+    min_distance: # float: Minimal distance before reset/success.
+    max_distance: # float: Maximal distance before resetting.
+    max_angle:    # float: Max angular distance between two quaternions before resetting.
 
-      # parameters for type = BoundaryReset 
-      obj:                # str: name of the robot you want to test for boundary excess (includes the robots joints)  
-      max_bound:          # int: upper boundary
-      min_bound:          # int: lower boundary
+    # Parameters for type = TimestepsReset.
+    max:          # int: Maximum number of timesteps before resetting.
+    min:          # int: Minimal timesteps that have to pass to reset/success.
+
+    # Parameters for type = BoundaryReset.
+    obj:          # str: Name of the robot to test for boundary excess (includes the robot's joints).
+    max_bound:    # int: Upper boundary.
+    min_bound:    # int: Lower boundary.
 ``` 
