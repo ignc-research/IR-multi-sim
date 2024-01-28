@@ -6,6 +6,8 @@ from scripts.utils.callbacks import parse_callback
 import signal
 import sys
 
+LOG_DIR = "./logs/csv/"
+
 if __name__ == '__main__':
     parser = ArgumentParser("IR-Multi-Sim", description="Train complex training instructions for machine learning environments with a simple interface")
 
@@ -25,6 +27,16 @@ if __name__ == '__main__':
 
     # create environment
     env = create_env(environment_params)
+
+    # get csv log path
+    csv_path = LOG_DIR + model_params["model_name"]
+
+    # handle interupts
+    def signal_handler(sig, frame):
+        model.save(model_path  + f"/interrupt_at_{model.num_timesteps}.zip")
+        print("Training was interrupted!")
+        env.close(csv_path + f"timestep_{model.num_timesteps}")
+        exit(0)
   
     # evaluate existing model for desired amount of timesteps
     if eval:
@@ -33,6 +45,7 @@ if __name__ == '__main__':
         model, model_path = setup_model(model_params, env)
         
         obs = env.reset()
+        signal.signal(signal.SIGINT, signal_handler)
         for i in range(eval_parameters["timesteps"]):
             action, _states = model.predict(obs)
             obs, rewards, dones, info = env.step(action)
@@ -41,7 +54,7 @@ if __name__ == '__main__':
         print("Average Rewards: ", info)
         
         # Print out results and clean up environment
-        env.close()
+        env.close(csv_path + f"timestep_{i}")
         print("Evaluation finished!")
         exit(0)
     
@@ -51,13 +64,7 @@ if __name__ == '__main__':
         model, model_path = setup_model(model_params, env)
         
         # handle interrupt like ctrl c
-        currentTimesteps = 0
-        def signal_handler(sig, frame):
-            model.save(model_path  + f"/interrupt_at_{model.num_timesteps}.zip")
-            print("Training was interrupted!")
-            env.close()
-            exit(0)
-        
+        currentTimesteps = 0        
         signal.signal(signal.SIGINT, signal_handler)
 
         # train model
@@ -74,7 +81,6 @@ if __name__ == '__main__':
 
         # save final model and clean up environment
         model.save(model_path + "/" + f"checkpoint_{model.num_timesteps}.zip")
-        env.close()
-
+        env.close(csv_path + f"timestep_{model.num_timesteps}")
         print("Finished training!")
         exit(0)

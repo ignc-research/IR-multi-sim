@@ -28,10 +28,11 @@ import numpy as np
 import math
 import pybullet as pyb
 
+import pandas as pd
+import timeit
 
 class PybulletEnv(ModularEnv):
     def __init__(self, params: EnvParams) -> None:
-
         # setup asset path to allow importing robots
         self.asset_path = str(Path().absolute().joinpath(params.asset_path)) + "/"
 
@@ -59,6 +60,7 @@ class PybulletEnv(ModularEnv):
         self._distances: Dict[str, np.ndarray] = {}
         self._distances_after_reset: Dict[str, np.ndarray] = {}
         self._last_dist: Dict[int, list] = {}
+        self._accessDist = {}
 
         # save collidable objects for collision detection
         self._collidable = []
@@ -70,6 +72,14 @@ class PybulletEnv(ModularEnv):
             [i for i in range(params.num_envs)],
             [np.array([(i % break_index) * params.env_offset[0], math.floor(i / break_index) * params.env_offset[1], 0]) for i in range(params.num_envs)]
         ))
+
+
+        # parameters to save execution times
+        self.setupTime = 0
+        self.actionTime = 0
+        self.obsTime = 0
+
+        self.log_dict = pd.DataFrame()
 
         # setup PyBullet simulation environment and interfaces
         self._setup_simulation(params.headless, params.step_size)
@@ -87,7 +97,7 @@ class PybulletEnv(ModularEnv):
         self._setup_resets(params.rewards, params.resets)
 
         # init bace class last, allowing it to automatically determine action and observation space
-        super().__init__(params)
+        super().__init__(params) 
 
 
     def _setup_simulation(self, headless: bool, step_size: float):
@@ -335,6 +345,7 @@ class PybulletEnv(ModularEnv):
         max_distance = reset.max_distance
         min_angle = reset.min_angle
         max_angle = reset.max_angle
+        resetName = reset.name
         
         # parse function
         def reset_condition() -> np.ndarray:
@@ -375,7 +386,7 @@ class PybulletEnv(ModularEnv):
                 # apply punishment/ reward in case of reset 
                 self._rewards += resets * reward
 
-            return resets, successes
+            return resets, successes, resetName
 
         return reset_condition
     
@@ -384,6 +395,7 @@ class PybulletEnv(ModularEnv):
         max_bound = reset.max_bound
         objName = reset.obj
         reward = reset.reward
+        name = reset.name
 
         # parse function
         def reset_condition() -> np.ndarray:   
@@ -404,7 +416,7 @@ class PybulletEnv(ModularEnv):
             success = [not val for val in reset]
             self._rewards += reset * reward
             
-            return reset, success
+            return reset, success, name
         
         return reset_condition
 
@@ -413,6 +425,7 @@ class PybulletEnv(ModularEnv):
         max_steps = reset.max
         min_steps =  reset.min
         reward = reset.reward
+        name = reset.name
 
         # parse function
         def reset_condition() -> np.ndarray:
@@ -425,7 +438,7 @@ class PybulletEnv(ModularEnv):
                 successes = np.where(self._timesteps < max_steps, True, False)
             
             self._rewards += successes * reward
-            return resets, successes
+            return resets, successes, name
         
         return reset_condition
 
@@ -433,6 +446,7 @@ class PybulletEnv(ModularEnv):
         max_value = reset.max
         objName = reset.obj
         reward = reset.reward
+        name = reset.name
         
         # parse function
         def reset_condition() -> np.ndarray:   
@@ -448,7 +462,7 @@ class PybulletEnv(ModularEnv):
             successes = np.where(self._collisionsCount < max_value, True, False)
             
             self._rewards += resets * reward    # punish collision
-            return resets, successes
+            return resets, successes, name
         
         return reset_condition
 
@@ -516,6 +530,8 @@ class PybulletEnv(ModularEnv):
         and moves the joints of all robots according to the action type and values. Then it performs a collion detection
         and shwos all collision in the console.
         """
+        startTime = timeit.default_timer()
+
         # get all robots from an environment and perform actions
         for envId in range(self.num_envs):
             for i, robot in enumerate(self._robots[envId]):
@@ -532,7 +548,9 @@ class PybulletEnv(ModularEnv):
             # update obstacles that have a trajectory    
             for obstacle in self._obstacles[envId]:
                 obstacle.update()
-    	
+            
+        self.actionTime = timeit.default_timer()  - startTime    
+            	
         # step simulation amount of times according to params
         for _ in range(self.step_count):
             pyb.stepSimulation()  
@@ -545,11 +563,10 @@ class PybulletEnv(ModularEnv):
     
     def step_wait(self) -> VecEnvStepReturn:
         self._timesteps += 1                        # increment elapsed timesteps
-        self._obs = self._get_observations()        # get observations
-        self._distances = self._get_distances()     # get distances after updated observations 
+        self._obs = self._get_observations()        # get observations and track time     
+        self._distances = self._get_distances()     # get distances after updated observations
         self._collisions = self._get_collisions()   # get collisions
         self._rewards = self._get_rewards()         # get rewards after updated distances and collisions
-        self._dones = self._get_dones()             # get dones
 
         #print("\nObs    :", self._obs["Positions"])   
         #print("Dist:", [f"{value[0]:.4f}" for value in self._distances['target']], end=" | ")
@@ -557,19 +574,96 @@ class PybulletEnv(ModularEnv):
         #print("Timest.:", self._timesteps, end=" | ")
         #print("Coll.:", self._collisionsCount, end=" | ")
         #print("Dones  :", self._dones) 
+        #print(f"Stats {self._timesteps}: ", self.obsTime, self.actionTime, self.setupTime)
 
-        if self.verbose > 0:
-            # log rewards of environments 
-            self.set_attr("average_rewards", np.average(self._rewards))
+        # check if an environment is dones (needs a reset) or successfully finished (needs reset)
+        resets = np.full(self.num_envs, False)
+        successes = np.full(self.num_envs, False)       
+       
+        # go over each reset condition
+        donesDict = {}
+        logNames = []
+        logResets = []
+        logSuccesses = []
+        for fn in self._reset_fns:
+            curr_reset, curr_success, name = fn()
+            resets = np.logical_or(resets, curr_reset)
+            successes = np.logical_and(successes, curr_success)
+            logNames.append(name)
+            logResets.append(curr_reset)
+            logSuccesses.append(curr_success)
+
+        if self.verbose > 3: 
+            for currName, currReset, currSuccess in zip(logNames, logResets, logSuccesses):
+                for idx in range(self.num_envs):
+
+                    if idx not in donesDict:
+                        donesDict[idx] = {}
+                    
+                    donesDict[idx][f"{currName}_reset"] = currReset[idx]
+                    donesDict[idx][f"{currName}_success"] = currSuccess[idx]
+                                      
+        # get environemnt idx that need a reset 
+        self._dones = np.logical_or(resets, successes)
+        reset_idx = np.where(self._dones)[0]
+
+        # Only average over environments that are resetted
+        envInfo = list(range(self.num_envs)) if self.verbose < 5 else reset_idx
+
+        # Log only general information averaged over all environments
+        if self.verbose > 0:   
+            self.set_attr("avg_rewards", np.average(self._rewards[envInfo])) 
+            self.set_attr("avg_success", np.average(successes[envInfo]))    
+            self.set_attr("avg_resets", np.average(resets[envInfo]))     
+        
+        # Add info about execution times averaged over all environments
+        if self.verbose > 1:
+            self.set_attr("avg_setupTime", self.setupTime)
+            self.set_attr("avg_actionTime", self.actionTime)    
+            self.set_attr("avg_obsTime", self.obsTime)         
+
+        # Add information about rewards and resets averaged over all environments
+        if self.verbose > 2:
+            for dist_name, distance in self._distances.items():
+                euclid_dist = np.array([value[0] for value in distance])
+                angular_dist = np.array([value[1] for value in distance])
+
+                self.set_attr("avg_" + dist_name + "_euclid_dist" , np.average(euclid_dist[envInfo]))
+                self.set_attr("avg_" + dist_name + "_anglular_dist" , np.average(angular_dist[envInfo])) 
+
+            self.set_attr("avg_coll", np.average(self._collisionsCount[envInfo])) 
+            self.set_attr("avg_steps", np.average(self._timesteps[envInfo]))              
+
+        # create csv file with informations about each specific environment each timestep
+        if self.verbose > 3:
+            for envIdx in range(self.num_envs):
+                info = {
+                    "env_id": envIdx,
+                    "timestep": self._timesteps[envIdx], 
+                    "reward": self._rewards[envIdx],
+                    "collision": self._collisionsCount[envIdx],
+                    "avg_setupTime": self.setupTime/self.num_envs,
+                    "avg_actionTime": self.actionTime/self.num_envs,
+                    "avg_obsTime": self.obsTime/self.num_envs,
+                    **self._accessDist[envIdx],
+                    **donesDict[envIdx]
+                }
+                self.log_dict = pd.concat([self.log_dict, pd.DataFrame([info])], ignore_index=True)
+
+        # apply resets
+        if reset_idx.size > 0:        
+            self.reset(reset_idx)
 
         return self._obs, self._rewards, self._dones, self.env_data
 
 
     def reset(self, env_idxs: np.ndarray=None) -> VecEnvObs:
+        startTime = timeit.default_timer()
+        
         # reset entire simulation
         if env_idxs is None:
             pyb.resetSimulation()  
-            self._setup_environments(self._initRobots, self._initObstacles, self._initUrdfs)    # build environment new                
+            self._setup_environments(self._initRobots, self._initObstacles, self._initUrdfs)    # build environment new       
             self._timesteps = np.zeros(self.num_envs)                                           # reset timestep tracking
             self._collisionsCount = np.zeros(self.num_envs)                                     # reset collisions count tracking
             self._obs = self._get_observations()                                                # reset observations 
@@ -577,14 +671,21 @@ class PybulletEnv(ModularEnv):
 
             # set dummy value to avoid KeyError
             if self.verbose > 0:
-                self.set_attr("average_rewards", None)
-                self.set_attr("average_success", None)
+                self.set_attr("avg_rewards", None)
+                self.set_attr("avg_success", None)
+                self.set_attr("avg_resets", None)
 
             if self.verbose > 1:
+                self.set_attr("avg_setupTime", None)
+                self.set_attr("avg_actionTime", None)    
+                self.set_attr("avg_obsTime", None) 
+
+            if self.verbose > 2:
                 for name, _ in self._distances_after_reset.items():
-                    self.set_attr("average/" + name + "_dist", None)   
-                self.set_attr("average_steps", None)
-                self.set_attr("average_collision", None)
+                    self.set_attr("avg_" + name + "_euclid_dist" , None)   
+                    self.set_attr("avg_" + name + "_anglular_dist" , None)   
+                self.set_attr("avg_steps", None)
+                self.set_attr("avg_coll", None)
         
         # reset envs manually
         else:           
@@ -605,6 +706,7 @@ class PybulletEnv(ModularEnv):
             # note new distances # todo: only recalculate necessary distances
             self._distances_after_reset = self._get_distances()
 
+        self.setupTime = timeit.default_timer() - startTime
         return self._obs
 
     def get_robot_dof_limits(self) -> List[Tuple[float, float]]:
@@ -626,6 +728,8 @@ class PybulletEnv(ModularEnv):
 
 
     def _get_observations(self) -> VecEnvObs:
+        startTime = timeit.default_timer()
+
         # create empty arrays, allowing obs to be appended
         positions = np.array([])
         rotations = np.array([])
@@ -634,7 +738,6 @@ class PybulletEnv(ModularEnv):
 
         # iterate through each environment
         for env_idx in range(self.num_envs):
-
             # get observations from all robots and their joints in the environment
             for robot in self._observable_robots[env_idx]:
                 pos, rot, scale = robot.getPose()
@@ -679,6 +782,9 @@ class PybulletEnv(ModularEnv):
         scales = scales.reshape(self.num_envs, -1)
         joint_positions = joint_positions.reshape(self.num_envs, -1)
 
+        endTime = timeit.default_timer()
+        self.obsTime = endTime - startTime
+        
         return {
             "Positions": positions,
             "Rotations": rotations,
@@ -700,10 +806,19 @@ class PybulletEnv(ModularEnv):
 
     def _get_distances(self) -> Dict[str, np.ndarray]:
         distances = {}      # reset current distances
-
+        
         for distance_fn in self._distance_funcions:
             name, distance = distance_fn()      # calcualte current distances
             distances[name] = distance
+            
+            # if needed rearrange format
+            if self.verbose > 2:
+                self._accessDist = {}
+                for idx in range(self.num_envs):
+                    self._accessDist[idx] = {
+                        f"{name}_dist_euclid": distance[idx][0],
+                        f"{name}_dist_angular": distance[idx][1],
+                    }
 
         return distances
 
@@ -799,12 +914,18 @@ class PybulletEnv(ModularEnv):
                 print(f'Collision from {pyb.getBodyInfo(coll[0])[1]} with {pyb.getBodyInfo(coll[1])[1]}')
 
 
-    def close(self) -> None:
+    def close(self, path:str=None) -> None:
         """ 
         Shut down the simulation 
         """
-        pyb.disconnect()
-        
+        pyb.disconnect()                        # close sim
+        if self.verbose > 3:
+            if not path:
+                return 0
+            
+            df = pd.DataFrame(self.log_dict)        # transform logs to a df       
+            df.to_csv(path +".csv", index=False)    # save df to a csv file
+                
 
     def _spawn_robot(self, robot: Robot, env_idx: int) -> str:
         """ 

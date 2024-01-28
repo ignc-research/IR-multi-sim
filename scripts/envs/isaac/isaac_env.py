@@ -22,7 +22,8 @@ from typing import List, Tuple, Union
 from pathlib import Path
 import numpy as np
 import math
-
+import pandas as pd
+import timeit
 
 def _add_position_offset(pos: Union[np.ndarray, Tuple[np.ndarray, np.ndarray]], offset: np.ndarray):
     if isinstance(pos, Tuple):
@@ -69,6 +70,7 @@ class IsaacEnv(ModularEnv):
         self._distances: Dict[str, np.ndarray] = {}
         self._distances_after_reset: Dict[str, np.ndarray] = {}
         self._last_dist: Dict[int, list] = {}
+        self._accessDist = {}
         
         # initialize empty obersvation dict
         self._obs = {}
@@ -79,6 +81,14 @@ class IsaacEnv(ModularEnv):
             [i for i in range(params.num_envs)],
             [np.array([(i % break_index) * params.env_offset[0], math.floor(i / break_index) * params.env_offset[1], 0]) for i in range(params.num_envs)]
         ))
+
+        # parameters to save execution times
+        self.setupTime = 0
+        self.actionTime = 0
+        self.obsTime = 0
+
+        # log df for creating a csv file 
+        self.log_dict = pd.DataFrame()
 
         # setup ISAAC simulation environment and interfaces
         self._setup_simulation(params.headless, params.step_size)
@@ -420,6 +430,7 @@ class IsaacEnv(ModularEnv):
         max_distance = reset.max_distance
         min_angle = reset.min_angle
         max_angle = reset.max_angle
+        resetName = reset.name
 
         # parse function
         def reset_condition() -> np.ndarray:
@@ -459,7 +470,7 @@ class IsaacEnv(ModularEnv):
                 # apply punishment/ reward in case of reset 
                 self._rewards += resets * reward
 
-            return resets, successes
+            return resets, successes, resetName
 
         return reset_condition
     
@@ -468,6 +479,7 @@ class IsaacEnv(ModularEnv):
         max_bound = reset.max_bound
         objName = reset.obj
         reward = reset.reward
+        name = reset.name
 
         # parse function
         def reset_condition() -> np.ndarray:   
@@ -502,13 +514,14 @@ class IsaacEnv(ModularEnv):
             success = [not val for val in reset]
             self._rewards += reset * reward
             
-            return reset, success
+            return reset, success, name
         return reset_condition
 
     def _parse_timesteps_reset(self, reset: TimestepsReset):
         max_steps = reset.max
         min_steps =  reset.min
         reward = reset.reward
+        name = reset.name
 
         # parse function
         def reset_condition() -> np.ndarray:
@@ -521,7 +534,7 @@ class IsaacEnv(ModularEnv):
                 successes = np.where(self._timesteps < max_steps, True, False)
             
             self._rewards += successes * reward
-            return resets, successes
+            return resets, successes, name
 
         return reset_condition
     
@@ -529,6 +542,7 @@ class IsaacEnv(ModularEnv):
         max_value = reset.max
         objName = reset.obj
         reward= reset.reward
+        name = reset.name
 
         # parse function
         def reset_condition() -> np.ndarray:
@@ -549,12 +563,14 @@ class IsaacEnv(ModularEnv):
             successes = np.where(self._collisionsCount < max_value, True, False)
                  
             self._rewards += resets * reward    # punish collision
-            return resets, successes
+            return resets, successes, name
         
         return reset_condition
 
 
-    def step_async(self, actions: np.ndarray) -> None:       
+    def step_async(self, actions: np.ndarray) -> None:  
+        startTime = timeit.default_timer()
+
         # select each environment
         for idx in range(self.num_envs):
             action = actions[idx]     # contains actions for all robotos in env idx  
@@ -578,6 +594,8 @@ class IsaacEnv(ModularEnv):
         # update obstacles with trajectories
         for geometryPrim, _ in self._obstacles:
             geometryPrim.update()
+        
+        self.actionTime = timeit.default_timer()  - startTime
 
         # step simulation amount of times according to params
         for _ in range(self.step_count):
@@ -589,12 +607,6 @@ class IsaacEnv(ModularEnv):
         self._obs = self._get_observations()        # get observations
         self._distances = self._get_distances()     # get distances after updated observations 
         self._rewards = self._get_rewards()         # get rewards after updated distances
-        self._dones = self._get_dones()             # get dones
-
-        
-        if self.verbose > 0:
-            # log rewards of environments 
-            self.set_attr("average_rewards", np.average(self._rewards))
 
         #print("Obs    :", self._obs)        
         #print("Dist:", [f"{value[0]:.4f}" for value in self._distances['target']], end=" | ")
@@ -602,12 +614,92 @@ class IsaacEnv(ModularEnv):
         #print("Timest.:", self._timesteps, end=" | ")
         #print("Coll.:", self._collisionsCount, end=" | ")
         #print("Dones  :", self._dones) 
-        #import time
-        #time.sleep(2)
+
+        # check if an environment is dones (needs a reset) or successfully finished (needs reset)
+        resets = np.full(self.num_envs, False)
+        successes = np.full(self.num_envs, False)       
+       
+        # go over each reset condition
+        donesDict = {}
+        logNames = []
+        logResets = []
+        logSuccesses = []
+        for fn in self._reset_fns:
+            curr_reset, curr_success, name = fn()
+            resets = np.logical_or(resets, curr_reset)
+            successes = np.logical_and(successes, curr_success)
+            logNames.append(name)
+            logResets.append(curr_reset)
+            logSuccesses.append(curr_success)
+
+        if self.verbose > 3: 
+            for currName, currReset, currSuccess in zip(logNames, logResets, logSuccesses):
+                for idx in range(self.num_envs):
+
+                    if idx not in donesDict:
+                        donesDict[idx] = {}
+                    
+                    donesDict[idx][f"{currName}_reset"] = currReset[idx]
+                    donesDict[idx][f"{currName}_success"] = currSuccess[idx]
+                                      
+        # get environemnt idx that need a reset 
+        self._dones = np.logical_or(resets, successes)
+        reset_idx = np.where(self._dones)[0]
+
+        # Only average over environments that are resetted
+        envInfo = list(range(self.num_envs)) if self.verbose < 5 else reset_idx
+
+        # Log only general information averaged over all environments
+        if self.verbose > 0:   
+            self.set_attr("avg_rewards", np.average(self._rewards[envInfo])) 
+            self.set_attr("avg_success", np.average(successes[envInfo]))    
+            self.set_attr("avg_resets", np.average(resets[envInfo]))     
+        
+        # Add info about execution times averaged over all environments
+        if self.verbose > 1:
+            self.set_attr("avg_setupTime", self.setupTime)
+            self.set_attr("avg_actionTime", self.actionTime)    
+            self.set_attr("avg_obsTime", self.obsTime)         
+
+        # Add information about rewards and resets averaged over all environments
+        if self.verbose > 2:
+            for dist_name, distance in self._distances.items():
+                euclid_dist = np.array([value[0] for value in distance])
+                angular_dist = np.array([value[1] for value in distance])
+
+                self.set_attr("avg_" + dist_name + "_euclid_dist" , np.average(euclid_dist[envInfo]))
+                self.set_attr("avg_" + dist_name + "_anglular_dist" , np.average(angular_dist[envInfo])) 
+
+            self.set_attr("avg_coll", np.average(self._collisionsCount[envInfo])) 
+            self.set_attr("avg_steps", np.average(self._timesteps[envInfo]))              
+
+        # create csv file with informations about each specific environment each timestep
+        if self.verbose > 3:
+            for envIdx in range(self.num_envs):
+                info = {
+                    "env_id": envIdx,
+                    "timestep": self._timesteps[envIdx], 
+                    "reward": self._rewards[envIdx],
+                    "collision": self._collisionsCount[envIdx],
+                    "avg_setupTime": self.setupTime/self.num_envs,
+                    "avg_actionTime": self.actionTime/self.num_envs,
+                    "avg_obsTime": self.obsTime/self.num_envs,
+                    **self._accessDist[envIdx],
+                    **donesDict[envIdx]
+                }
+
+                self.log_dict = pd.concat([self.log_dict, pd.DataFrame([info])], ignore_index=True)
+
+        # apply resets
+        if reset_idx.size > 0:        
+            self.reset(reset_idx)
+
         return self._obs, self._rewards, self._dones, self.env_data
         
 
     def reset(self, env_idxs: np.ndarray=None) -> VecEnvObs:
+        startTime = timeit.default_timer()
+
         # reset entire simulation
         if env_idxs is None:
             # initialize sim
@@ -625,17 +717,25 @@ class IsaacEnv(ModularEnv):
             # calculate new distances
             self._distances_after_reset = self._get_distances()
 
-            # set dummy values to avoid KeyError
+            # set dummy value to avoid KeyError
             if self.verbose > 0:
-                self.set_attr("average_rewards", None)
-                self.set_attr("average_success", None)
+                self.set_attr("avg_rewards", None)
+                self.set_attr("avg_success", None)
+                self.set_attr("avg_resets", None)
 
             if self.verbose > 1:
-                for name, _ in self._distances_after_reset.items():
-                    self.set_attr("average/" + name + "_dist", None)   
-                self.set_attr("average_steps", None)
-                self.set_attr("average_collision", None)
+                self.set_attr("avg_setupTime", None)
+                self.set_attr("avg_actionTime", None)    
+                self.set_attr("avg_obsTime", None) 
 
+            if self.verbose > 2:
+                for name, _ in self._distances_after_reset.items():
+                    self.set_attr("avg_" + name + "_euclid_dist" , None)   
+                    self.set_attr("avg_" + name + "_anglular_dist" , None)   
+                self.set_attr("avg_steps", None)
+                self.set_attr("avg_coll", None)
+
+            self.setupTime = timeit.default_timer() - startTime
             return self._obs
         
        # reset envs manually
@@ -676,6 +776,7 @@ class IsaacEnv(ModularEnv):
         # note new distances # todo: only recalculate necessary distances
         self._distances_after_reset = self._get_distances()
         
+        self.setupTime = timeit.default_timer() - startTime
         return self._obs
 
     def get_robot_dof_limits(self) -> List[Tuple[float, float]]:
@@ -720,10 +821,21 @@ class IsaacEnv(ModularEnv):
 
         return [self._obstacles[i] for i in range(start_idx, start_idx + self.obstacle_count)]
 
-    def close(self) -> None:
+    def close(self, path:str=None) -> None:
+        print("Close Simulation")  
+        if self.verbose > 3:
+            if not path:
+                return 0
+            
+            print(self.log_dict)
+            df = pd.DataFrame(self.log_dict)        # transform logs to a df       
+            df.to_csv(path +".csv", index=False)    # save df to a csv file
         self._simulation.close()
 
+
     def _get_observations(self) -> VecEnvObs:
+        startTime = timeit.default_timer()
+
         # create empty arrays, allowing obs to be appended
         positions = np.array([])
         rotations = np.array([])
@@ -799,6 +911,9 @@ class IsaacEnv(ModularEnv):
         scales = scales.reshape(self.num_envs, -1)
         joint_positions = joint_positions.reshape(self.num_envs, -1)
 
+        endTime = timeit.default_timer()
+        self.obsTime = endTime - startTime
+
         return {
             "Positions": positions,
             "Rotations": rotations,
@@ -814,6 +929,15 @@ class IsaacEnv(ModularEnv):
             # calcualte current distances
             name, distance = distance_fn()
             distances[name] = distance
+
+            # if needed rearrange format
+            if self.verbose > 2:
+                self._accessDist = {}
+                for idx in range(self.num_envs):
+                    self._accessDist[idx] = {
+                        f"{name}_dist_euclid": distance[idx][0],
+                        f"{name}_dist_angular": distance[idx][1],
+                    }
 
         return distances
 

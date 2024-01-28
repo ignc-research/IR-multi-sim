@@ -25,13 +25,13 @@ The YAML settings file comprises several definable elements that focus on the ru
 ## Training and evaluation parameter
 ```yaml 
 train:
-  logging:      # int: Level of information output during learning (0, 1, 2, ...).
+  logging:      # int: Level of information output during learning [0, 1, 2, 3, 4].
   timesteps:    # int: Number of timesteps for the model to learn.
   save_freq:    # int: Frequency at which the model should be saved.
 
 evaluation:
   timesteps:    # int: Number of timesteps used for model evaluation.
-  logging:      # int: Level of information output during learning (0, 1, 2, ...).
+  logging:      # int: Level of information output during learning [0, 1, 2, 3, 4].
 ```
 
 ## Environment parameter
