@@ -64,6 +64,7 @@ class PybulletEnv(ModularEnv):
 
         # save collidable objects for collision detection
         self._collidable = []
+        self._checkCollisions = False
         self._obs = {}
 
         # calculate env offsets
@@ -143,6 +144,7 @@ class PybulletEnv(ModularEnv):
                 self._reward_fns.append(self._parse_timestep_reward(reward))
             elif isinstance(reward, Collision):
                 self._reward_fns.append(self._parse_collision_reward(reward))
+                self._checkCollisions = True
             elif isinstance(reward, Shaking):
                 self._reward_fns.append(self._parse_shaking_reward(reward))
             else:
@@ -331,6 +333,7 @@ class PybulletEnv(ModularEnv):
                 self._reset_fns.append(self._parse_timesteps_reset(reset))
             elif isinstance(reset, CollisionReset):
                 self._reset_fns.append(self._parse_collision_reset(reset))
+                self._checkCollisions = True
             elif isinstance(reset, BoundaryReset):
                 self._reset_fns.append(self._parse_boundary_reset(reset))
             else:
@@ -627,12 +630,11 @@ class PybulletEnv(ModularEnv):
             for dist_name, distance in self._distances.items():
                 euclid_dist = np.array([value[0] for value in distance])
                 angular_dist = np.array([value[1] for value in distance])
-
                 self.set_attr("avg_" + dist_name + "_euclid_dist" , np.average(euclid_dist[envInfo]))
                 self.set_attr("avg_" + dist_name + "_anglular_dist" , np.average(angular_dist[envInfo])) 
 
             self.set_attr("avg_coll", np.average(self._collisionsCount[envInfo])) 
-            self.set_attr("avg_steps", np.average(self._timesteps[envInfo]))              
+            self.set_attr("avg_steps", np.average(self._timesteps[reset_idx]))              
 
         # create csv file with informations about each specific environment each timestep
         if self.verbose > 3:

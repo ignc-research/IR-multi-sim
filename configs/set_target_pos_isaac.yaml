@@ -1,44 +1,47 @@
 run:
   load_model: False
-  model_name: "simple_test_isaac"
+  model_name: "set_target_pos_isaac"
   checkpoint: ""
   algorithm:
-    type: "PPO"
+    type: "TD3"
     parameters:
-      learning_rate: 0.0003
-      gamma: 0.99
+      learning_rate: 0.0005
+      batch_size: 2048
+      train_freq: 1
 train:
   logging: 3
-  timesteps: 100000
+  timesteps: 1000000
   save_freq: 100000
 
 evaluation:
+  logging: 2
   timesteps: 100000 
 
 env:
-  num_envs: 4
+  num_envs: 32
   env_offset: [4, 4]
-  headless: False
-  step_size: 0.00416666666
-  step_count: 1
+  headless: True
+  step_size: 0.04
+  step_count: 64
 
   robots:
     - name: "R1"
       urdf_path: "robots/ur5/urdf/ur5_with_gripper.urdf"
       position: [0.5, 0, 0.63]
       observable_joints: ["ee_link"]
-      control_type: "Velocity"  
-      collision: False
+      control_type: "Position"
+      collision: False  
 
   urdfs:
     - name: "Table" # workspace: [[-0.65,-0.40,0.64],[0.65,0.40,1.00]]
       urdf_path: "table/table.urdf"
       position: [0.0, 0, 0]
       orientation: [1, 0, 0, 0]
+      collision: False
   
   obstacles:
     - name: "TargetCube"
-      position: [-0.5, -0.3, 0.7]
+      position: [[-0.5, -0.3, 0.7],[0.3, 0.3, 1.]]
       color: [1, 0, 0]
       collision: False
       observable: True
@@ -49,9 +52,9 @@ env:
     - name: "target"
       obj1: "TargetCube"
       obj2: "R1/ee_link"
-      distance_weight: -0.01
-      exponent: 1
-      orientation_weight: 0
+      distance_weight: -32
+      orientation_weight: -1
+      exponent: 2
       type: "Distance"
 
     - distance: "target"
@@ -59,11 +62,11 @@ env:
       length: 10
       type: "Shaking"
 
-  resets:    
+  resets:  
     - distance: "target"
       min_distance: 0.1
-      reward: 15
+      reward: 10
       type: "DistanceReset" 
-    
+          
     - max: 200
       type: "TimestepsReset"

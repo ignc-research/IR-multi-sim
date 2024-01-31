@@ -651,6 +651,8 @@ class IsaacEnv(ModularEnv):
 
         # Log only general information averaged over all environments
         if self.verbose > 0:   
+            print("Resets: ", resets[envInfo], " Succ: ", successes[envInfo], "Rewards:", self._rewards[envInfo], "idx", envInfo)
+
             self.set_attr("avg_rewards", np.average(self._rewards[envInfo])) 
             self.set_attr("avg_success", np.average(successes[envInfo]))    
             self.set_attr("avg_resets", np.average(resets[envInfo]))     
@@ -671,7 +673,10 @@ class IsaacEnv(ModularEnv):
                 self.set_attr("avg_" + dist_name + "_anglular_dist" , np.average(angular_dist[envInfo])) 
 
             self.set_attr("avg_coll", np.average(self._collisionsCount[envInfo])) 
-            self.set_attr("avg_steps", np.average(self._timesteps[envInfo]))              
+            self.set_attr("avg_steps", np.average(self._timesteps[reset_idx]))  
+
+            print(self._collisionsCount, self._timesteps)    
+            print("Colls: ", self._collisionsCount[envInfo], " time: ", self._timesteps[reset_idx])        
 
         # create csv file with informations about each specific environment each timestep
         if self.verbose > 3:
