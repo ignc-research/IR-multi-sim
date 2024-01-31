@@ -64,7 +64,6 @@ class PybulletEnv(ModularEnv):
 
         # save collidable objects for collision detection
         self._collidable = []
-        self._checkCollisions = False
         self._obs = {}
 
         # calculate env offsets
@@ -99,6 +98,24 @@ class PybulletEnv(ModularEnv):
 
         # init bace class last, allowing it to automatically determine action and observation space
         super().__init__(params) 
+
+        # set dummy value to avoid KeyError
+        if self.verbose > 0:
+            self.set_attr("avg_rewards", 0)
+            self.set_attr("avg_success", 0)
+            self.set_attr("avg_resets", 0)
+
+        if self.verbose > 1:
+            self.set_attr("avg_setupTime", 0)
+            self.set_attr("avg_actionTime", 0)    
+            self.set_attr("avg_obsTime", 0) 
+
+        if self.verbose > 2:
+            for name, _ in self._distances_after_reset.items():
+                self.set_attr("avg_" + name + "_euclid_dist" , 0)   
+                self.set_attr("avg_" + name + "_anglular_dist" , 0)   
+            self.set_attr("avg_steps", 0)
+            self.set_attr("avg_coll", 0)
 
 
     def _setup_simulation(self, headless: bool, step_size: float):
@@ -144,7 +161,6 @@ class PybulletEnv(ModularEnv):
                 self._reward_fns.append(self._parse_timestep_reward(reward))
             elif isinstance(reward, Collision):
                 self._reward_fns.append(self._parse_collision_reward(reward))
-                self._checkCollisions = True
             elif isinstance(reward, Shaking):
                 self._reward_fns.append(self._parse_shaking_reward(reward))
             else:
@@ -333,7 +349,6 @@ class PybulletEnv(ModularEnv):
                 self._reset_fns.append(self._parse_timesteps_reset(reset))
             elif isinstance(reset, CollisionReset):
                 self._reset_fns.append(self._parse_collision_reset(reset))
-                self._checkCollisions = True
             elif isinstance(reset, BoundaryReset):
                 self._reset_fns.append(self._parse_boundary_reset(reset))
             else:
@@ -436,11 +451,12 @@ class PybulletEnv(ModularEnv):
             resets = np.where(self._timesteps < max_steps, False, True)
 
             if min_steps:
-                successes = np.where(self._timesteps >= min_steps, True, False)              
+                successes = np.where(self._timesteps >= min_steps, True, False) 
+                self._rewards += successes * reward             
             else:
                 successes = np.where(self._timesteps < max_steps, True, False)
-            
-            self._rewards += successes * reward
+                self._rewards += resets * reward
+
             return resets, successes, name
         
         return reset_condition
@@ -571,17 +587,9 @@ class PybulletEnv(ModularEnv):
         self._collisions = self._get_collisions()   # get collisions
         self._rewards = self._get_rewards()         # get rewards after updated distances and collisions
 
-        #print("\nObs    :", self._obs["Positions"])   
-        #print("Dist:", [f"{value[0]:.4f}" for value in self._distances['target']], end=" | ")
-        #print("Rewards:", [f"{value:.4f}" for value in self._rewards], end=" | ")
-        #print("Timest.:", self._timesteps, end=" | ")
-        #print("Coll.:", self._collisionsCount, end=" | ")
-        #print("Dones  :", self._dones) 
-        #print(f"Stats {self._timesteps}: ", self.obsTime, self.actionTime, self.setupTime)
-
         # check if an environment is dones (needs a reset) or successfully finished (needs reset)
         resets = np.full(self.num_envs, False)
-        successes = np.full(self.num_envs, False)       
+        successes = np.full(self.num_envs, True)       
        
         # go over each reset condition
         donesDict = {}
@@ -608,33 +616,7 @@ class PybulletEnv(ModularEnv):
                                       
         # get environemnt idx that need a reset 
         self._dones = np.logical_or(resets, successes)
-        reset_idx = np.where(self._dones)[0]
-
-        # Only average over environments that are resetted
-        envInfo = list(range(self.num_envs)) if self.verbose < 5 else reset_idx
-
-        # Log only general information averaged over all environments
-        if self.verbose > 0:   
-            self.set_attr("avg_rewards", np.average(self._rewards[envInfo])) 
-            self.set_attr("avg_success", np.average(successes[envInfo]))    
-            self.set_attr("avg_resets", np.average(resets[envInfo]))     
-        
-        # Add info about execution times averaged over all environments
-        if self.verbose > 1:
-            self.set_attr("avg_setupTime", self.setupTime)
-            self.set_attr("avg_actionTime", self.actionTime)    
-            self.set_attr("avg_obsTime", self.obsTime)         
-
-        # Add information about rewards and resets averaged over all environments
-        if self.verbose > 2:
-            for dist_name, distance in self._distances.items():
-                euclid_dist = np.array([value[0] for value in distance])
-                angular_dist = np.array([value[1] for value in distance])
-                self.set_attr("avg_" + dist_name + "_euclid_dist" , np.average(euclid_dist[envInfo]))
-                self.set_attr("avg_" + dist_name + "_anglular_dist" , np.average(angular_dist[envInfo])) 
-
-            self.set_attr("avg_coll", np.average(self._collisionsCount[envInfo])) 
-            self.set_attr("avg_steps", np.average(self._timesteps[reset_idx]))              
+        reset_idx = np.where(self._dones)[0]             
 
         # create csv file with informations about each specific environment each timestep
         if self.verbose > 3:
@@ -653,7 +635,32 @@ class PybulletEnv(ModularEnv):
                 self.log_dict = pd.concat([self.log_dict, pd.DataFrame([info])], ignore_index=True)
 
         # apply resets
-        if reset_idx.size > 0:        
+        if reset_idx.size > 0: 
+            # Log only general information averaged over all environments
+            if self.verbose > 0:   
+                self.set_attr("avg_rewards", np.average(self._rewards[reset_idx])) 
+
+                self.set_attr("avg_success", np.sum(successes) * (1/self.num_envs))    
+                self.set_attr("avg_resets",  np.sum(resets) * (1/self.num_envs))     
+            
+            # Add info about execution times averaged over all environments
+            if self.verbose > 1:
+                self.set_attr("avg_setupTime", self.setupTime)
+                self.set_attr("avg_actionTime", self.actionTime)    
+                self.set_attr("avg_obsTime", self.obsTime)         
+
+            # Add information about rewards and resets averaged over all environments
+            if self.verbose > 2:
+                for dist_name, distance in self._distances.items():
+                    euclid_dist = np.array([value[0] for value in distance])
+                    angular_dist = np.array([value[1] for value in distance])
+
+                    self.set_attr("avg_" + dist_name + "_euclid_dist" , np.average(euclid_dist[reset_idx]))
+                    self.set_attr("avg_" + dist_name + "_anglular_dist" , np.average(angular_dist[reset_idx])) 
+                
+                self.set_attr("avg_coll", np.sum(self._collisionsCount[reset_idx]) * (1/self.num_envs)) 
+                self.set_attr("avg_steps", np.average(self._timesteps[reset_idx]))        
+            
             self.reset(reset_idx)
 
         return self._obs, self._rewards, self._dones, self.env_data
@@ -670,24 +677,6 @@ class PybulletEnv(ModularEnv):
             self._collisionsCount = np.zeros(self.num_envs)                                     # reset collisions count tracking
             self._obs = self._get_observations()                                                # reset observations 
             self._distances_after_reset = self._get_distances()                                 # calculate new distances
-
-            # set dummy value to avoid KeyError
-            if self.verbose > 0:
-                self.set_attr("avg_rewards", None)
-                self.set_attr("avg_success", None)
-                self.set_attr("avg_resets", None)
-
-            if self.verbose > 1:
-                self.set_attr("avg_setupTime", None)
-                self.set_attr("avg_actionTime", None)    
-                self.set_attr("avg_obsTime", None) 
-
-            if self.verbose > 2:
-                for name, _ in self._distances_after_reset.items():
-                    self.set_attr("avg_" + name + "_euclid_dist" , None)   
-                    self.set_attr("avg_" + name + "_anglular_dist" , None)   
-                self.set_attr("avg_steps", None)
-                self.set_attr("avg_coll", None)
         
         # reset envs manually
         else:           

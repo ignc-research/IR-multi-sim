@@ -6,7 +6,7 @@ _distReset = 0
 
 class DistanceReset(Reset):
     def __init__(self, distance: Union[Distance, str], 
-                 max_distance: float=2, 
+                 max_distance: float=None, 
                  max_angle: float=None, 
                  min_distance: float=None, 
                  min_angle: float=None, 

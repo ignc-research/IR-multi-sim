@@ -18,16 +18,16 @@ evaluation:
   timesteps: 100000 
 
 env:
-  num_envs: 32
+  num_envs: 16
   env_offset: [4, 4]
   headless: True
-  step_size: 0.04
-  step_count: 64
+  step_size: 0.004
+  step_count: 1
 
   robots:
     - name: "R1"
       urdf_path: "robots/ur5/urdf/ur5_with_gripper.urdf"
-      position: [0.5, 0, 0.63]
+      position: [-0.5, 0, 0.63]
       observable_joints: ["ee_link"]
       control_type: "Position"
       collision: False  
@@ -38,10 +38,11 @@ env:
       position: [0.0, 0, 0]
       orientation: [1, 0, 0, 0]
       collision: False
+      observable: True
   
   obstacles:
     - name: "TargetCube"
-      position: [[-0.5, -0.3, 0.7],[0.3, 0.3, 1.]]
+      position: [[0.1, -0.3, 0.7],[0.5, 0.3, 1.1]]
       color: [1, 0, 0]
       collision: False
       observable: True
@@ -65,7 +66,7 @@ env:
   resets:  
     - distance: "target"
       min_distance: 0.1
-      reward: 10
+      reward: 15
       type: "DistanceReset" 
           
     - max: 200
