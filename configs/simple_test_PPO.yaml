@@ -1,6 +1,6 @@
 run:
   load_model: False
-  model_name: "simple_test_pyb"
+  model_name: "simple_test_isaac"
   checkpoint: ""
   algorithm:
     type: "PPO"
@@ -8,8 +8,8 @@ run:
       learning_rate: 0.0003
       gamma: 0.99
 train:
-  logging: 2
-  timesteps: 15000000 
+  logging: 3
+  timesteps: 100000
   save_freq: 100000
 
 evaluation:
@@ -28,6 +28,7 @@ env:
       position: [0.5, 0, 0.63]
       observable_joints: ["ee_link"]
       control_type: "Velocity"  
+      collision: False
 
   urdfs:
     - name: "Table" # workspace: [[-0.65,-0.40,0.64],[0.65,0.40,1.00]]
@@ -60,27 +61,9 @@ env:
 
   resets:    
     - distance: "target"
-      min_distance: 0.8
-      min_angle: 2.0
+      min_distance: 0.1
       reward: 15
       type: "DistanceReset" 
     
-    - distance: "target"
-      max_distance: 1.0
-      max_angle: 2.5
-      reward: -5
-      type: "DistanceReset" 
-      
     - max: 200
       type: "TimestepsReset"
-
-    - obj: "R1"
-      max: 1
-      reward: -5
-      type: "CollisionReset"
-
-    - obj: "R1"
-      min_bound: [0,0,0]
-      max_bound: [1,1,2.6]
-      reward: -1
-      type: "BoundaryReset"

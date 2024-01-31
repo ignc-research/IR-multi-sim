@@ -1,16 +1,16 @@
 run:
   load_model: False
-  model_name: "simple_test_pyb"
-  checkpoint: "checkpoint_1000.zip"
+  model_name: "simple_test_isaac"
+  checkpoint: ""
   algorithm:
     type: "TD3"
     parameters:
-      learning_rate: 0.001
+      learning_rate: 0.005
       train_freq: 1
 train:
-  logging: 4
-  timesteps: 1500000 
-  save_freq: 1000
+  logging: 3
+  timesteps: 10000 
+  save_freq: 10000
 
 evaluation:
   logging: 2
@@ -26,10 +26,10 @@ env:
   robots:
     - name: "R1"
       urdf_path: "robots/ur5/urdf/ur5_with_gripper.urdf"
-      position: [0.5, 0, 0.63]
+      position: [-0.5, 0, 0.63]
       observable_joints: ["ee_link"]
       control_type: "Velocity"
-      collision: True  
+      collision: False  
 
   urdfs:
     - name: "Table" # workspace: [[-0.65,-0.40,0.64],[0.65,0.40,1.00]]
@@ -40,7 +40,7 @@ env:
   
   obstacles:
     - name: "TargetCube"
-      position: [[-0.5, -0.3, 0.7],[0.3, 0.3, 1.]]
+      position: [[-0.3, -0.3, 0.7],[0.5, 0.3, 1.]]
       color: [1, 0, 0]
       collision: False
       observable: True
@@ -53,7 +53,7 @@ env:
       obj2: "R1/ee_link"
       distance_weight: -32
       exponent: 2
-      orientation_weight: 0
+      orientation_weight: -1
       type: "Distance"
 
     - distance: "target"
@@ -70,9 +70,3 @@ env:
           
     - max: 200
       type: "TimestepsReset"
-
-    - obj: "R1"
-      min_bound: [-1,-1,0]
-      max_bound: [1,1,2.6]
-      reward: -1
-      type: "BoundaryReset"
