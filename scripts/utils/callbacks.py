@@ -38,7 +38,7 @@ class AdvancedCallback(PerformanceCallback):
             self.logger.record('advanved/avg_dist_angular_' + name, self.training_env.get_attr(key2)[0])
 
         self.logger.record('advanved/avg_steps', self.training_env.get_attr('avg_steps')[0])
-        self.logger.record('advanved/avg_coll', self.training_env.get_attr('avg_steps')[0])
+        self.logger.record('advanved/avg_coll', self.training_env.get_attr('avg_coll')[0])
         return super()._on_step()
 
     

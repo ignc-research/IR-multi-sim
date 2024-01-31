@@ -117,6 +117,25 @@ class IsaacEnv(ModularEnv):
 
         # init bace class last, allowing it to automatically determine action and observation space
         super().__init__(params)
+
+        # set dummy values for logs as needed to avoid KeyError
+        if self.verbose > 0:
+            self.set_attr("avg_rewards", 0)
+            self.set_attr("avg_success", 0)
+            self.set_attr("avg_resets", 0)
+
+        if self.verbose > 1:
+            self.set_attr("avg_setupTime", 0)
+            self.set_attr("avg_actionTime", 0)    
+            self.set_attr("avg_obsTime", 0) 
+
+        if self.verbose > 2:
+            for name, _ in self._distances_after_reset.items():
+                self.set_attr("avg_" + name + "_euclid_dist" , 0)   
+                self.set_attr("avg_" + name + "_anglular_dist" , 0)   
+            self.set_attr("avg_steps", 0)
+            self.set_attr("avg_coll", 0)
+
     
     def _setup_simulation(self, headless: bool, step_size: float):
         # isaac imports may only be used after SimulationApp is started (ISAAC uses runtime plugin system)
@@ -436,7 +455,6 @@ class IsaacEnv(ModularEnv):
         def reset_condition() -> np.ndarray:
             # get distances of current timestep
             distance, rotation = self._get_distance_and_rotation(name)
-            #print(f"Current Dist: {distance} and Rot: {rotation}")
             
             # add positive reward if condition successfully reached 
             if min_distance:
@@ -449,7 +467,6 @@ class IsaacEnv(ModularEnv):
                     successes = dist_success
                     
                 resets = successes
-                #print(f"Min dist successes: {successes} and resets {resets}")
 
                 # apply reward in case of successes
                 self._rewards += successes * reward 
@@ -465,11 +482,10 @@ class IsaacEnv(ModularEnv):
                     resets = dist_resets
                 
                 successes = np.logical_not(resets)
-                #print(f"Max dist successes: {successes} and resets {resets}")
                     
                 # apply punishment/ reward in case of reset 
                 self._rewards += resets * reward
-
+            
             return resets, successes, resetName
 
         return reset_condition
@@ -529,11 +545,12 @@ class IsaacEnv(ModularEnv):
             resets = np.where(self._timesteps < max_steps, False, True)
 
             if min_steps:
-                successes = np.where(self._timesteps > min_steps, True, False)              
+                successes = np.where(self._timesteps > min_steps, True, False)  
+                self._rewards += successes * reward            
             else:
                 successes = np.where(self._timesteps < max_steps, True, False)
-            
-            self._rewards += successes * reward
+                self._rewards += resets * reward
+
             return resets, successes, name
 
         return reset_condition
@@ -608,16 +625,9 @@ class IsaacEnv(ModularEnv):
         self._distances = self._get_distances()     # get distances after updated observations 
         self._rewards = self._get_rewards()         # get rewards after updated distances
 
-        #print("Obs    :", self._obs)        
-        #print("Dist:", [f"{value[0]:.4f}" for value in self._distances['target']], end=" | ")
-        #print("Rewards:", [f"{value:.4f}" for value in self._rewards], end=" | ")
-        #print("Timest.:", self._timesteps, end=" | ")
-        #print("Coll.:", self._collisionsCount, end=" | ")
-        #print("Dones  :", self._dones) 
-
         # check if an environment is dones (needs a reset) or successfully finished (needs reset)
         resets = np.full(self.num_envs, False)
-        successes = np.full(self.num_envs, False)       
+        successes = np.full(self.num_envs, True)       
        
         # go over each reset condition
         donesDict = {}
@@ -646,38 +656,6 @@ class IsaacEnv(ModularEnv):
         self._dones = np.logical_or(resets, successes)
         reset_idx = np.where(self._dones)[0]
 
-        # Only average over environments that are resetted
-        envInfo = list(range(self.num_envs)) if self.verbose < 5 else reset_idx
-
-        # Log only general information averaged over all environments
-        if self.verbose > 0:   
-            print("Resets: ", resets[envInfo], " Succ: ", successes[envInfo], "Rewards:", self._rewards[envInfo], "idx", envInfo)
-
-            self.set_attr("avg_rewards", np.average(self._rewards[envInfo])) 
-            self.set_attr("avg_success", np.average(successes[envInfo]))    
-            self.set_attr("avg_resets", np.average(resets[envInfo]))     
-        
-        # Add info about execution times averaged over all environments
-        if self.verbose > 1:
-            self.set_attr("avg_setupTime", self.setupTime)
-            self.set_attr("avg_actionTime", self.actionTime)    
-            self.set_attr("avg_obsTime", self.obsTime)         
-
-        # Add information about rewards and resets averaged over all environments
-        if self.verbose > 2:
-            for dist_name, distance in self._distances.items():
-                euclid_dist = np.array([value[0] for value in distance])
-                angular_dist = np.array([value[1] for value in distance])
-
-                self.set_attr("avg_" + dist_name + "_euclid_dist" , np.average(euclid_dist[envInfo]))
-                self.set_attr("avg_" + dist_name + "_anglular_dist" , np.average(angular_dist[envInfo])) 
-
-            self.set_attr("avg_coll", np.average(self._collisionsCount[envInfo])) 
-            self.set_attr("avg_steps", np.average(self._timesteps[reset_idx]))  
-
-            print(self._collisionsCount, self._timesteps)    
-            print("Colls: ", self._collisionsCount[envInfo], " time: ", self._timesteps[reset_idx])        
-
         # create csv file with informations about each specific environment each timestep
         if self.verbose > 3:
             for envIdx in range(self.num_envs):
@@ -696,7 +674,32 @@ class IsaacEnv(ModularEnv):
                 self.log_dict = pd.concat([self.log_dict, pd.DataFrame([info])], ignore_index=True)
 
         # apply resets
-        if reset_idx.size > 0:        
+        if reset_idx.size > 0:      
+            # Log only general information averaged over all environments
+            if self.verbose > 0:   
+                self.set_attr("avg_rewards", np.average(self._rewards[reset_idx])) 
+
+                self.set_attr("avg_success", np.sum(successes) * (1/self.num_envs))    
+                self.set_attr("avg_resets",  np.sum(resets) * (1/self.num_envs))     
+            
+            # Add info about execution times averaged over all environments
+            if self.verbose > 1:
+                self.set_attr("avg_setupTime", self.setupTime)
+                self.set_attr("avg_actionTime", self.actionTime)    
+                self.set_attr("avg_obsTime", self.obsTime)         
+
+            # Add information about rewards and resets averaged over all environments
+            if self.verbose > 2:
+                for dist_name, distance in self._distances.items():
+                    euclid_dist = np.array([value[0] for value in distance])
+                    angular_dist = np.array([value[1] for value in distance])
+
+                    self.set_attr("avg_" + dist_name + "_euclid_dist" , np.average(euclid_dist[reset_idx]))
+                    self.set_attr("avg_" + dist_name + "_anglular_dist" , np.average(angular_dist[reset_idx])) 
+                
+                self.set_attr("avg_coll", np.sum(self._collisionsCount[reset_idx]) * (1/self.num_envs)) 
+                self.set_attr("avg_steps", np.average(self._timesteps[reset_idx]))   
+
             self.reset(reset_idx)
 
         return self._obs, self._rewards, self._dones, self.env_data
@@ -706,57 +709,29 @@ class IsaacEnv(ModularEnv):
         startTime = timeit.default_timer()
 
         # reset entire simulation
-        if env_idxs is None:
-            # initialize sim
-            self._world.reset()
-
-            # reset timesteps
-            self._timesteps = np.zeros(self.num_envs)
-
-            # reset collisions count
-            self._collisionsCount = np.zeros(self.num_envs)
-
-            # reset observations
-            self._obs = self._get_observations()
-
-            # calculate new distances
-            self._distances_after_reset = self._get_distances()
-
-            # set dummy value to avoid KeyError
-            if self.verbose > 0:
-                self.set_attr("avg_rewards", None)
-                self.set_attr("avg_success", None)
-                self.set_attr("avg_resets", None)
-
-            if self.verbose > 1:
-                self.set_attr("avg_setupTime", None)
-                self.set_attr("avg_actionTime", None)    
-                self.set_attr("avg_obsTime", None) 
-
-            if self.verbose > 2:
-                for name, _ in self._distances_after_reset.items():
-                    self.set_attr("avg_" + name + "_euclid_dist" , None)   
-                    self.set_attr("avg_" + name + "_anglular_dist" , None)   
-                self.set_attr("avg_steps", None)
-                self.set_attr("avg_coll", None)
-
-            self.setupTime = timeit.default_timer() - startTime
+        if env_idxs is None:          
+            self._world.reset()                                 # initialize sim   
+            self._timesteps = np.zeros(self.num_envs)           # reset timesteps           
+            self._collisionsCount = np.zeros(self.num_envs)     # reset collisions count
+            self._obs = self._get_observations()                # reset observations
+            self._distances_after_reset = self._get_distances() # calculate new distances
+            self.setupTime = timeit.default_timer() - startTime # calculate setup time
+            
+            # return observations
             return self._obs
         
        # reset envs manually
         for i in env_idxs:
             # reset all obstacles to default pose
             for geometryPrim, _ in self._get_obstacles(i):
-                # default case: reset obstacle to default position without randomization
-                geometryPrim.post_reset()
+                geometryPrim.post_reset()    # default case: reset obstacle to default position without randomization
 
             # reset all robots to default pose
             for robot in self._get_robots(i):
-                robot = robot[0] # get prim from tuple
-                robot.post_reset()
+                robot[0].post_reset()  # get prim from tuple and apply reset
 
                 # get joint limits
-                limits = robot.get_articulation_controller().get_joint_limits()
+                limits = robot[0].get_articulation_controller().get_joint_limits()
                 joint_count = limits.shape[0]
 
                 random_floats = np.random.random_sample(joint_count)
@@ -770,7 +745,7 @@ class IsaacEnv(ModularEnv):
                     random_config[i] = min + (max - min) * random_floats[i]
 
                 # set random beginning position
-                robot.set_joint_positions(random_config)
+                robot[0].set_joint_positions(random_config)
         
         self._timesteps[env_idxs] = 0           # reset timestep tracking        
         self._collisionsCount[env_idxs] = 0     # reset collisions count tracking
@@ -1185,22 +1160,3 @@ class IsaacEnv(ModularEnv):
 
     def _get_robot_joint_names(self, robot_articulation) -> List[str]:
         return [child.GetName() for child in robot_articulation.prim.GetAllChildren()]
-
-    # static utillity functions
-    @staticmethod
-    def to_isaac_vector(vec3: np.ndarray):
-        from pxr import Gf
-        return Gf.Vec3f(list(vec3))
-
-    @staticmethod
-    def to_issac_quat(vec3: np.ndarray):
-        from pxr import Gf
-        a, b, c, d = list(vec3)
-        return Gf.Quatf(float(a), float(b), float(c), float(d))
-
-    @staticmethod
-    def to_isaac_color(color: List[float]) -> np.ndarray:
-        """
-        Transform colour format into format Isaac accepts, ignoring opacity
-        """
-        return np.array(color[:-1])
