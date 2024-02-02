@@ -1,4 +1,14 @@
-## Set target positions
-Reach the target cube spawned randomly by setting joint position targets, and seeing if the predicted configuration reaches the target.
+## Set Target Positions
+A robot was trained for the task to reach a target cube spawned randomly by setting joint position targets. This training was executed with 20 parallel environments for 700.000 timesteps on a NVIDIA GeForce RTX 4070 Ti.
 
-![Set target positions](./images/set_target_pos1M.png)
+The average rewards for Pybullet (left) and Isaac (right):
+![Image 1](rewards_pyb.png){width=49%}
+![Image 2](rewards_isaac.png){width=49%}
+
+The average euclidean distance for Pybullet (left) and Isaac (right):
+![Image 3](dist_euclid_pyb.png){width=49%}
+![Image 4](dist_euclid_isaac.png){width=49%}
+
+The average angular distance for Pybullet (left) and Isaac (right):
+![Image 3](dist_angular_pyb.png){width=49%}
+![Image 4](dist_angular_isaac.png){width=49%}

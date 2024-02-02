@@ -32,5 +32,4 @@ This full example demonstrated how to easily create an environment constructed f
 The example configuration files can be found under "./configs".
 
 ## Existing models
-- [Reach configuration](docs/reach_configuration.md)
-- [Set target positions](docs/target_position.md)
+A simple model is available at '/models/' that implements the task of setting the target position with both simulators. For further details, refer to [this link](docs/target_position.md).
