@@ -3,15 +3,19 @@ A robot was trained for the task to reach a target cube spawned randomly by sett
 
 The average rewards for Pybullet (left) and Isaac (right):
 <div style="display:flex;">
-    <img src="images/rewards_pyb.png" alt="Image 1" style="width:45%;">
-    <img src="images/rewards_isaac.png" alt="Image 2" style="width:45%;">
+    <img src="images/rewards_pyb.png" alt="Image 1" style="width:49%;">
+    <img src="images/rewards_isaac.png" alt="Image 2" style="width:49%;">
 </div>
 
 
 The average euclidean distance for Pybullet (left) and Isaac (right):
-![Image 3](images/dist_euclid_pyb.png){width=49%}
-![Image 4](images/dist_euclid_isaac.png){width=49%}
+<div style="display:flex;">
+    <img src="images/dist_euclid_pyb.png" alt="Image 3" style="width:49%;">
+    <img src="images/dist_euclid_isaac.png" alt="Image 4" style="width:49%;">
+</div>
 
 The average angular distance for Pybullet (left) and Isaac (right):
-![Image 3](images/dist_angular_pyb.png){width=49%}
-![Image 4](images/dist_angular_isaac.png){width=49%}
+<div style="display:flex;">
+    <img src="images/dist_angular_pyb.png" alt="Image 5" style="width:49%;">
+    <img src="images/dist_angular_isaac.png" alt="Image 6" style="width:49%;">
+</div>
