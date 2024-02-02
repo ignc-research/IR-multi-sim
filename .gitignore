@@ -14,7 +14,4 @@ _*/
 .venv
 .vscode
 
-# logs
-/logs
-
 pyvenv.cfg

@@ -10,7 +10,7 @@ run:
       train_freq: 1
 train:
   logging: 3
-  timesteps: 1000000
+  timesteps: 700000
   save_freq: 100000
 
 evaluation:
@@ -18,11 +18,11 @@ evaluation:
   timesteps: 100000 
 
 env:
-  num_envs: 16
+  num_envs: 20
   env_offset: [4, 4]
   headless: True
-  step_size: 0.004
-  step_count: 1
+  step_size: 0.04
+  step_count: 32
 
   robots:
     - name: "R1"
@@ -42,7 +42,7 @@ env:
   
   obstacles:
     - name: "TargetCube"
-      position: [[0.1, -0.3, 0.7],[0.5, 0.3, 1.1]]
+      position: [[0.3, -0.3, 0.7],[0.5, 0.3, 1.1]]
       color: [1, 0, 0]
       collision: False
       observable: True
@@ -53,8 +53,8 @@ env:
     - name: "target"
       obj1: "TargetCube"
       obj2: "R1/ee_link"
-      distance_weight: -32
-      orientation_weight: -1
+      distance_weight: -20
+      orientation_weight: -2
       exponent: 2
       type: "Distance"
 
@@ -65,9 +65,10 @@ env:
 
   resets:  
     - distance: "target"
-      min_distance: 0.1
+      min_distance: 0.01
       reward: 15
       type: "DistanceReset" 
           
-    - max: 200
+    - max: 250
       type: "TimestepsReset"
+      reward: -1

@@ -10,7 +10,7 @@ run:
       train_freq: 1
 train:
   logging: 3
-  timesteps: 1000000
+  timesteps: 700000
   save_freq: 100000
 
 evaluation:
@@ -21,13 +21,13 @@ env:
   num_envs: 20
   env_offset: [4, 4]
   headless: True
-  step_size: 0.004
-  step_count: 1
+  step_size: 0.04
+  step_count: 32
 
   robots:
     - name: "R1"
       urdf_path: "robots/ur5/urdf/ur5_with_gripper.urdf"
-      position: [-0.5, 0, 0.63]
+      position: [-0.6, 0, 0.63]
       observable_joints: ["ee_link"]
       control_type: "Position"
       collision: False  
@@ -42,7 +42,7 @@ env:
   
   obstacles:
     - name: "TargetCube"
-      position: [[0.1, -0.3, 0.7],[0.5, 0.3, 1.1]]
+      position: [[0.3, -0.3, 0.7],[0.6, 0.3, 1.1]]
       color: [1, 0, 0]
       collision: False
       observable: True
@@ -59,13 +59,13 @@ env:
       type: "Distance"
 
     - distance: "target"
-      weight: -0.01
+      weight: -0.005
       length: 10
       type: "Shaking"
 
   resets:  
     - distance: "target"
-      min_distance: 0.1
+      min_distance: 0.01
       reward: 10
       type: "DistanceReset" 
           

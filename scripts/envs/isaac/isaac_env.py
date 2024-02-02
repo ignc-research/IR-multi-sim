@@ -653,7 +653,8 @@ class IsaacEnv(ModularEnv):
                     donesDict[idx][f"{currName}_success"] = currSuccess[idx]
                                       
         # get environemnt idx that need a reset 
-        self._dones = np.logical_or(resets, successes)
+        #self._dones = np.logical_or(resets, successes)
+        self._dones = resets
         reset_idx = np.where(self._dones)[0]
 
         # create csv file with informations about each specific environment each timestep
@@ -678,9 +679,11 @@ class IsaacEnv(ModularEnv):
             # Log only general information averaged over all environments
             if self.verbose > 0:   
                 self.set_attr("avg_rewards", np.average(self._rewards[reset_idx])) 
-
-                self.set_attr("avg_success", np.sum(successes) * (1/self.num_envs))    
-                self.set_attr("avg_resets",  np.sum(resets) * (1/self.num_envs))     
+                
+                success_rate = np.sum(successes) * (1/self.num_envs)
+                resets_rate = 1 - success_rate
+                self.set_attr("avg_success", success_rate)    
+                self.set_attr("avg_resets",  resets_rate)     
             
             # Add info about execution times averaged over all environments
             if self.verbose > 1:

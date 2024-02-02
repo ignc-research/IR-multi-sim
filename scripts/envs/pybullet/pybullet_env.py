@@ -369,7 +369,6 @@ class PybulletEnv(ModularEnv):
         def reset_condition() -> np.ndarray:
             # get distances of current timestep
             distance, rotation = self._get_distance_and_rotation(name)  
-            #print(f"Current Dist: {distance} and Rot: {rotation}")
 
             # add positive reward if condition successfully reached 
             if min_distance:
@@ -382,7 +381,6 @@ class PybulletEnv(ModularEnv):
                     successes = dist_success
                     
                 resets = successes
-                #print(f"Min dist successes: {successes} and resets {resets}")
 
                 # apply reward in case of successes
                 self._rewards += successes * reward 
@@ -393,13 +391,11 @@ class PybulletEnv(ModularEnv):
 
                 if max_angle:
                     rot_reset = np.where(rotation > max_angle, True, False)   
-                    resets = np.logical_or(dist_resets, rot_reset)  
-                    #print(f"Max angle reset: {rot_reset} and resets {resets}")          
+                    resets = np.logical_or(dist_resets, rot_reset)           
                 else: 
                     resets = dist_resets
                 
                 successes = np.logical_not(resets)
-                #print(f"Max dist successes: {successes} and resets {resets}")
                     
                 # apply punishment/ reward in case of reset 
                 self._rewards += resets * reward
@@ -615,7 +611,8 @@ class PybulletEnv(ModularEnv):
                     donesDict[idx][f"{currName}_success"] = currSuccess[idx]
                                       
         # get environemnt idx that need a reset 
-        self._dones = np.logical_or(resets, successes)
+        #self._dones = np.logical_or(resets, successes)
+        self._dones = resets
         reset_idx = np.where(self._dones)[0]             
 
         # create csv file with informations about each specific environment each timestep
@@ -639,9 +636,11 @@ class PybulletEnv(ModularEnv):
             # Log only general information averaged over all environments
             if self.verbose > 0:   
                 self.set_attr("avg_rewards", np.average(self._rewards[reset_idx])) 
-
-                self.set_attr("avg_success", np.sum(successes) * (1/self.num_envs))    
-                self.set_attr("avg_resets",  np.sum(resets) * (1/self.num_envs))     
+                
+                success_rate = np.sum(successes) * (1/self.num_envs)
+                resets_rate = 1 - success_rate
+                self.set_attr("avg_success", success_rate)    
+                self.set_attr("avg_resets",  resets_rate)   
             
             # Add info about execution times averaged over all environments
             if self.verbose > 1:
