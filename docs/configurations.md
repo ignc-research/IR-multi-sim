@@ -4,22 +4,22 @@ The YAML settings file comprises several definable elements that focus on the ru
 ## General runtime parameter 
 ```yaml
   run:
-  load_model:               # bool: Create a new model or utilize an existing one.
-  model_name:               # str: Should be a string representing the model folder.
-  checkpoint:               # str: Name of the model version for continuing training (including .zip).
-  algorithm:                # Specify custom algorithm settings; default is used if not defined.
-    type:                   # str: Choose from "PPO," "TD3," "SAC," "A2C," or "DDPG".
-    parameters:             # Define various parameters for your model, e.g.:
-      gamma:                # float: Reinforcement learning-specific parameter.
-      learning_rate:        # float: Learning rate of the model.
-      batch_size:           # int: Batch size for the model.
-      ...
-    custom_policy:          # Define specific layer settings and activation function.
-      activation_function:  # str: Choose between "RELU" or "Tanh".
-      value_function:       # array[int]: Define layer sizes.
-        - ...
-      policy_function:
-        - ...
+    load_model:               # bool: Create a new model or utilize an existing one.
+    model_name:               # str: Should be a string representing the model folder.
+    checkpoint:               # str: Name of the model version for continuing training (including .zip).
+    algorithm:                # Specify custom algorithm settings; default is used if not defined.
+      type:                   # str: Choose from "PPO," "TD3," "SAC," "A2C," or "DDPG".
+      parameters:             # Define various parameters for your model, e.g.:
+        gamma:                # float: Reinforcement learning-specific parameter.
+        learning_rate:        # float: Learning rate of the model.
+        batch_size:           # int: Batch size for the model.
+        ...
+      custom_policy:          # Define specific layer settings and activation function.
+        activation_function:  # str: Choose between "RELU" or "Tanh".
+        value_function:       # array[int]: Define layer sizes.
+          - ...
+        policy_function:
+          - ...
 ```
 
 ## Training and evaluation parameter
@@ -111,7 +111,7 @@ Rewards are functions that evaluate the current state of the environment, assign
 ```yaml  
   rewards:
   - name:                 # str: Name of the reward, freely choosable.
-    type:                 # str: Supported types: "Collision," "Distance," "Timestep," or "Shaking".
+    type:                 # str: Supported types: "Collision", "Distance", "Timestep" or "Shaking".
 
     # Parameters for type = Collision.
     obj:                  # str: Name of the object to test for collision.
@@ -143,16 +143,17 @@ Resets are functions that determine whether the environment needs to be reset. T
 
     # Parameters for type = CollisionReset.
     obj:          # str: Name of the object to test for collision.
-    max:          # int: Maximum number of collisions before resetting.
+    max:          # int: Maximum number of collisions before reset.
 
     # Parameters for type = DistanceReset.
     distance:     # str: Name of the distance defined in rewards.
     min_distance: # float: Minimal distance before reset/success.
     max_distance: # float: Maximal distance before resetting.
-    max_angle:    # float: Max angular distance between two quaternions before resetting.
+    min_angle:    # float: Min angular distance between two quaternions before reset.
+    max_angle:    # float: Max angular distance between two quaternions before reset.
 
     # Parameters for type = TimestepsReset.
-    max:          # int: Maximum number of timesteps before resetting.
+    max:          # int: Maximum number of timesteps before reset.
     min:          # int: Minimal timesteps that have to pass to reset/success.
 
     # Parameters for type = BoundaryReset.
