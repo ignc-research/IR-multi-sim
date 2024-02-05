@@ -2,7 +2,7 @@
 A Framework for robot simulation on multiple engines. It contains the [Isaac Sim](https://developer.nvidia.com/isaac-sim) and the [Pybullet](https://pybullet.org/wordpress/) engine.
 
 ## Installation
-To use the full application, you need to install IsaacSim aswell as PyBullet.
+To use the full application, you need to install Isaac Sim aswell as PyBullet.
 
 ### Isaac Sim
 Follow the instructions found [here](https://docs.omniverse.nvidia.com/app_isaacsim/app_isaacsim/install_workstation.html) to install Isaac Sim.
