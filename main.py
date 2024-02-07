@@ -22,6 +22,7 @@ if __name__ == '__main__':
     file = args.file
     eval = args.eval
 
+    print(eval)
     # parse config file
     environment_params, model_params, train_parameters, eval_parameters = parse_config(file, engine, eval)     
 
@@ -40,6 +41,7 @@ if __name__ == '__main__':
   
     # evaluate existing model for desired amount of timesteps
     if eval:
+        import time
         # load model
         model_params["load_model"] = True
         model, model_path = setup_model(model_params, env)
@@ -49,6 +51,7 @@ if __name__ == '__main__':
         for i in range(eval_parameters["timesteps"]):
             action, _states = model.predict(obs)
             obs, rewards, dones, info = env.step(action)
+            time.sleep(0.01)
             print("Step ", i, "; Rewards: ", rewards, "; Dones:", dones)
         
         print("Average Rewards: ", info)

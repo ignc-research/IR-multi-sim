@@ -1,0 +1,74 @@
+run:
+  load_model: True
+  model_name: "set_target_pos_pyb"
+  checkpoint: "checkpoint_700000.zip"
+  algorithm:
+    type: "TD3"
+    parameters:
+      learning_rate: 0.0005
+      batch_size: 2048
+      train_freq: 1
+train:
+  logging: 3
+  timesteps: 700000
+  save_freq: 100000
+
+evaluation:
+  logging: 4
+  timesteps: 500 
+
+env:
+  num_envs: 1
+  env_offset: [4, 4]
+  headless: False
+  step_size: 0.04
+  step_count: 32
+
+  robots:
+    - name: "R1"
+      urdf_path: "robots/ur5/urdf/ur5_with_gripper.urdf"
+      position: [-0.5, 0, 0.63]
+      observable_joints: ["ee_link"]
+      control_type: "Position"
+      collision: False  
+
+  urdfs:
+    - name: "Table" # workspace: [[-0.65,-0.40,0.64],[0.65,0.40,1.00]]
+      urdf_path: "table/table.urdf"
+      position: [0.0, 0, 0]
+      orientation: [1, 0, 0, 0]
+      collision: False
+      observable: True
+  
+  obstacles:
+    - name: "TargetCube"
+      position: [[0.3, -0.3, 0.7],[0.5, 0.3, 1.1]]
+      color: [1, 0, 0]
+      collision: False
+      observable: True
+      static: True
+      type: "Cube"  
+
+  rewards:
+    - name: "target"
+      obj1: "TargetCube"
+      obj2: "R1/ee_link"
+      distance_weight: -20
+      orientation_weight: -2
+      exponent: 2
+      type: "Distance"
+
+    - distance: "target"
+      weight: -0.005
+      length: 10
+      type: "Shaking"
+
+  resets:  
+    - distance: "target"
+      min_distance: 0.1
+      reward: 15
+      type: "DistanceReset" 
+          
+    - max: 250
+      type: "TimestepsReset"
+      reward: -1

@@ -660,9 +660,23 @@ class IsaacEnv(ModularEnv):
         # create csv file with informations about each specific environment each timestep
         if self.verbose > 3:
             for envIdx in range(self.num_envs):
+                positions = np.array([])
+
+                # get observations from all observable joints in environment
+                joint_idx_offset = self.observable_robot_joint_count * envIdx
+                for joint_idx in range(joint_idx_offset, self.observable_robot_joint_count + joint_idx_offset):
+                    # get joint of environment
+                    joint = self._observable_robot_joints[joint_idx]
+
+                    # get its pose
+                    pos, _ = joint.get_world_pose()
+                    pos -= self._env_offsets[envIdx]
+                    positions = np.append(positions, pos)
+
                 info = {
                     "env_id": envIdx,
                     "timestep": self._timesteps[envIdx], 
+                    "joints_pos": positions,
                     "reward": self._rewards[envIdx],
                     "collision": self._collisionsCount[envIdx],
                     "avg_setupTime": self.setupTime/self.num_envs,
@@ -810,7 +824,6 @@ class IsaacEnv(ModularEnv):
             if not path:
                 return 0
             
-            print(self.log_dict)
             df = pd.DataFrame(self.log_dict)        # transform logs to a df       
             df.to_csv(path +".csv", index=False)    # save df to a csv file
         self._simulation.close()

@@ -618,9 +618,15 @@ class PybulletEnv(ModularEnv):
         # create csv file with informations about each specific environment each timestep
         if self.verbose > 3:
             for envIdx in range(self.num_envs):
+                # extract end effector pos
+                positions = []
+                for robot in self._observable_robots[envIdx]:                    
+                        jointsPos, _ = robot.getObservableJointsPose() 
+                        positions.append(list(jointsPos))
                 info = {
                     "env_id": envIdx,
                     "timestep": self._timesteps[envIdx], 
+                    "joints_pos": positions,
                     "reward": self._rewards[envIdx],
                     "collision": self._collisionsCount[envIdx],
                     "avg_setupTime": self.setupTime/self.num_envs,

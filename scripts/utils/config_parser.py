@@ -108,10 +108,9 @@ def parse_config(path: str, engine:str, isEval:bool):
 
         train = {}
         eval = {}
-
         if isEval:
             # Extract evaluation parameters
-            params = config.get('eval', {})
+            params = config.get('evaluation', {})
             eval["timesteps"] = 15000000 if "timesteps" not in params else params["timesteps"]
             eval["logging"] = 0 if "logging" not in params else params["logging"]
             env["verbose"] = eval["logging"]
@@ -119,10 +118,11 @@ def parse_config(path: str, engine:str, isEval:bool):
         else:
             # Extract training parameters
             params = config.get('train', {})
+            train["timesteps"] = 15000000 if "timesteps" not in params else params["timesteps"]
             train["logging"] = 0 if "logging" not in params else params["logging"]
             env["verbose"] = train["logging"]
             run["verbose"] = train["logging"]
-            train["timesteps"] = 15000000 if "timesteps" not in params else params["timesteps"]
+            
             train["save_freq"] = 30000 if "save_freq" not in params else params["save_freq"]
 
     return EnvParams(**env), run, train, eval
